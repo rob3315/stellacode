@@ -1,5 +1,5 @@
 import unittest
-from regcoil import *
+from toroidal_surface import *
 import numpy as np
 import logging
 class Test_toridal_surface(unittest.TestCase):
@@ -7,7 +7,7 @@ class Test_toridal_surface(unittest.TestCase):
     def test_normal_derivative(self):
         lu,lv=128,128
         logging.basicConfig(level='DEBUG')
-        surface_parametrization=Toroidal_surface.load_file('code/data/li383/cws.txt')
+        surface_parametrization=Toroidal_surface.load_file('data/li383/cws.txt')
         S=Toroidal_surface(surface_parametrization,(lu,lv),3)
 
         import matplotlib.pyplot as plt
@@ -28,7 +28,7 @@ class Test_toridal_surface(unittest.TestCase):
         lu,lv=128,128
         eps=1e-8
         logging.basicConfig(level='DEBUG')
-        surface_parametrization=Toroidal_surface.load_file('code/data/li383/cws.txt')
+        surface_parametrization=Toroidal_surface.load_file('data/li383/cws.txt')
         ls=len(surface_parametrization[0])#total number of hamonics
         S=Toroidal_surface(surface_parametrization,(lu,lv),3)
         theta,dtildetheta,_,_=S.get_theta_pertubation()
@@ -46,7 +46,7 @@ class Test_toridal_surface(unittest.TestCase):
         lu,lv=128,128
         eps=1e-8
         logging.basicConfig(level='DEBUG')
-        surface_parametrization=Toroidal_surface.load_file('code/data/li383/cws.txt')
+        surface_parametrization=Toroidal_surface.load_file('data/li383/cws.txt')
         ls=len(surface_parametrization[0])#total number of hamonics
         S=Toroidal_surface(surface_parametrization,(lu,lv),3)
         theta,dtildetheta,_,_=S.get_theta_pertubation()
@@ -65,7 +65,7 @@ class Test_toridal_surface(unittest.TestCase):
         lu,lv=128,128
         eps=1e-8
         logging.basicConfig(level='DEBUG')
-        surface_parametrization=Toroidal_surface.load_file('code/data/li383/cws.txt')
+        surface_parametrization=Toroidal_surface.load_file('data/li383/cws.txt')
         ls=len(surface_parametrization[0])#total number of hamonics
         S=Toroidal_surface(surface_parametrization,(lu,lv),3)
 
