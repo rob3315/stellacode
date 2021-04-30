@@ -3,6 +3,8 @@ import vector_field
 import bnorm
 import logging
 import configparser
+from opt_einsum import contract
+from scipy.constants import mu_0
 #an example of Regcoil version in python
 def cost_surface(config,S=None,Sp=None):
 
@@ -24,6 +26,15 @@ def cost_surface(config,S=None,Sp=None):
     path_cws=str(config['geometry']['path_cws'])#'code/li383/cws.txt'
     path_bnorm=str(config['other']['path_bnorm'])#'code/li383/bnorm.txt'
     path_output=str(config['other']['path_output'])#'coeff_full_opt'
+    dask = config['other']['dask']=='True'
+    cupy = config['other']['cupy']=='True' # dask is needed to use cupy
+    
+    if dask :
+        chunk_theta_coil=int(config['Dask_parameters']['chunk_theta_coil'])
+        chunk_zeta_coil=int(config['Dask_parameters']['chunk_zeta_coil'])
+        chunk_theta_plasma=int(config['Dask_parameters']['chunk_theta_plasma'])
+        chunk_zeta_plasma=int(config['Dask_parameters']['chunk_zeta_plasma'])
+        chunk_theta=int(config['Dask_parameters']['chunk_theta'])
 
     #initialization of the surfaces
     if S is None:
@@ -40,9 +51,31 @@ def cost_surface(config,S=None,Sp=None):
     T=vector_field.get_tensor_distance(S,Sp,rot_tensor)
     matrixd_phi=vector_field.get_matrix_dPhi(phisize,S.grids)
     Qj=vector_field.compute_Qj(matrixd_phi,S.dpsi,S.dS)
-    LS=vector_field.compute_LS(T,matrixd_phi,S.dpsi,rot_tensor,Sp.n)
+    if dask :
+        import dask.array as da
+        if cupy:
+            import cupy as cp
+            f= lambda x : x.map_blocks(cp.asarray,dtype=np.float64)
+        else : f= lambda x : x
+        dask_rot_tensor = f(da.from_array(rot_tensor, asarray=False))
+        dask_matrixd_phi= f(da.from_array(matrixd_phi,chunks={1:chunk_theta_coil,2:chunk_zeta_coil}, asarray=False))
+        dask_dpsi= f(da.from_array(S.dpsi,chunks=(2,3,chunk_theta_coil,chunk_zeta_coil), asarray=False))
+        dask_normalp= f(da.from_array(Sp.n,chunks=(3,chunk_theta_plasma,chunk_zeta_plasma), asarray=False))
+        dask_T= f(da.from_array(T,chunks=(3,chunk_theta_coil,chunk_zeta_coil,chunk_theta_plasma,chunk_zeta_plasma,3), asarray=False))
+        dask_dS= f(da.from_array(S.dS,chunks=(chunk_theta_coil,chunk_zeta_coil), asarray=False))
+        dask_D=1/(da.linalg.norm(dask_T,axis=-1)**3)
+        dask_DD=1/(da.linalg.norm(dask_T,axis=-1)**5)
+        eijk = np.zeros((3, 3, 3))
+        eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
+        eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
+        dask_eijk= f(da.from_array(eijk, asarray=False))
+        LS_dask=contract('ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->olm',dask_T,dask_matrixd_phi,dask_rot_tensor,dask_dpsi,dask_eijk,dask_D,dask_normalp,optimize=True)
+        LS=((mu_0/(4*np.pi))*LS_dask.compute()/(ntheta_coil*nzeta_coil))
+        if cupy :
+            LS=LS.get() #to obtain an np.array
+    else:
+        LS=vector_field.compute_LS(T,matrixd_phi,S.dpsi,rot_tensor,Sp.n)
     array_bnorm=curpol*bnorm.get_bnorm(path_bnorm,Sp)
-    
     ### Regcoil:
     cost_surface_output={}
     LS_matrix=np.transpose(np.reshape(LS[2:,:,:],(LS.shape[0]-2,-1)))#matrix shape
