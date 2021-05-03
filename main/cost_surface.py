@@ -30,11 +30,11 @@ def cost_surface(config,S=None,Sp=None):
     cupy = config['other']['cupy']=='True' # dask is needed to use cupy
     
     if dask :
-        chunk_theta_coil=int(config['Dask_parameters']['chunk_theta_coil'])
-        chunk_zeta_coil=int(config['Dask_parameters']['chunk_zeta_coil'])
-        chunk_theta_plasma=int(config['Dask_parameters']['chunk_theta_plasma'])
-        chunk_zeta_plasma=int(config['Dask_parameters']['chunk_zeta_plasma'])
-        chunk_theta=int(config['Dask_parameters']['chunk_theta'])
+        chunk_theta_coil=int(config['dask_parameters']['chunk_theta_coil'])
+        chunk_zeta_coil=int(config['dask_parameters']['chunk_zeta_coil'])
+        chunk_theta_plasma=int(config['dask_parameters']['chunk_theta_plasma'])
+        chunk_zeta_plasma=int(config['dask_parameters']['chunk_zeta_plasma'])
+        chunk_theta=int(config['dask_parameters']['chunk_theta'])
 
     #initialization of the surfaces
     if S is None:

@@ -6,9 +6,8 @@ from opt_einsum import contract
 import configparser
 from scipy.constants import mu_0
 import dask.array as da
-import cupy as cp
 #an example of regcoil version in python
-class Shape_gradient_dask():
+class Shape_gradient():
     def __init__(self,path_config_file):
         config = configparser.ConfigParser()
         config.read(path_config_file)
@@ -30,12 +29,13 @@ class Shape_gradient_dask():
         path_bnorm=str(config['other']['path_bnorm'])#'code/li383/bnorm.txt'
         self.path_output=str(config['other']['path_output'])#'coeff_full_opt'
         phisize=(mpol_coil,ntor_coil)
-
-        self.chunk_theta_coil=int(config['chunks']['chunk_theta_coil'])
-        self.chunk_zeta_coil=int(config['chunks']['chunk_zeta_coil'])
-        self.chunk_theta_plasma=int(config['chunks']['chunk_theta_plasma'])
-        self.chunk_zeta_plasma=int(config['chunks']['chunk_zeta_plasma'])
-        self.chunk_theta=int(config['chunks']['chunk_theta'])
+        if config['other']['dask']!= 'True':
+            raise Exception('dask is needed for Shape gradient')
+        self.chunk_theta_coil=int(config['dask_parameters']['chunk_theta_coil'])
+        self.chunk_zeta_coil=int(config['dask_parameters']['chunk_zeta_coil'])
+        self.chunk_theta_plasma=int(config['dask_parameters']['chunk_theta_plasma'])
+        self.chunk_zeta_plasma=int(config['dask_parameters']['chunk_zeta_plasma'])
+        self.chunk_theta=int(config['dask_parameters']['chunk_theta'])
         
         #initialization of the surfaces
         self.S_parametrization=Toroidal_surface.load_file(path_cws)
@@ -54,8 +54,33 @@ class Shape_gradient_dask():
         eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
         self.dask_eijk=da.from_array(eijk, asarray=False)
 
+    def compute_gradient_of(self,paramS):
+        #compute the shape gradient by a optimization first method
+        result={}
+        S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
+        theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
+        T=vector_field.get_tensor_distance(S,self.Sp,self.rot_tensor)
+        #LS=vector_field.compute_LS(T,self.matrixd_phi,S.dpsi,self.rot_tensor,self.Sp.n)
+        Qj=vector_field.compute_Qj(self.matrixd_phi,S.dpsi,S.dS)
+        #shape derivation
+        dask_theta=da.from_array(theta,chunks=(self.chunk_theta,self.chunk_theta_coil,self.chunk_zeta_coil,3), asarray=False)
+        dask_dpsi=da.from_array(S.dpsi,chunks=(2,3,self.chunk_theta_coil,self.chunk_zeta_coil), asarray=False)
+        
+        dask_normalp=da.from_array(self.Sp.n,chunks=(3,self.chunk_theta_plasma,self.chunk_zeta_plasma), asarray=False)
+        dask_T=da.from_array(T,chunks=(3,self.chunk_theta_coil,self.chunk_zeta_coil,self.chunk_theta_plasma,self.chunk_zeta_plasma,3), asarray=False)
+        dask_dtildetheta=da.from_array(dtildetheta,chunks=(self.chunk_theta,self.chunk_theta_coil,self.chunk_zeta_coil,3,3), asarray=False)
+        dask_dtheta=da.from_array(dtheta,chunks=(self.chunk_theta,self.chunk_theta_coil,self.chunk_zeta_coil,2,3), asarray=False)
+        dask_dSdtheta=da.from_array(dSdtheta,chunks=(self.chunk_theta,self.chunk_theta_coil,self.chunk_zeta_coil), asarray=False)
+        dask_dS=da.from_array(S.dS,chunks=(self.chunk_theta_coil,self.chunk_zeta_coil), asarray=False)
+        
+        dask_D=1/(da.linalg.norm(dask_T,axis=-1)**3)
+        dask_DD=1/(da.linalg.norm(dask_T,axis=-1)**5)
+        
+        
 
-    def compute_gradient(self,paramS):
+        return result
+    def compute_gradient_df(self,paramS):
+        #compute the shape gradient by a differentiation first method
         result={}
         S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
         theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
