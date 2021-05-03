@@ -1,5 +1,5 @@
 from toroidal_surface import *
-import vector_field
+import tools
 import bnorm
 import logging
 import configparser
@@ -47,10 +47,10 @@ def cost_surface(config,S=None,Sp=None):
     
 
     #tensors computations
-    rot_tensor=vector_field.get_rot_tensor(Np)
-    T=vector_field.get_tensor_distance(S,Sp,rot_tensor)
-    matrixd_phi=vector_field.get_matrix_dPhi(phisize,S.grids)
-    Qj=vector_field.compute_Qj(matrixd_phi,S.dpsi,S.dS)
+    rot_tensor=tools.get_rot_tensor(Np)
+    T=tools.get_tensor_distance(S,Sp,rot_tensor)
+    matrixd_phi=tools.get_matrix_dPhi(phisize,S.grids)
+    Qj=tools.compute_Qj(matrixd_phi,S.dpsi,S.dS)
     if dask :
         import dask.array as da
         if cupy:
@@ -74,7 +74,7 @@ def cost_surface(config,S=None,Sp=None):
         if cupy :
             LS=LS.get() #to obtain an np.array
     else:
-        LS=vector_field.compute_LS(T,matrixd_phi,S.dpsi,rot_tensor,Sp.n)
+        LS=tools.compute_LS(T,matrixd_phi,S.dpsi,rot_tensor,Sp.n)
     array_bnorm=curpol*bnorm.get_bnorm(path_bnorm,Sp)
     ### Regcoil:
     cost_surface_output={}

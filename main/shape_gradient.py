@@ -1,5 +1,5 @@
 from toroidal_surface import *
-import vector_field
+import tools
 import bnorm
 import logging
 from opt_einsum import contract
@@ -42,8 +42,8 @@ class Shape_gradient():
         S=Toroidal_surface(self.S_parametrization,(self.ntheta_coil,self.nzeta_coil),self.Np)
         Sp_parametrization=Toroidal_surface.load_file(path_plasma)
         self.Sp=Toroidal_surface(Sp_parametrization,(ntheta_plasma,nzeta_plasma),self.Np)
-        self.rot_tensor=vector_field.get_rot_tensor(self.Np)
-        self.matrixd_phi=vector_field.get_matrix_dPhi(phisize,S.grids)
+        self.rot_tensor=tools.get_rot_tensor(self.Np)
+        self.matrixd_phi=tools.get_matrix_dPhi(phisize,S.grids)
         self.array_bnorm=curpol*bnorm.get_bnorm(path_bnorm,self.Sp)
 
         self.dask_rot_tensor = da.from_array(self.rot_tensor, asarray=False)
@@ -59,9 +59,9 @@ class Shape_gradient():
         result={}
         S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
         theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
-        T=vector_field.get_tensor_distance(S,self.Sp,self.rot_tensor)
-        #LS=vector_field.compute_LS(T,self.matrixd_phi,S.dpsi,self.rot_tensor,self.Sp.n)
-        Qj=vector_field.compute_Qj(self.matrixd_phi,S.dpsi,S.dS)
+        T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
+        #LS=tools.compute_LS(T,self.matrixd_phi,S.dpsi,self.rot_tensor,self.Sp.n)
+        Qj=tools.compute_Qj(self.matrixd_phi,S.dpsi,S.dS)
         #shape derivation
         dask_theta=da.from_array(theta,chunks=(self.chunk_theta,self.chunk_theta_coil,self.chunk_zeta_coil,3), asarray=False)
         dask_dpsi=da.from_array(S.dpsi,chunks=(2,3,self.chunk_theta_coil,self.chunk_zeta_coil), asarray=False)
@@ -84,9 +84,9 @@ class Shape_gradient():
         result={}
         S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
         theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
-        T=vector_field.get_tensor_distance(S,self.Sp,self.rot_tensor)
-        #LS=vector_field.compute_LS(T,self.matrixd_phi,S.dpsi,self.rot_tensor,self.Sp.n)
-        Qj=vector_field.compute_Qj(self.matrixd_phi,S.dpsi,S.dS)
+        T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
+        #LS=tools.compute_LS(T,self.matrixd_phi,S.dpsi,self.rot_tensor,self.Sp.n)
+        Qj=tools.compute_Qj(self.matrixd_phi,S.dpsi,S.dS)
         #shape derivation
         dask_theta=da.from_array(theta,chunks=(self.chunk_theta,self.chunk_theta_coil,self.chunk_zeta_coil,3), asarray=False)
         dask_dpsi=da.from_array(S.dpsi,chunks=(2,3,self.chunk_theta_coil,self.chunk_zeta_coil), asarray=False)
@@ -111,7 +111,7 @@ class Shape_gradient():
         dLS_dask+=3*contract('ibc,ajkc,ijklmb,ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->aolm',self.dask_rot_tensor,dask_theta,dask_T,dask_T,self.dask_matrixd_phi,self.dask_rot_tensor,dask_dpsi,self.dask_eijk,dask_DD,dask_normalp,optimize=True)
         dLS_dask+=contract('ijklmn,ojkw,ipz,ajkbz,wbjk,qnp,ijklm,qlm->aolm',dask_T,self.dask_matrixd_phi,self.dask_rot_tensor,dask_dtildetheta,dask_dpsi,self.dask_eijk,dask_D,dask_normalp,optimize=True)
         dLSdtheta=(mu_0/(4*np.pi))*dLS_dask.compute()/(self.ntheta_coil*self.nzeta_coil)
-        dask_dQj=vector_field.compute_dQjdtheta(self.dask_matrixd_phi,dask_dpsi,dask_dS,dask_dtheta,dask_dSdtheta)
+        dask_dQj=tools.compute_dQjdtheta(self.dask_matrixd_phi,dask_dpsi,dask_dS,dask_dtheta,dask_dSdtheta)
         dQj=dask_dQj.compute()
 
 

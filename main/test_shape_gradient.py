@@ -7,9 +7,10 @@ import logging
 
 class Test_shape_gradient(unittest.TestCase):
     def test_shape_gradient_df(self):
+        np.random.seed(2)
         from dask.distributed import Client
         client = Client(processes=False,
-                        n_workers=5, threads_per_worker=10)
+                        n_workers=5, threads_per_worker=4)
         client.scheduler_info()['services']
         shape_grad=Shape_gradient('config_file/config_small.ini')
         S_parametrization=shape_grad.S_parametrization
@@ -28,7 +29,7 @@ class Test_shape_gradient(unittest.TestCase):
         gradient_quantities=['dLS_matrix_dtheta','dRHS_dtheta','dj_S_partial_dtheta','dcost_J_dtheta','dcost_B_dtheta','shape_gradient']
         decimal_precision=[8,7,-4,-13,2,2]
         for quantity,grad,precision in zip(quantities,gradient_quantities,decimal_precision):
-            #print(quantity,grad)
+            print(quantity,grad)
             q1,grad_q1 = result1[quantity],result1[grad]
             q2= result2[quantity]
 
