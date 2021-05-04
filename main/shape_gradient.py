@@ -113,13 +113,17 @@ class Shape_gradient():
         dLSdtheta=(mu_0/(4*np.pi))*dLS_dask.compute()/(self.ntheta_coil*self.nzeta_coil)
         dask_dQj=tools.compute_dQjdtheta(self.dask_matrixd_phi,dask_dpsi,dask_dS,dask_dtheta,dask_dSdtheta)
         dQj=dask_dQj.compute()
-
+        result['Qj']=Qj
+        result['dQj']=dQj
+        result['dLSdtheta']=dLSdtheta
+        result['LS']=LS
 
         ### matrix versions:
         output={}
         LS_matrix=np.transpose(np.reshape(LS[2:,:,:],(LS.shape[0]-2,-1)))#matrix shape
         BTn=self.net_poloidal_current_Amperes*LS[0]+self.net_toroidal_current_Amperes*LS[1]+self.array_bnorm
         BTn_flat=-BTn.flatten()
+        result['array_bnorm']=self.array_bnorm
         #shape derivative of those matrices
         dLS_matrix_dtheta=np.swapaxes(np.reshape(dLSdtheta[:,2:,:,:],(dLSdtheta.shape[0],dLSdtheta.shape[1]-2,-1)), 1, 2)
         dLS_matrix_dtheta_dask=da.from_array(dLS_matrix_dtheta,chunks={0:1})#for parallelisation

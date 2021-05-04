@@ -37,6 +37,35 @@ class Test_shape_gradient(unittest.TestCase):
             dq=np.einsum('a,a...->...',perturb,grad_q1)
             np.testing.assert_array_almost_equal(dq,dq_num,decimal=precision)
             #print(dq.shape)
+    def test_shape_gradient_of(self):
+        np.random.seed(2)
+        from dask.distributed import Client
+        client = Client(processes=False,
+                        n_workers=5, threads_per_worker=4)
+        print(client.scheduler_info()['services'])
+        shape_grad=Shape_gradient('config_file/config_small.ini')
+        S_parametrization=shape_grad.S_parametrization
+        eps=1e-6
+        #we compute the shape derivative
+        result1=shape_grad.compute_gradient_df(S_parametrization)
+        #we check the computation of I
+        lamb=shape_grad.lamb
+        j_S=np.concatenate(([shape_grad.net_poloidal_current_Amperes,shape_grad.net_toroidal_current_Amperes],result1['j_S_partial']))
+        Qj=result1['Qj']
+        dQj=result1['dQj']
+        LS=result1['LS']
+        BT=-result1['array_bnorm']
+        dLSdtheta=result1['dLSdtheta']
+        dj_S_partial_dtheta=result1['dj_S_partial_dtheta']
+        I=lamb*contract('i,oij,j->o',j_S,dQj,j_S)+2*contract('ij,ij,opij,p->o',(contract('abc,a->bc',LS,j_S)-BT),shape_grad.Sp.dS,dLSdtheta,j_S)/(shape_grad.Sp.nbpts[0]*shape_grad.Sp.nbpts[1])
+        II=2*lamb*contract('p,pq,oq',j_S,Qj[:,2:],dj_S_partial_dtheta)+2*contract('ij,ij,qij,oq->o',(contract('abc,a->bc',LS,j_S)-BT),shape_grad.Sp.dS,LS[2:],dj_S_partial_dtheta)/(shape_grad.Sp.nbpts[0]*shape_grad.Sp.nbpts[1])
+        #np.testing.assert_array_almost_equal(lamb*result1['dcost_J_dtheta']/shape_grad.Np,I+II)
+        #np.testing.assert_array_almost_equal(result1['dcost_B_dtheta']/shape_grad.Np,I+II)
+        np.testing.assert_array_almost_equal(result1['shape_gradient']/shape_grad.Np,I+II)
+        
+        
+
+        pass
 
 
 if __name__ == '__main__':
