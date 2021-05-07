@@ -57,18 +57,18 @@ class Test_shape_gradient(unittest.TestCase):
         BT=-result1['array_bnorm']
         dLSdtheta=result1['dLSdtheta']
         dj_S_partial_dtheta=result1['dj_S_partial_dtheta']
-        I=lamb*contract('i,oij,j->o',j_S,dQj,j_S)+2*contract('ij,ij,opij,p->o',(contract('abc,a->bc',LS,j_S)-BT),shape_grad.Sp.dS,dLSdtheta,j_S)/(shape_grad.Sp.nbpts[0]*shape_grad.Sp.nbpts[1])
+        I=lamb*contract('i,oij,j->o',j_S,dQj,j_S)#+2*contract('ij,ij,opij,p->o',(contract('abc,a->bc',LS,j_S)-BT),shape_grad.Sp.dS,dLSdtheta,j_S)/(shape_grad.Sp.nbpts[0]*shape_grad.Sp.nbpts[1])
         II=2*lamb*contract('p,pq,oq',j_S,Qj[:,2:],dj_S_partial_dtheta)+2*contract('ij,ij,qij,oq->o',(contract('abc,a->bc',LS,j_S)-BT),shape_grad.Sp.dS,LS[2:],dj_S_partial_dtheta)/(shape_grad.Sp.nbpts[0]*shape_grad.Sp.nbpts[1])
         #np.testing.assert_array_almost_equal(lamb*result1['dcost_J_dtheta']/shape_grad.Np,I+II)
         #np.testing.assert_array_almost_equal(result1['dcost_B_dtheta']/shape_grad.Np,I+II)
-        np.testing.assert_array_almost_equal(result1['shape_gradient']/shape_grad.Np,I+II)
+        #np.testing.assert_array_almost_equal(result1['shape_gradient']/shape_grad.Np,I+II)
         result2=shape_grad.compute_gradient_of(S_parametrization)
-        np.testing.assert_array_almost_equal(result1['j_S_partial'],result2['j_S_partial'])
-        print('done')
-        
 
-        pass
-
+        S=Toroidal_surface(S_parametrization,(shape_grad.ntheta_coil,shape_grad.nzeta_coil),shape_grad.Np)
+        theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
+        X1,X2=result2['I1']
+        gradient=np.einsum('ijab,oijab,ij->o',X2,dtildetheta,S.dS)/(S.nbpts[0]*S.nbpts[1])
+        np.testing.assert_array_almost_equal(I,gradient)
 
 if __name__ == '__main__':
     print(os.getcwd())

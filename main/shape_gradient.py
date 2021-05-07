@@ -87,8 +87,13 @@ class Shape_gradient():
         # we save the results
 
         B_err= (LS_matrix @ j_S_partial)- BTn_flat
-
-        result['j_S_partial']=j_S_partial.compute()
+        j_S_vector=contract('o,oijk,klij,ij->ijl',j_S,matrixd_phi,dpsi,1/S.dS)
+        I1=self.lamb*(2*contract('ijl,ijk->ijlk',j_S_vector,j_S_vector)+np.einsum('ijk,ijk,ijab->ijab',j_S_vector,j_S_vector,-np.eye(3)+np.einsum('aij,bij->ijab',S.n,S.n)))
+        ##DEBUG
+        #theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
+        #div_theta1=np.einsum('oijab,ijab->oij',dtildetheta,-(-np.eye(3)+np.einsum('aij,bij->ijab',S.n,S.n)))
+        #div_theta2=np.einsum('oij,ij->oij',dSdtheta,1/(S.dS))
+        result['I1']=(0,I1.compute())
         
 
         return result
