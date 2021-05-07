@@ -6,6 +6,7 @@ import numpy as np
 import logging
 
 class Test_shape_gradient(unittest.TestCase):
+    #@unittest.skip('debugging')
     def test_shape_gradient_df(self):
         np.random.seed(2)
         from dask.distributed import Client
@@ -61,7 +62,9 @@ class Test_shape_gradient(unittest.TestCase):
         #np.testing.assert_array_almost_equal(lamb*result1['dcost_J_dtheta']/shape_grad.Np,I+II)
         #np.testing.assert_array_almost_equal(result1['dcost_B_dtheta']/shape_grad.Np,I+II)
         np.testing.assert_array_almost_equal(result1['shape_gradient']/shape_grad.Np,I+II)
-        
+        result2=shape_grad.compute_gradient_of(S_parametrization)
+        np.testing.assert_array_almost_equal(result1['j_S_partial'],result2['j_S_partial'])
+        print('done')
         
 
         pass

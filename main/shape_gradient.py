@@ -58,24 +58,37 @@ class Shape_gradient():
         #compute the shape gradient by a optimization first method
         result={}
         S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
-        theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
+        # for latter, when we will implement GPU support
+        f,f_np,get = lambda x : x,lambda x : x,lambda x : x
+        #tensors computations
         T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
-        #LS=tools.compute_LS(T,self.matrixd_phi,S.dpsi,self.rot_tensor,self.Sp.n)
-        Qj=tools.compute_Qj(self.matrixd_phi,S.dpsi,S.dS)
-        #shape derivation
-        dask_theta=da.from_array(theta,chunks=(self.chunk_theta,self.chunk_theta_coil,self.chunk_zeta_coil,3), asarray=False)
-        dask_dpsi=da.from_array(S.dpsi,chunks=(2,3,self.chunk_theta_coil,self.chunk_zeta_coil), asarray=False)
+        T=f(da.from_array(T,chunks=(3,self.chunk_theta_coil,self.chunk_zeta_coil,self.chunk_theta_plasma,self.chunk_zeta_plasma,3), asarray=False))
+        matrixd_phi=f(da.from_array(self.matrixd_phi,chunks={1:self.chunk_theta_coil,2:self.chunk_zeta_coil}, asarray=False))
+        dpsi= f(da.from_array(S.dpsi,chunks=(2,3,self.chunk_theta_coil,self.chunk_zeta_coil), asarray=False))
+        normalp= f(da.from_array(self.Sp.n,chunks=(3,self.chunk_theta_plasma,self.chunk_zeta_plasma), asarray=False))
+        S_dS= f(da.from_array(S.dS,chunks=(self.chunk_theta_coil,self.chunk_zeta_coil), asarray=False))
+        D=1/(da.linalg.norm(T,axis=-1)**3)
+        DD=1/(da.linalg.norm(T,axis=-1)**5)
+        Qj=tools.compute_Qj(matrixd_phi,dpsi,S_dS)
+        LS=(mu_0/(4*np.pi))*contract('ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->olm',T,matrixd_phi,self.rot_tensor,dpsi,self.dask_eijk,D,normalp,optimize=True)/(S.nbpts[0]*S.nbpts[1])
+
+        LS_matrix=np.transpose(np.reshape(LS[2:,:,:],(LS.shape[0]-2,-1)))#matrix shape
+        BTn=self.net_poloidal_current_Amperes*LS[0]+self.net_toroidal_current_Amperes*LS[1]+self.array_bnorm
+        BTn_flat=-BTn.flatten()# - for 2 reasons: we use inward convention (thus -array_bnorm)
+        # and we want to eliminate the effect of the net currents
+
+        plasma_dS_normalized=self.Sp.dS.flatten()/(self.Sp.nbpts[0]*self.Sp.nbpts[1])
+        inside_M_lambda=np.einsum('ij,i,ik->jk',LS_matrix,plasma_dS_normalized,LS_matrix)\
+            +self.lamb*Qj[2:,2:]
+        RHS=(np.einsum('ij,i,i->j',LS_matrix,plasma_dS_normalized, BTn_flat)-self.lamb*(self.net_poloidal_current_Amperes*Qj[2:,0]+self.net_toroidal_current_Amperes*Qj[2:,1]) )
+        j_S_partial= np.linalg.solve(inside_M_lambda,RHS)
+        j_S=np.concatenate(([self.net_poloidal_current_Amperes,self.net_toroidal_current_Amperes],j_S_partial))
         
-        dask_normalp=da.from_array(self.Sp.n,chunks=(3,self.chunk_theta_plasma,self.chunk_zeta_plasma), asarray=False)
-        dask_T=da.from_array(T,chunks=(3,self.chunk_theta_coil,self.chunk_zeta_coil,self.chunk_theta_plasma,self.chunk_zeta_plasma,3), asarray=False)
-        dask_dtildetheta=da.from_array(dtildetheta,chunks=(self.chunk_theta,self.chunk_theta_coil,self.chunk_zeta_coil,3,3), asarray=False)
-        dask_dtheta=da.from_array(dtheta,chunks=(self.chunk_theta,self.chunk_theta_coil,self.chunk_zeta_coil,2,3), asarray=False)
-        dask_dSdtheta=da.from_array(dSdtheta,chunks=(self.chunk_theta,self.chunk_theta_coil,self.chunk_zeta_coil), asarray=False)
-        dask_dS=da.from_array(S.dS,chunks=(self.chunk_theta_coil,self.chunk_zeta_coil), asarray=False)
-        
-        dask_D=1/(da.linalg.norm(dask_T,axis=-1)**3)
-        dask_DD=1/(da.linalg.norm(dask_T,axis=-1)**5)
-        
+        # we save the results
+
+        B_err= (LS_matrix @ j_S_partial)- BTn_flat
+
+        result['j_S_partial']=j_S_partial.compute()
         
 
         return result
