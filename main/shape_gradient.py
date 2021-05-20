@@ -85,15 +85,93 @@ class Shape_gradient():
         j_S=np.concatenate(([self.net_poloidal_current_Amperes,self.net_toroidal_current_Amperes],j_S_partial))
         
         # we save the results
+        j_space_to_vector=contract('oijk,klij,ij->oijl',matrixd_phi,dpsi,1/S.dS)
+        B_err_flat= (LS_matrix @ j_S_partial)- BTn_flat
+        B_err=np.einsum('opq,o->pq',LS,j_S)+self.array_bnorm
+        #j_S_vector=contract('o,oijk,klij,ij->ijl',j_S,matrixd_phi,dpsi,1/S.dS)
+        j_S_vector=contract('o,oijl->ijl',j_S,j_space_to_vector)
+        I1_matrix=self.lamb*(2*contract('ijl,ijk->ijlk',j_S_vector,j_S_vector)+np.einsum('ijk,ijk,ijab->ijab',j_S_vector,j_S_vector,-np.eye(3)+np.einsum('aij,bij->ijab',S.n,S.n)))
+        # a=j_S#np.random.random(129)
+        # a_vector=contract('o,oijl->ijl',a,j_space_to_vector)
+        # b=B_err#np.random.random((16,18))
+        #contract('pqijl,ijl,pq,ij',LS_dagger_vector,a_vector,b,S.dS/S.npts).compute()
+        #contract('apq,a,pq,pq',LS,a,b,self.Sp.dS/self.Sp.npts).compute()
+        K=np.einsum('sijpql,sijpq->sijpql',T,D)
+        #dK=contract('sijpqab,oijb,o->sijpqa',DxK,theta,perturb)
+        #db=np.einsum()
+        #c=mu_0/(4*np.pi)*contract('sijpqa,abc,bpq,pq,pq,ijc,ij',K,self.dask_eijk,normalp,b, self.Sp.dS/self.Sp.npts,a_vector,S.dS/S.npts).compute()
+        #d=mu_0/(4*np.pi)*contract('sijpqa,abc,bpq,pq,pq,ijc,ij',dK,self.dask_eijk,normalp,b, self.Sp.dS/self.Sp.npts,a_vector,S.dS/S.npts).compute()
+        #f=mu_0/(4*np.pi)*contract('sijpqa,abc,bpq,pq,pq,ijc,ij',dK,self.dask_eijk,normalp,b, self.Sp.dS/self.Sp.npts,a_vector,S.dS/S.npts).compute()
+        #e=contract('oapq,o,a,pq,pq',dLSdtheta,perturb,a,b, self.Sp.dS/self.Sp.npts).compute()
+        #f=contract('oapq,ijo,a,pq,pq',dLSdtheta,perturb,a_vector,b, self.Sp.dS/self.Sp.npts).compute()
+        #Zp=mu_0/(4*np.pi)*contract('sijpqa,abc,bpq,pq->ijpqc',K,self.dask_eijk,normalp, self.Sp.dS/self.Sp.npts)
+        #np.einsum(Zp,)
+        #np.einsum('ija,ijapq,pq,ij',a_vector,Zp,b,S.dS/S.npts).compute()
+        #np.einsum('apq,b,pq,ab',LS_dagger,a,b,Qj).compute()
+        #np.einsum('ijapq,ija,pq,ij',LS_dagger_vector,a_vector,b,S.dS/S.npts).compute()
+        #(mu_0/(4*np.pi))*contract('sijpqac,pq,apq,ijb,cbd,pq,ij,ijd',DxK,b,normalp,a_vector,self.dask_eijk,self.Sp.dS/self.Sp.npts,S.dS/S.npts,theta_pert).compute()
+        #(mu_0/(4*np.pi))*contract('sijpqac,pq,dpq,ijb,cbd,pq,ij,ija',DxK,b,normalp,a_vector,self.dask_eijk,self.Sp.dS/self.Sp.npts,S.dS/S.npts,theta_pert).compute()
+        #(mu_0/(4*np.pi))*contract('sijpqac,pq,dpq,ijb,cbd,pq,ij,ija',DxK,b,normalp,a_vector,self.dask_eijk,self.Sp.dS/self.Sp.npts,S.dS/S.npts,theta_pert).compute()
+        #(mu_0/(4*np.pi))*contract('sijpqac,pq,apq,ijb,cbd,pq->ijd',DxK,b,normalp,a_vector,self.dask_eijk,self.Sp.dS/self.Sp.npts).compute()
+        #0.5*np.einsum('ija,ija,ij',I1_vector,theta_pert,S.dS/S.npts).compute()
+        #theta_pert=np.einsum('oija,o->ija',theta,perturb)
+        #WARNING TODO: = -> +=
+        #I1_matrix= 2*np.einsum('pqijl,pq,ijk->ijlk',LS_dagger_vector,B_err,j_S_vector)
+        # the dK part
+        DxK=-(np.einsum('sijpq,sab->sijpqab',D,self.rot_tensor)-3*np.einsum('sijpq,sijpqa,sijpqb,sbc->sijpqac',DD,T,T,self.rot_tensor))
+        #DEBUG
+        # D1=np.ones(D.shape)
+        # eps=1e-8
+        # ls=len(paramS[0])
+        # perturb=(2*np.random.random(2*ls)-1)
+        # new_param=Toroidal_surface.change_param(paramS, eps*perturb)
+        # new_S=Toroidal_surface(new_param,(self.ntheta_coil,self.nzeta_coil),self.Np)
+        # new_T=tools.get_tensor_distance(new_S,self.Sp,self.rot_tensor)
+        # new_D=1/(np.linalg.norm(new_T,axis=-1)**3)
+        # K=np.einsum('sijpql,sijpq->sijpql',T,D)
+        # new_K=np.einsum('sijpql,sijpq->sijpql',new_T,new_D)
+        # dK_num=(new_K-K)/eps
+        # dT_num=(new_T-T)/eps
+        # theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
+        # dK=contract('sijpqab,oijb,o->sijpqa',DxK,theta,perturb)
+        # dT=-contract('sab,oijb,o->sija',self.rot_tensor,theta,perturb)
+        # print((dK_num-dK).compute().min())
+        Zp_aux=-(mu_0/(4*np.pi))*contract('sijpqa,sbe,abd,dpq,pq->ijpqe',K,self.rot_tensor,self.dask_eijk,normalp,self.Sp.dS/self.Sp.npts,optimize=True)
+        def Zp(k,j):
+            return contract('ijpqe,pq,ija->ijae',Zp_aux,k,j)
 
-        B_err= (LS_matrix @ j_S_partial)- BTn_flat
-        j_S_vector=contract('o,oijk,klij,ij->ijl',j_S,matrixd_phi,dpsi,1/S.dS)
-        I1=self.lamb*(2*contract('ijl,ijk->ijlk',j_S_vector,j_S_vector)+np.einsum('ijk,ijk,ijab->ijab',j_S_vector,j_S_vector,-np.eye(3)+np.einsum('aij,bij->ijab',S.n,S.n)))
+        def Z_p_hat (k,j):
+            # k is pxq along the plasma normal
+            # j is ixj on the tangential bundle of the CWS
+            # the last rotation is backward
+            #return (mu_0/(4*np.pi))*contract('sijpqad,pq,cpq,ijb,cbd,pq->ija',DxK,k,normalp,j,self.dask_eijk,self.Sp.dS/self.Sp.npts)
+            return (mu_0/(4*np.pi))*contract('saf,sijpqad,sce,pq,cpq,ebd,ijb,pq->ijf',self.dask_rot_tensor,DxK,self.dask_rot_tensor,k,normalp,self.dask_eijk,j,self.Sp.dS/self.Sp.npts)
+        I1_matrix+= -2*Zp(B_err,j_S_vector)
+        I1_vector=-2*Z_p_hat(B_err,j_S_vector)
+        # theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
+        # X1,X2=I1_vector,I1_matrix
+        # gradient=np.einsum('ijab,oijab,ij->o',X2,dtildetheta,S.dS/S.npts).compute()
+        # tmp=2*np.einsum('ijapq,pq,oijba,ijb->o',Zp,B_err,dtildetheta,j_S_vector).compute()
+        # dLS=(mu_0/(4*np.pi))*contract('t,sijpqa,tijh,sbe,hcij,dab,dpq,pq,pq->ijce',j_S,K,matrixd_phi,self.rot_tensor,dpsi,self.dask_eijk,normalp,B_err,self.Sp.dS/self.Sp.npts,optimize=True)/(S.npts)
+        # tmp2=2*np.einsum('oijce,ijce->o',dtildetheta, dLS).compute()
+        # dLS=(mu_0/(4*np.pi))*contract('sijpqa,sbe,ijc,dab,dpq,pq,pq->ijce',K,self.rot_tensor,j_S_vector,self.dask_eijk,normalp,B_err,self.Sp.dS/self.Sp.npts,optimize=True)
+        # tmp3=2*np.einsum('oijce,ijce,ij->o',dtildetheta, dLS,S.dS/S.npts).compute()
+        
+        # Zp=mu_0/(4*np.pi)*contract('sijpqa,abc,bpq,pq->ijpqc',K,self.dask_eijk,normalp, self.Sp.dS/self.Sp.npts)
+        
+
+        # tmp3=2*np.einsum('oijab,ijab,ij->o',dtildetheta, Zp2_B,S.dS/S.npts).compute()
         ##DEBUG
+        #jtmp1=np.random.random(129)
+        #jtmp1_vector=contract('o,oijk,klij,ij->ijl',jtmp1,matrixd_phi,dpsi,1/S.dS)
+        #ktmp1=np.random.random((16,18))
+        #print((np.einsum('apq,a,pq,pq',LS,jtmp1,self.Sp.dS,ktmp1)/(self.Sp.nbpts[0]*self.Sp.nbpts[1])).compute())
+        #print(np.einsum('a,ab,bpq,pq',jtmp1,Qj,LS_dagger,ktmp1).compute())
+        #print((np.einsum('ijl,ij,pqijl,pq',jtmp1_vector,S.dS,LS_dagger_vector,ktmp1)/(S.nbpts[0]*S.nbpts[1])).compute())
         #theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
         #div_theta1=np.einsum('oijab,ijab->oij',dtildetheta,-(-np.eye(3)+np.einsum('aij,bij->ijab',S.n,S.n)))
         #div_theta2=np.einsum('oij,ij->oij',dSdtheta,1/(S.dS))
-        result['I1']=(0,I1.compute())
+        result['I1']=da.compute(I1_vector,I1_matrix)
         
 
         return result

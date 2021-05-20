@@ -57,7 +57,8 @@ class Test_shape_gradient(unittest.TestCase):
         BT=-result1['array_bnorm']
         dLSdtheta=result1['dLSdtheta']
         dj_S_partial_dtheta=result1['dj_S_partial_dtheta']
-        I=lamb*contract('i,oij,j->o',j_S,dQj,j_S)#+2*contract('ij,ij,opij,p->o',(contract('abc,a->bc',LS,j_S)-BT),shape_grad.Sp.dS,dLSdtheta,j_S)/(shape_grad.Sp.nbpts[0]*shape_grad.Sp.nbpts[1])
+        I=lamb*contract('i,oij,j->o',j_S,dQj,j_S)+2*contract('ij,ij,opij,p->o',(contract('abc,a->bc',LS,j_S)-BT),shape_grad.Sp.dS,dLSdtheta,j_S)/(shape_grad.Sp.nbpts[0]*shape_grad.Sp.nbpts[1])
+        #I=2*contract('pq,pq,oapq,a->o',(contract('apq,a->pq',LS,j_S)-BT),shape_grad.Sp.dS,dLSdtheta,j_S)/(shape_grad.Sp.nbpts[0]*shape_grad.Sp.nbpts[1])
         II=2*lamb*contract('p,pq,oq',j_S,Qj[:,2:],dj_S_partial_dtheta)+2*contract('ij,ij,qij,oq->o',(contract('abc,a->bc',LS,j_S)-BT),shape_grad.Sp.dS,LS[2:],dj_S_partial_dtheta)/(shape_grad.Sp.nbpts[0]*shape_grad.Sp.nbpts[1])
         #np.testing.assert_array_almost_equal(lamb*result1['dcost_J_dtheta']/shape_grad.Np,I+II)
         #np.testing.assert_array_almost_equal(result1['dcost_B_dtheta']/shape_grad.Np,I+II)
@@ -67,7 +68,23 @@ class Test_shape_gradient(unittest.TestCase):
         S=Toroidal_surface(S_parametrization,(shape_grad.ntheta_coil,shape_grad.nzeta_coil),shape_grad.Np)
         theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
         X1,X2=result2['I1']
-        gradient=np.einsum('ijab,oijab,ij->o',X2,dtildetheta,S.dS)/(S.nbpts[0]*S.nbpts[1])
+        #gradient=np.einsum('ijl,oijl,ij->o',X1,theta,S.dS)/(S.nbpts[0]*S.nbpts[1])+np.einsum('ijab,oijab,ij->o',X2,dtildetheta,S.dS)/(S.nbpts[0]*S.nbpts[1])
+        gradient=np.einsum('ija,oija,ij->o',X1,theta,S.dS)/(S.nbpts[0]*S.nbpts[1])+np.einsum('ijab,oijab,ij->o',X2,dtildetheta,S.dS)/(S.nbpts[0]*S.nbpts[1])
+        # print(gradient.max(),gradient.min())
+        # gradient=np.einsum('ijl,oijl,ij->o',X1,theta,S.dS)/(S.nbpts[0]*S.nbpts[1])+np.einsum('ijab,oijba,ij->o',X2,dtildetheta,S.dS)/(S.nbpts[0]*S.nbpts[1])
+        # print(gradient.max(),gradient.min())
+        # gradient=np.einsum('ijl,oijl,ij->o',X1,theta,S.dS)/(S.nbpts[0]*S.nbpts[1])+0.5*np.einsum('ijab,oijab,ij->o',X2,dtildetheta,S.dS)/(S.nbpts[0]*S.nbpts[1])
+        # print(gradient.max(),gradient.min())
+        # gradient=np.einsum('ijl,oijl,ij->o',X1,theta,S.dS)/(S.nbpts[0]*S.nbpts[1])+0.5*np.einsum('ijab,oijba,ij->o',X2,dtildetheta,S.dS)/(S.nbpts[0]*S.nbpts[1])
+        # print(gradient.max(),gradient.min())
+        # gradient=0.5*np.einsum('ijl,oijl,ij->o',X1,theta,S.dS)/(S.nbpts[0]*S.nbpts[1])+np.einsum('ijab,oijab,ij->o',X2,dtildetheta,S.dS)/(S.nbpts[0]*S.nbpts[1])
+        # print(gradient.max(),gradient.min())
+        # gradient=0.5*np.einsum('ijl,oijl,ij->o',X1,theta,S.dS)/(S.nbpts[0]*S.nbpts[1])+np.einsum('ijab,oijba,ij->o',X2,dtildetheta,S.dS)/(S.nbpts[0]*S.nbpts[1])
+        # print(gradient.max(),gradient.min())
+        # gradient=-0.5*np.einsum('ijl,oijl,ij->o',X1,theta,S.dS)/(S.nbpts[0]*S.nbpts[1])+np.einsum('ijab,oijab,ij->o',X2,dtildetheta,S.dS)/(S.nbpts[0]*S.nbpts[1])
+        # print(gradient.max(),gradient.min())
+        # gradient=-0.5*np.einsum('ijl,oijl,ij->o',X1,theta,S.dS)/(S.nbpts[0]*S.nbpts[1])+np.einsum('ijab,oijba,ij->o',X2,dtildetheta,S.dS)/(S.nbpts[0]*S.nbpts[1])
+        # print(gradient.max(),gradient.min())
         np.testing.assert_array_almost_equal(I,gradient)
 
 if __name__ == '__main__':

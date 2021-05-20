@@ -26,6 +26,7 @@ class Toroidal_surface():
         """
         self.Np=Np
         self.nbpts=nbpts
+        self.npts=nbpts[0]*nbpts[1]
         self.surface_parametrization=surface_parametrization
         self.compute_surface_attributes()#computation of the surface attributes
         logging.debug('creation of a Toroidal surface successfull')
