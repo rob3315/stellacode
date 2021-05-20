@@ -137,7 +137,8 @@ def cost_surface_dask(config,S,Sp):
     eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
     eijk= f_np(eijk)
     Qj=tools.compute_Qj(matrixd_phi,dpsi,S_dS)
-    LS=(mu_0/(4*np.pi))*contract('ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->olm',T,matrixd_phi,rot_tensor,dpsi,eijk,D,normalp,optimize=True)/(ntheta_coil*nzeta_coil)
+    K=np.einsum('sijpqa,sijpq->sijpqa',T,D)
+    LS2=(mu_0/(4*np.pi))*contract('sijpqa,tijh,sbc,hcij,dab,dpq->tpq',K,matrixd_phi,rot_tensor,dpsi,eijk,normalp,optimize=True)/(ntheta_coil*nzeta_coil)
 
     Qj=get(Qj.compute())
     LS=get(LS.compute())
