@@ -72,24 +72,24 @@ class Shape_gradient():
         Qj=tools.compute_Qj(matrixd_phi,dpsi,S_dS)
         LS=(mu_0/(4*np.pi))*contract('ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->olm',T,matrixd_phi,self.rot_tensor,dpsi,self.dask_eijk,D,normalp,optimize=True)/(S.nbpts[0]*S.nbpts[1])
 
-        LS_matrix=np.transpose(np.reshape(LS[2:,:,:],(LS.shape[0]-2,-1)))#matrix shape
-        BTn=self.net_poloidal_current_Amperes*LS[0]+self.net_toroidal_current_Amperes*LS[1]+self.array_bnorm
-        BTn_flat=-BTn.flatten()# - for 2 reasons: we use inward convention (thus -array_bnorm)
-        # and we want to eliminate the effect of the net currents
-
-        plasma_dS_normalized=self.Sp.dS.flatten()/(self.Sp.nbpts[0]*self.Sp.nbpts[1])
-        inside_M_lambda=np.einsum('ij,i,ik->jk',LS_matrix,plasma_dS_normalized,LS_matrix)\
-            +self.lamb*Qj[2:,2:]
-        RHS=(np.einsum('ij,i,i->j',LS_matrix,plasma_dS_normalized, BTn_flat)-self.lamb*(self.net_poloidal_current_Amperes*Qj[2:,0]+self.net_toroidal_current_Amperes*Qj[2:,1]) )
-        j_S_partial= np.linalg.solve(inside_M_lambda,RHS)
-        j_S=np.concatenate(([self.net_poloidal_current_Amperes,self.net_toroidal_current_Amperes],j_S_partial))
+        # We solve the inverse problem
+        BT=-self.array_bnorm
+        Qj_inv=np.linalg.inv(Qj)
+        LS_dagger=np.einsum('ut,tij,ij->uij',Qj_inv,LS,self.Sp.dS/self.Sp.npts)
+        inside_M_lambda= self.lamb*np.eye(len(Qj[0]))+np.einsum('tpq,upq->tu',LS_dagger,LS)
+        M_lambda=np.linalg.inv(inside_M_lambda)
         
+        # we compute the 2 Lagrange multipliers
+        LS_dagger_B_T=np.einsum('hpq,pq->h',LS_dagger,BT)
+        m0,m1=np.linalg.inv(M_lambda[:2]@Qj_inv[:,:2]) @((M_lambda@LS_dagger_B_T)[:2] - [self.net_poloidal_current_Amperes,self.net_toroidal_current_Amperes])
+        RHS=LS_dagger_B_T -[m0,m1]@Qj_inv[:2,:]
+        j_S= M_lambda@RHS
         # we save the results
         j_space_to_vector=contract('oijk,klij,ij->oijl',matrixd_phi,dpsi,1/S.dS)
-        B_err_flat= (LS_matrix @ j_S_partial)- BTn_flat
-        B_err=np.einsum('opq,o->pq',LS,j_S)+self.array_bnorm
+        B_err=np.einsum('opq,o->pq',LS,j_S)-BT
         j_S_vector=contract('o,oijl->ijl',j_S,j_space_to_vector)
 
+        #We start to compute the shape gradient
         I1_matrix=self.lamb*(2*contract('ijl,ijk->ijlk',j_S_vector,j_S_vector)+np.einsum('ijk,ijk,ijab->ijab',j_S_vector,j_S_vector,-np.eye(3)+np.einsum('aij,bij->ijab',S.n,S.n)))
         
         K=np.einsum('sijpql,sijpq->sijpql',T,D)
