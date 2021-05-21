@@ -74,16 +74,22 @@ class Shape_gradient():
 
         # We solve the inverse problem
         BT=-self.array_bnorm
-        Qj_inv=np.linalg.inv(Qj)
-        LS_dagger=np.einsum('ut,tij,ij->uij',Qj_inv,LS,self.Sp.dS/self.Sp.npts)
-        inside_M_lambda= self.lamb*np.eye(len(Qj[0]))+np.einsum('tpq,upq->tu',LS_dagger,LS)
-        M_lambda=np.linalg.inv(inside_M_lambda)
+        LS_R=LS[2:]
+        Qj_inv_R=np.linalg.inv(Qj[2:,2:])
+        LS_dagger_R=np.einsum('ut,tij,ij->uij',Qj_inv_R,LS_R,self.Sp.dS/self.Sp.npts)
+        inside_M_lambda_R= self.lamb*np.eye(LS_R.shape[0])+np.einsum('tpq,upq->tu',LS_dagger_R,LS_R)
+        M_lambda_R=np.linalg.inv(inside_M_lambda_R)
         
-        # we compute the 2 Lagrange multipliers
-        LS_dagger_B_T=np.einsum('hpq,pq->h',LS_dagger,BT)
-        m0,m1=np.linalg.inv(M_lambda[:2]@Qj_inv[:,:2]) @((M_lambda@LS_dagger_B_T)[:2] - [self.net_poloidal_current_Amperes,self.net_toroidal_current_Amperes])
-        RHS=LS_dagger_B_T -[m0,m1]@Qj_inv[:2,:]
-        j_S= M_lambda@RHS
+        # we compute the full Right Hand Side
+        B_tilde=BT-np.einsum('tpq,t',LS[:2],[self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes])
+        LS_dagger_B_tilde=np.einsum('hpq,pq->h',LS_dagger_R,B_tilde)
+        RHS=LS_dagger_B_tilde-self.lamb*Qj_inv_R@Qj[2:,:2]@[self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes]
+        j_S_R= M_lambda_R@RHS
+        j_S=np.concatenate(([self.net_poloidal_current_Amperes,self.net_toroidal_current_Amperes],j_S_R))
+        
+        # we save the results
+
+        B_err= np.einsum('hpq,h',LS,j_S)- BT
         # we save the results
         j_space_to_vector=contract('oijk,klij,ij->oijl',matrixd_phi,dpsi,1/S.dS)
         B_err=np.einsum('opq,o->pq',LS,j_S)-BT
