@@ -92,23 +92,53 @@ class Shape_gradient():
         B_err= np.einsum('hpq,h',LS,j_S)- BT
         # we save the results
         j_space_to_vector=contract('oijk,klij,ij->oijl',matrixd_phi,dpsi,1/S.dS)
+        def j_to_vector(j):
+            """from the space of divergence free vector field to 3d vector field on T"""
+            if len(j)==len(j_space_to_vector):
+                return np.einsum('o,oijl->ijl',j,j_space_to_vector)
+            elif len(j)==len(j_space_to_vector)-2:
+                return np.einsum('o,oijl->ijl',j,j_space_to_vector[2:])
+            else:
+                 raise Exception('dimension error in j_to_vector')
         B_err=np.einsum('opq,o->pq',LS,j_S)-BT
         j_S_vector=contract('o,oijl->ijl',j_S,j_space_to_vector)
 
         #We start to compute the shape gradient
-        I1_matrix=self.lamb*(2*contract('ijl,ijk->ijlk',j_S_vector,j_S_vector)+np.einsum('ijk,ijk,ijab->ijab',j_S_vector,j_S_vector,-np.eye(3)+np.einsum('aij,bij->ijab',S.n,S.n)))
         
         K=np.einsum('sijpql,sijpq->sijpql',T,D)
         DxK=-(np.einsum('sijpq,sab->sijpqab',D,self.rot_tensor)-3*np.einsum('sijpq,sijpqa,sijpqb,sbc->sijpqac',DD,T,T,self.rot_tensor))
         Zp_aux=-(mu_0/(4*np.pi))*contract('sijpqa,sbe,abd,dpq,pq->ijpqe',K,self.rot_tensor,self.dask_eijk,normalp,self.Sp.dS/self.Sp.npts,optimize=True)
         def Zp(k,j):
             return contract('ijpqe,pq,ija->ijae',Zp_aux,k,j)
-        def Z_p_hat (k,j):
+        def Z_p_hat(k,j):
             return (mu_0/(4*np.pi))*contract('saf,sijpqad,sce,pq,cpq,ebd,ijb,pq->ijf',self.dask_rot_tensor,DxK,self.dask_rot_tensor,k,normalp,self.dask_eijk,j,self.Sp.dS/self.Sp.npts)
-        I1_matrix+= -2*Zp(B_err,j_S_vector)
-        I1_vector=-2*Z_p_hat(B_err,j_S_vector)
-        
+        def dLdtheta(k,j):
+            return (-1*Z_p_hat(k,j),-1*Zp(k,j))
+        def dQdtheta(j1,j2):
+            return (contract('ijl,ijk->ijlk',j1,j2)+contract('ijl,ijk->ijlk',j2,j1)+np.einsum('ijk,ijk,ijab->ijab',j1,j2,-np.eye(3)+np.einsum('aij,bij->ijab',S.n,S.n)))
+        I1_vector,I1_matrix =dLdtheta(2*B_err,j_S_vector)
+        I1_matrix+=self.lamb*dQdtheta(j_S_vector,j_S_vector)
         result['I1']=da.compute(I1_vector,I1_matrix)
+        h=self.lamb*np.ones(len(LS_R)) + LS_dagger_B_tilde+ self.lamb*Qj_inv_R@Qj[2:,:2]@[self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes]
+        LS_j_S_hat=np.einsum('oij,o',LS_R,j_S_R)
+        I2_vector,I2_matrix =dLdtheta(-2*LS_j_S_hat,j_to_vector(M_lambda_R@h))
+        tmp_vec,tmp_mat= dLdtheta(-2*np.einsum('opq,o',LS_dagger_R,M_lambda_R@h),j_to_vector(h))
+        I2_vector+=tmp_vec
+        I2_matrix+=tmp_mat
+        I2_matrix+=dQdtheta(-2*self.lamb*j_to_vector(j_S_R),j_to_vector(M_lambda_R@h))
+        #DEBUG
+        # j1=np.random.random(129)
+        # j2=np.random.random(129)
+        # tmp1=contract('oth,t,h->o',dQj,j1,j2)
+        # I1_matrix =dQdtheta(j_to_vector(j1),j_to_vector(j2))
+        # tmp2=(0*np.einsum('ija,oija,ij->o',I1_vector,theta,S.dS/S.npts)+np.einsum('ijab,oijab,ij->o',I1_matrix,dtildetheta,S.dS/S.npts)).compute()
+        # I2_matrix =dQdtheta(j_to_vector(j2),j_to_vector(j1))
+        # tmp3=(0*np.einsum('ija,oija,ij->o',I1_vector,theta,S.dS/S.npts)+np.einsum('ijab,oijab,ij->o',I2_matrix,dtildetheta,S.dS/S.npts)).compute()
+        # np.max(np.abs(tmp2-tmp1))
+        
+
+
+
         
 
         return result
