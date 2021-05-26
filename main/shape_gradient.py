@@ -8,9 +8,10 @@ from scipy.constants import mu_0
 import dask.array as da
 #an example of regcoil version in python
 class Shape_gradient():
-    def __init__(self,path_config_file):
-        config = configparser.ConfigParser()
-        config.read(path_config_file)
+    def __init__(self,path_config_file=None,config=None):
+        if config is None:
+            config = configparser.ConfigParser()
+            config.read(path_config_file)
         self.Np=int(config['geometry']['Np'])
         ntheta_plasma = int(config['geometry']['ntheta_plasma'])
         self.ntheta_coil   = int(config['geometry']['ntheta_coil'])
@@ -119,13 +120,25 @@ class Shape_gradient():
         I1_vector,I1_matrix =dLdtheta(2*B_err,j_S_vector)
         I1_matrix+=self.lamb*dQdtheta(j_S_vector,j_S_vector)
         result['I1']=da.compute(I1_vector,I1_matrix)
-        h=self.lamb*np.ones(len(LS_R)) + LS_dagger_B_tilde+ self.lamb*Qj_inv_R@Qj[2:,:2]@[self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes]
-        LS_j_S_hat=np.einsum('oij,o',LS_R,j_S_R)
-        I2_vector,I2_matrix =dLdtheta(-2*LS_j_S_hat,j_to_vector(M_lambda_R@h))
-        tmp_vec,tmp_mat= dLdtheta(-2*np.einsum('opq,o',LS_dagger_R,M_lambda_R@h),j_to_vector(h))
-        I2_vector+=tmp_vec
-        I2_matrix+=tmp_mat
-        I2_matrix+=dQdtheta(-2*self.lamb*j_to_vector(j_S_R),j_to_vector(M_lambda_R@h))
+        # h=self.lamb*np.ones(len(LS_R)) + LS_dagger_B_tilde+ self.lamb*Qj_inv_R@Qj[2:,:2]@[self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes]
+        # result['h']=h.compute()
+        # LS_j_S_hat=np.einsum('oij,o',LS_R,j_S_R)
+        # I2_vector,I2_matrix =dLdtheta(-2*LS_j_S_hat,j_to_vector(M_lambda_R@h))
+        # tmp_vec,tmp_mat= dLdtheta(-2*np.einsum('opq,o',LS_dagger_R,M_lambda_R@h),j_to_vector(h))
+        # I2_vector+=tmp_vec
+        # I2_matrix+=tmp_mat
+        # I2_matrix+=dQdtheta(-2*self.lamb*j_to_vector(j_S_R),j_to_vector(M_lambda_R@h))
+        # # we start the dRHS/dtheta
+        # I3_vector,I3_matrix =dLdtheta(2*B_tilde,j_to_vector(M_lambda_R@h))
+        # tmp_vec3,tmp_mat3= dLdtheta(np.einsum('tpq,t',LS_R,M_lambda_R@h), np.einsum('tijl,t->ijl',j_space_to_vector[:2],[self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes]))
+        # # the tricky part with derivative of Q
+        # flag1=j_to_vector(-2*self.lamb*Qj_inv_R@M_lambda_R@h)
+        # flag2=j_to_vector(np.concatenate(([self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes],Qj_inv_R@Qj[2:,:2]@[self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes])))
+        # tmp_mat4=dQdtheta(flag1,flag2)
+        # I3_vector=I3_vector+tmp_vec3
+        # I3_matrix=I3_matrix+tmp_mat3+tmp_mat4
+        # result['I2']=da.compute(I2_vector,I2_matrix)
+
         #DEBUG
         # j1=np.random.random(129)
         # j2=np.random.random(129)
