@@ -1,12 +1,15 @@
 from shape_gradient import Shape_gradient
 import numpy as np
 import configparser
-class full_gradient(Shape_gradient):
+class Full_gradient(Shape_gradient):
     def __init__(self,path_config_file=None,config=None):
         if config is None:
             config = configparser.ConfigParser()
             config.read(path_config_file)
         super().__init__(self,config=config)
+        self.d_min_hard = config['optimization_parameters']['d_min_hard']
+        self.d_min_soft= config['optimization_parameters']['d_min_soft']
+        self.d_min_penalization= config['optimization_parameters']['d_min_penalization']
     def non_linear_cost(dmin_hard,dmin_soft,penalizarion_dmin,dist,dS):
         assert(0<=dmin_hard and dmin_hard<dmin_soft)
         dist_min=np.amin(dist,axis=(0,3,4))
@@ -28,3 +31,4 @@ class full_gradient(Shape_gradient):
                     return penalizarion_dmin*(-c*y*(2*c - y))/((c - y)**2)
             else:
                 raise Exception('minimal distance overeached in gradient')
+    
