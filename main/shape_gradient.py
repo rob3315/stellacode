@@ -64,6 +64,7 @@ class Shape_gradient():
         f,f_np,get = lambda x : x,lambda x : x,lambda x : x
         #tensors computations
         T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
+        result['T']=T
         T=f(da.from_array(T,chunks=(3,self.chunk_theta_coil,self.chunk_zeta_coil,self.chunk_theta_plasma,self.chunk_zeta_plasma,3), asarray=False))
         matrixd_phi=f(da.from_array(self.matrixd_phi,chunks={1:self.chunk_theta_coil,2:self.chunk_zeta_coil}, asarray=False))
         dpsi= f(da.from_array(S.dpsi,chunks=(2,3,self.chunk_theta_coil,self.chunk_zeta_coil), asarray=False))
