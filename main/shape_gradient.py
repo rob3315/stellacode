@@ -6,6 +6,7 @@ from opt_einsum import contract
 import configparser
 from scipy.constants import mu_0
 import dask.array as da
+import dask
 #an example of regcoil version in python
 class Shape_gradient():
     def __init__(self,path_config_file=None,config=None):
@@ -107,8 +108,8 @@ class Shape_gradient():
         #We start to compute the shape gradient
         
         K=np.einsum('sijpql,sijpq->sijpql',T,D)
-        DxK=-(np.einsum('sijpq,sab->sijpqab',D,self.rot_tensor)-3*np.einsum('sijpq,sijpqa,sijpqb,sbc->sijpqac',DD,T,T,self.rot_tensor))
-        Zp_aux=-(mu_0/(4*np.pi))*contract('sijpqa,sbe,abd,dpq,pq->ijpqe',K,self.rot_tensor,self.dask_eijk,normalp,self.Sp.dS/self.Sp.npts,optimize=True)
+        DxK= -(np.einsum('sijpq,sab->sijpqab',D,self.rot_tensor)-3*np.einsum('sijpq,sijpqa,sijpqb,sbc->sijpqac',DD,T,T,self.rot_tensor))
+        Zp_aux= -(mu_0/(4*np.pi))*contract('sijpqa,sbe,abd,dpq,pq->ijpqe',K,self.rot_tensor,self.dask_eijk,normalp,self.Sp.dS/self.Sp.npts,optimize=True)
         def Zp(k,j):
             return contract('ijpqe,pq,ija->ijae',Zp_aux,k,j)
         def Z_p_hat(k,j):
@@ -118,8 +119,9 @@ class Shape_gradient():
         def dQdtheta(j1,j2):
             return (contract('ijl,ijk->ijlk',j1,j2)+contract('ijl,ijk->ijlk',j2,j1)+np.einsum('ijk,ijk,ijab->ijab',j1,j2,-np.eye(3)+np.einsum('aij,bij->ijab',S.n,S.n)))
         I1_vector,I1_matrix =dLdtheta(2*B_err,j_S_vector)
-        I1_matrix+=self.lamb*dQdtheta(j_S_vector,j_S_vector)
-        result['I1']=da.compute(I1_vector,I1_matrix)
+        I1_matrix2=self.lamb*dQdtheta(j_S_vector,j_S_vector)
+        x, y = dask.optimize(I1_vector, I1_matrix+I1_matrix2)
+        result['I1']=da.compute(x,y)
         # h=self.lamb*np.ones(len(LS_R)) + LS_dagger_B_tilde+ self.lamb*Qj_inv_R@Qj[2:,:2]@[self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes]
         # result['h']=h.compute()
         # LS_j_S_hat=np.einsum('oij,o',LS_R,j_S_R)

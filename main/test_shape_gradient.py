@@ -9,10 +9,10 @@ class Test_shape_gradient(unittest.TestCase):
     #@unittest.skip('debugging')
     def test_shape_gradient_df(self):
         np.random.seed(2)
-        from dask.distributed import Client
-        client = Client(processes=False,
-                        n_workers=5, threads_per_worker=4)
-        client.scheduler_info()['services']
+        #from dask.distributed import Client
+        #client = Client(processes=False,
+        #                n_workers=5, threads_per_worker=4)
+        #client.scheduler_info()['services']
         shape_grad=Shape_gradient('config_file/config_small.ini')
         S_parametrization=shape_grad.S_parametrization
         eps=1e-6
@@ -40,9 +40,9 @@ class Test_shape_gradient(unittest.TestCase):
             #print(dq.shape)
     def test_shape_gradient_of(self):
         np.random.seed(2)
-        from dask.distributed import Client
-        client = Client()
-        print(client.scheduler_info()['services'])
+        #from dask.distributed import Client
+        #client = Client()
+        #print(client.scheduler_info()['services'])
         shape_grad=Shape_gradient('config_file/config_small.ini')
         S_parametrization=shape_grad.S_parametrization
         eps=1e-6
