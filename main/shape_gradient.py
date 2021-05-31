@@ -56,10 +56,14 @@ class Shape_gradient():
         eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
         self.dask_eijk=da.from_array(eijk, asarray=False)
 
-    def compute_gradient_of(self,paramS):
+    def compute_gradient_of(self,paramS=None,S=None):
         #compute the shape gradient by a optimization first method
         result={}
-        S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
+        if paramS is None:
+            if S is None:
+                raise Exception('No surface given')
+        else :
+            S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
         # for latter, when we will implement GPU support
         f,f_np,get = lambda x : x,lambda x : x,lambda x : x
         #tensors computations
