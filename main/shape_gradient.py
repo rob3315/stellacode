@@ -13,6 +13,7 @@ class Shape_gradient():
         if config is None:
             config = configparser.ConfigParser()
             config.read(path_config_file)
+        self.config=config
         self.Np=int(config['geometry']['Np'])
         ntheta_plasma = int(config['geometry']['ntheta_plasma'])
         self.ntheta_coil   = int(config['geometry']['ntheta_coil'])
@@ -20,7 +21,7 @@ class Shape_gradient():
         self.nzeta_coil   = int(config['geometry']['nzeta_coil'])
         mpol_coil  = int(config['geometry']['mpol_coil'])
         ntor_coil  = int(config['geometry']['ntor_coil'])
-        self.net_poloidal_current_Amperes = float(config['other']['net_poloidal_current_Amperes'])#11884578.094260072
+        self.net_poloidal_current_Amperes = float(config['other']['net_poloidal_current_Amperes'])/self.Np#11884578.094260072
         self.net_toroidal_current_Amperes = float(config['other']['net_toroidal_current_Amperes'])#0
         curpol=float(config['other']['curpol'])#4.9782004309255496
 

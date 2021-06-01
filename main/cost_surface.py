@@ -80,7 +80,7 @@ def cost_surface_without_dask(config,S,Sp):
     return cost_surface_output
 
 def cost_surface_dask(config,S,Sp):
-    #new version with Lagrange multipliers
+    #new version without Lagrange multipliers
     import dask.array as da
     #initilization of the parameters
     lamb = float(config['other']['lamb'])
@@ -167,6 +167,7 @@ def cost_surface_dask(config,S,Sp):
     cost_surface_output['max_j']=np.max(np.linalg.norm(np.einsum('oijk,kdij,ij,o->ijd',get(matrixd_phi.compute()),S.dpsi,1/S.dS,j_S,optimize=True),axis=2))
     cost_surface_output['cost_B']=Np*np.einsum('pq,pq,pq->',B_err,B_err,Sp.dS/Sp.npts)
     cost_surface_output['cost_J']=Np*np.einsum('i,ij,j->',j_S,Qj,j_S)
+    cost_surface_output['cost']=cost_surface_output['cost_B']+lamb*cost_surface_output['cost_J']
     return cost_surface_output
 def cost_surface_dask_with_multipliers(config,S,Sp):
     #new version with Lagrange multipliers
@@ -347,5 +348,6 @@ def cost_surface_dask_old(config,S,Sp):
     cost_surface_output['max_j']=np.max(np.linalg.norm(np.einsum('oijk,kdij,ij,o->ijd',get(matrixd_phi.compute()),S.dpsi,1/S.dS,j_S,optimize=True),axis=2))
     cost_surface_output['cost_B']=Np*np.einsum('i,i,i->',B_err,B_err,plasma_dS_normalized)
     cost_surface_output['cost_J']=Np*np.einsum('i,ij,j->',j_S,Qj,j_S)
+    cost_surface_output['cost']=cost_surface_output['cost_B']+lamb*cost_surface_output['cost_J']
     return cost_surface_output
 
