@@ -22,7 +22,7 @@ class Test_shape_gradient(unittest.TestCase):
         Sp=Toroidal_surface(Sp_parametrization,(16,18),3)
         cost_from_shape_opti=shape_grad.compute_gradient_df(S_parametrization)
         cost_from_cost_surface=cost_surface.cost_surface(shape_grad.config)
-        cost_from_cost_surface2=cost_surface.cost_surface_dask_old(shape_grad.config,S)
+        cost_from_cost_surface2=cost_surface.cost_surface_dask_old(shape_grad.config,S,Sp)
         np.testing.assert_almost_equal(cost_from_cost_surface['cost'],cost_from_shape_opti['cost'])
         np.testing.assert_almost_equal(cost_from_cost_surface2['cost'],cost_from_shape_opti['cost'])
     def test_shape_gradient_df(self):
