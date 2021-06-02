@@ -1,6 +1,9 @@
 from shape_gradient import Shape_gradient
 import numpy as np
 import configparser
+from toroidal_surface import *
+import cost_surface
+import tools
 class Full_gradient(Shape_gradient):
     def __init__(self,path_config_file=None,config=None):
         if config is None:
@@ -18,7 +21,8 @@ class Full_gradient(Shape_gradient):
         # the gradient is \int_S X dtheta dS + \int_S Y dS/dtheta
         def f_non_linear(x):
             if x<self.d_min_hard:
-                raise Exception('minimal distance overeached')
+                #raise Exception('minimal distance overeached')
+                return np.inf
             else :
                 return self.d_min_penalization*np.max((self.d_min_soft-x,0))**2/(1-np.max((self.d_min_soft-x,0))/(self.d_min_soft-self.d_min_hard))
         def grad_f_non_linear(x):
@@ -30,7 +34,8 @@ class Full_gradient(Shape_gradient):
                     y=self.d_min_soft-x
                     return self.d_min_penalization*(-c*y*(2*c - y))/((c - y)**2)
             else:
-                raise Exception('minimal distance overeached in gradient')
+                #raise Exception('minimal distance overeached in gradient')
+                return -np.inf
         ls,lu,lv,lu_plasma,lv_plasma,_=T.shape
         dist=np.linalg.norm(T,axis=-1)
         dist_min=np.min(dist,axis=(0,3,4))
@@ -55,7 +60,8 @@ class Full_gradient(Shape_gradient):
         dist_min=np.amin(dist,axis=(0,3,4))
         def f_non_linear(x):
             if x<d_min_hard:
-                raise Exception('minimal distance overeached')
+                return np.inf
+                #raise Exception('minimal distance overeached')
             else :
                 return d_min_penalization*np.max((d_min_soft-x,0))**2/(1-np.max((d_min_soft-x,0))/(d_min_soft-d_min_hard))
         vf = np.vectorize(f_non_linear)
@@ -70,5 +76,21 @@ class Full_gradient(Shape_gradient):
                     y=d_min_soft-x
                     return d_min_penalization*(-c*y*(2*c - y))/((c - y)**2)
             else:
-                raise Exception('minimal distance overeached in gradient')
-    
+                return -np.inf
+                #raise Exception('minimal distance overeached in gradient')
+    def cost(self,paramS):
+        S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
+        cost_regcoil_dic=cost_surface.cost_surface(self.config,S=S,Sp=self.Sp)
+        cost_regcoil=cost_regcoil_dic['cost_B']+ self.lamb*cost_regcoil_dic['cost_J']
+        T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
+        cost_distance=self.distance_cost(T,S)
+        return np.array([cost_regcoil,cost_distance])
+    def grad_cost(self,paramS):
+        S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
+        result=self.compute_gradient_of(S=S)
+        I_vector,I_matrix=result['I1']
+        X,Y=self.gradient_cost_distance(result['T'],S)
+        theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
+        grad_regcoil=self.Np*(np.einsum('ija,oija,ij->o',I_vector,theta,S.dS/S.npts)+np.einsum('ijab,oijab,ij->o',I_matrix,dtildetheta,S.dS/S.npts))
+        grad_distance=np.einsum('oijl,ijl,ij->o',theta,X,S.dS/S.npts)+np.einsum('ij,oij->o',Y,dSdtheta/S.npts)
+        return np.array([grad_regcoil,grad_distance])
