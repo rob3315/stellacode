@@ -78,13 +78,43 @@ class Full_gradient(Shape_gradient):
             else:
                 return -np.inf
                 #raise Exception('minimal distance overeached in gradient')
+    def perimeter_cost(self,S,config):
+        c0=float(config['optimization_parameters']['perim_c0'])
+        c1=float(config['optimization_parameters']['perim_c1'])
+        perim=self.Np*np.sum(S.dS)/S.npts
+        def f_e(x):
+            if 0 <=x and x <=c1:
+                return np.max((x-c0,0))**2/(1- np.max((x-c0,0))/(c1-c0))
+            else:
+                return np.inf
+                #raise Exception('infinite cost')
+        return(f_e(perim))
+    def perimeter_grad(self,S,dSdtheta,config):
+        c0=float(config['optimization_parameters']['perim_c0'])
+        c1=float(config['optimization_parameters']['perim_c1'])
+        perim=self.Np*np.sum(S.dS)/S.npts
+        grad_perim=self.Np*np.einsum('oij->o',dSdtheta)/S.npts
+        def grad_f_e(x):
+            if 0 <=x and x <=c1:
+                if x<c0:
+                    return 0
+                else:
+                    c=c1-c0
+                    y=x-c0
+                    return (c*y*(2*c - y))/((c - y)**2)
+            else:
+                return -np.inf
+                #raise Exception('infinite cost in gradient')
+        return grad_f_e(perim)*grad_perim
     def cost(self,paramS):
         S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
         cost_regcoil_dic=cost_surface.cost_surface(self.config,S=S,Sp=self.Sp)
         cost_regcoil=cost_regcoil_dic['cost_B']+ self.lamb*cost_regcoil_dic['cost_J']
         T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
         cost_distance=self.distance_cost(T,S)
-        return np.array([cost_regcoil,cost_distance])
+        cost_perim=self.perimeter_cost(S,self.config)
+
+        return np.array([cost_regcoil,cost_distance,cost_perim])
     def grad_cost(self,paramS):
         S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
         result=self.compute_gradient_of(S=S)
@@ -93,4 +123,5 @@ class Full_gradient(Shape_gradient):
         theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
         grad_regcoil=self.Np*(np.einsum('ija,oija,ij->o',I_vector,theta,S.dS/S.npts)+np.einsum('ijab,oijab,ij->o',I_matrix,dtildetheta,S.dS/S.npts))
         grad_distance=np.einsum('oijl,ijl,ij->o',theta,X,S.dS/S.npts)+np.einsum('ij,oij->o',Y,dSdtheta/S.npts)
-        return np.array([grad_regcoil,grad_distance])
+        grad_perim=self.perimeter_grad(S,dSdtheta,self.config)
+        return np.array([grad_regcoil,grad_distance,grad_perim])
