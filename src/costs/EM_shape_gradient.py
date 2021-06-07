@@ -7,9 +7,11 @@ import dask.array as da
 import dask
 
 from src.surface.surface_Fourier import Surface_Fourier
+from src.costs.abstract_shape_gradient import Abstract_shape_gradient
+from src.costs.EM_cost import EM_cost_dask
 import src.tools as tools
 import src.tools.bnorm as bnorm
-class EM_shape_gradient():
+class EM_shape_gradient(Abstract_shape_gradient):
     def __init__(self,path_config_file=None,config=None):
         if config is None:
             config = configparser.ConfigParser()
@@ -52,6 +54,16 @@ class EM_shape_gradient():
 
         self.dask_rot_tensor = da.from_array(self.rot_tensor, asarray=False)
         self.dask_matrixd_phi=da.from_array(self.matrixd_phi,chunks={1:self.chunk_theta_coil,2:self.chunk_zeta_coil}, asarray=False)
+    def cost(self,S):
+        EM_cost_dic=EM_cost_dask(self.config,S=S,Sp=self.Sp)
+        EM_cost=EM_cost_dic['cost_B']+ self.lamb*EM_cost_dic['cost_J']
+        return EM_cost
+    def shape_gradient(self,S,theta_pertubation):
+        theta,dtildetheta,dtheta,dSdtheta=theta_pertubation
+        result=self.compute_gradient_of(S=S)
+        I_vector,I_matrix=result['I1']
+        EM_grad=self.Np*(np.einsum('ija,oija,ij->o',I_vector,theta,S.dS/S.npts)+np.einsum('ijab,oijab,ij->o',I_matrix,dtildetheta,S.dS/S.npts))
+        return EM_grad
 
     def compute_gradient_of(self,paramS=None,S=None):
         #compute the shape gradient by a optimization first method
