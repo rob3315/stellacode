@@ -1,15 +1,17 @@
 import unittest
-from cost_surface import *
 import logging
 import configparser
-class Test_cost_surface(unittest.TestCase):
+
+from src.costs.EM_cost import *
+
+class Test_EM_cost(unittest.TestCase):
 
     def test_no_dimension_error(self):
         ###just check that all operations respects dimensions
         path_config_file='config_file/config_test_dim.ini'
         config = configparser.ConfigParser()
         config.read(path_config_file)
-        cost_surface(config)
+        EM_cost(config)
     def test_compare_to_regcoil(self):
         path_config_file='config_file/config.ini'
         config = configparser.ConfigParser()
@@ -23,12 +25,12 @@ class Test_cost_surface(unittest.TestCase):
         #config['other']['dask']='True'
         for index,lamb in enumerate([0,1.2e-14,2.5e-16,5.1e-19]):
             config['other']['lamb']=str(lamb)
-            cost_surface_output=cost_surface(config)
-            for key,value in cost_surface_output.items():
+            EM_cost_output=EM_cost(config)
+            for key,value in EM_cost_output.items():
                 print('{} : {:e}'.format(key,value))
-            np.testing.assert_almost_equal(cost_surface_output['err_max_B'],err_max_B[index])
-            np.testing.assert_almost_equal(cost_surface_output['max_j'],max_j[index],decimal=-1)
-            np.testing.assert_almost_equal(cost_surface_output['cost_B'],cost_B[index])
-            np.testing.assert_almost_equal(cost_surface_output['cost_J'],cost_J[index],decimal=-9)
+            np.testing.assert_almost_equal(EM_cost_output['err_max_B'],err_max_B[index])
+            np.testing.assert_almost_equal(EM_cost_output['max_j'],max_j[index],decimal=-1)
+            np.testing.assert_almost_equal(EM_cost_output['cost_B'],cost_B[index])
+            np.testing.assert_almost_equal(EM_cost_output['cost_J'],cost_J[index],decimal=-9)
 if __name__ == '__main__':
     unittest.main()

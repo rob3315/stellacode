@@ -1,5 +1,5 @@
 import unittest
-from toroidal_surface import *
+from src.surface.surface_Fourier import *
 import numpy as np
 import logging
 class Test_toridal_surface(unittest.TestCase):
@@ -7,8 +7,8 @@ class Test_toridal_surface(unittest.TestCase):
     def test_normal_derivative(self):
         lu,lv=128,128
         logging.basicConfig(level='DEBUG')
-        surface_parametrization=Toroidal_surface.load_file('data/li383/cws.txt')
-        S=Toroidal_surface(surface_parametrization,(lu,lv),3)
+        surface_parametrization=Surface_Fourier.load_file('data/li383/cws.txt')
+        S=Surface_Fourier(surface_parametrization,(lu,lv),3)
 
         import matplotlib.pyplot as plt
         grad_dS=np.gradient(S.dS,1/lu,1/lv)
@@ -28,14 +28,14 @@ class Test_toridal_surface(unittest.TestCase):
         lu,lv=128,128
         eps=1e-8
         logging.basicConfig(level='DEBUG')
-        surface_parametrization=Toroidal_surface.load_file('data/li383/cws.txt')
+        surface_parametrization=Surface_Fourier.load_file('data/li383/cws.txt')
         ls=len(surface_parametrization[0])#total number of hamonics
-        S=Toroidal_surface(surface_parametrization,(lu,lv),3)
+        S=Surface_Fourier(surface_parametrization,(lu,lv),3)
         theta,dtildetheta,_,_=S.get_theta_pertubation()
         perim=np.einsum('ij->',S.dS)/(lu*lv)
         perturb=(2*np.random.random(2*ls)-1)
-        new_param=Toroidal_surface.change_param(surface_parametrization, eps*perturb)
-        new_S=Toroidal_surface(new_param,(lu,lv),3)
+        new_param=Surface_Fourier.change_param(surface_parametrization, eps*perturb)
+        new_S=Surface_Fourier(new_param,(lu,lv),3)
         new_perim=np.einsum('ij->',new_S.dS)/(lu*lv)
 
         dperim_num=(new_perim-perim)/eps
@@ -46,15 +46,15 @@ class Test_toridal_surface(unittest.TestCase):
         lu,lv=128,128
         eps=1e-8
         logging.basicConfig(level='DEBUG')
-        surface_parametrization=Toroidal_surface.load_file('data/li383/cws.txt')
+        surface_parametrization=Surface_Fourier.load_file('data/li383/cws.txt')
         ls=len(surface_parametrization[0])#total number of hamonics
-        S=Toroidal_surface(surface_parametrization,(lu,lv),3)
+        S=Surface_Fourier(surface_parametrization,(lu,lv),3)
         theta,dtildetheta,_,_=S.get_theta_pertubation()
         f=np.random.random((lu,lv))
         int_f=np.einsum('ij,ij->',f,S.dS)/(lu*lv)
         perturb=(2*np.random.random(2*ls)-1)
-        new_param=Toroidal_surface.change_param(surface_parametrization, eps*perturb)
-        new_S=Toroidal_surface(new_param,(lu,lv),3)
+        new_param=Surface_Fourier.change_param(surface_parametrization, eps*perturb)
+        new_S=Surface_Fourier(new_param,(lu,lv),3)
         new_int_f=np.einsum('ij,ij->',new_S.dS,f)/(lu*lv)
 
         dint_num=(new_int_f-int_f)/eps
@@ -65,15 +65,15 @@ class Test_toridal_surface(unittest.TestCase):
         lu,lv=128,128
         eps=1e-8
         logging.basicConfig(level='DEBUG')
-        surface_parametrization=Toroidal_surface.load_file('data/li383/cws.txt')
+        surface_parametrization=Surface_Fourier.load_file('data/li383/cws.txt')
         ls=len(surface_parametrization[0])#total number of hamonics
-        S=Toroidal_surface(surface_parametrization,(lu,lv),3)
+        S=Surface_Fourier(surface_parametrization,(lu,lv),3)
 
         theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
 
         perturb=(2*np.random.random(2*ls)-1)
-        new_param=Toroidal_surface.change_param(surface_parametrization, eps*perturb)
-        new_S=Toroidal_surface(new_param,(lu,lv),3)
+        new_param=Surface_Fourier.change_param(surface_parametrization, eps*perturb)
+        new_S=Surface_Fourier(new_param,(lu,lv),3)
 
         ddS_num=(new_S.dS-S.dS)/eps
         ddS=np.einsum('cij,c',dSdtheta,perturb)

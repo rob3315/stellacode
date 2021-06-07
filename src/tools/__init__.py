@@ -1,33 +1,16 @@
 import numpy as np
 from scipy.constants import mu_0
-import opt_einsum as oe
 from opt_einsum import contract
-def get_tensor_distance_old(S1,S2):
-    """S1 has a grid lu1 x lv1 and S2 lu2 x lv2x3 with the same Np
-    return the tensor Npxlu1xlv1xlu2xlv2 x 3 of the vector between
-    such that T[i,j,k,l,m,n] is the nth coordinates bwn the rotation of
-    2pi i/Np psi1_j,k and psi2_l,m"""
-    Np=S1.Np
-    lu1,lv1=S1.nbpts
-    lu2,lv2=S2.nbpts
-    T=np.zeros((Np,lu1,lv1,lu2,lv2,3))
-    #the rotation matrix
-    rot=np.array([[np.cos(2*np.pi/Np),-np.sin(2*np.pi/Np),0],[np.sin(2*np.pi/Np),np.cos(2*np.pi/Np),0],[0,0,1]])
-    for i in range(Np):
-        pos=np.array([S1.X,S1.Y,S1.Z])# tensor 3 x lu1 x lv1
-        #we rotate the first surface:
-        X_r,Y_r,Z_r=contract('ij,jkl->ikl',np.linalg.matrix_power(rot,i),pos)# rotation around
-        #we compute the square distance
-        T[i,:,:,:,:,0]=S2.X[np.newaxis,np.newaxis,:,:]-X_r[:,:,np.newaxis,np.newaxis]
-        T[i,:,:,:,:,1]=S2.Y[np.newaxis,np.newaxis,:,:]-Y_r[:,:,np.newaxis,np.newaxis]
-        T[i,:,:,:,:,2]=S2.Z[np.newaxis,np.newaxis,:,:]-Z_r[:,:,np.newaxis,np.newaxis]
-    return T
+# the completely antisymetric tensor
+eijk = np.zeros((3, 3, 3))
+eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
+eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
+
 def get_tensor_distance(S1,S2,rot_tensor):
     """S1 has a grid lu1 x lv1 and S2 lu2 x lv2x3 with the same Np
     return the tensor Npxlu1xlv1xlu2xlv2 x 3 of the vector between
     such that T[i,j,k,l,m,n] is the nth coordinates bwn the rotation of
     2pi i/Np psi1_j,k and psi2_l,m"""
-
     return S2.P[np.newaxis,np.newaxis,np.newaxis,:,:,:]-contract('opq,ijq->oijp',rot_tensor,S1.P)[:,:,:,np.newaxis,np.newaxis,:]
 
 def phi_coeff_from_nb(k,phisize):
@@ -82,11 +65,6 @@ def get_rot_tensor(Np):
     for i in range(Np):
         rot_tensor[i]=np.linalg.matrix_power(rot,i)
     return rot_tensor
-def compute_Qj_old(j,dS):
-    """take only the segment whitout rotation of j"""
-    lu,lv=dS.shape
-    Qj=contract('ijkl,mjkl,jk',j,j,dS,optimize=True)/(lu*lv)
-    return Qj
 def compute_Qj(matrixd_phi,dpsi,dS):
     """take only the segment whitout rotation of j"""
     lu,lv=dS.shape

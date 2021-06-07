@@ -1,15 +1,18 @@
-from shape_gradient import Shape_gradient
 import numpy as np
 import configparser
+from src.costs import EM_shape_gradient
 from toroidal_surface import *
 import cost_surface
 import tools
-class Full_gradient(Shape_gradient):
+# The main object of 
+class Shape_gradient(EM_shape_gradient):
     def __init__(self,path_config_file=None,config=None):
         if config is None:
             config = configparser.ConfigParser()
             config.read(path_config_file)
         super().__init__(self,config=config)
+        # Initialization of the different costs :
+        
         self.d_min_hard = float(config['optimization_parameters']['d_min_hard'])
         self.d_min_soft= float(config['optimization_parameters']['d_min_soft'])
         self.d_min_penalization= float(config['optimization_parameters']['d_min_penalization'])

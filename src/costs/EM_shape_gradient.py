@@ -1,14 +1,15 @@
-from toroidal_surface import *
-import tools
-import bnorm
 import logging
+import numpy as np
 from opt_einsum import contract
 import configparser
 from scipy.constants import mu_0
 import dask.array as da
 import dask
-#an example of regcoil version in python
-class Shape_gradient():
+
+from src.surface.surface_Fourier import Surface_Fourier
+import src.tools as tools
+import src.tools.bnorm as bnorm
+class EM_shape_gradient():
     def __init__(self,path_config_file=None,config=None):
         if config is None:
             config = configparser.ConfigParser()
@@ -41,21 +42,16 @@ class Shape_gradient():
         self.chunk_theta=int(config['dask_parameters']['chunk_theta'])
         
         #initialization of the surfaces
-        self.S_parametrization=Toroidal_surface.load_file(path_cws)
-        S=Toroidal_surface(self.S_parametrization,(self.ntheta_coil,self.nzeta_coil),self.Np)
-        Sp_parametrization=Toroidal_surface.load_file(path_plasma)
-        self.Sp=Toroidal_surface(Sp_parametrization,(ntheta_plasma,nzeta_plasma),self.Np)
+        self.S_parametrization=Surface_Fourier.load_file(path_cws)
+        S=Surface_Fourier(self.S_parametrization,(self.ntheta_coil,self.nzeta_coil),self.Np)
+        Sp_parametrization=Surface_Fourier.load_file(path_plasma)
+        self.Sp=Surface_Fourier(Sp_parametrization,(ntheta_plasma,nzeta_plasma),self.Np)
         self.rot_tensor=tools.get_rot_tensor(self.Np)
         self.matrixd_phi=tools.get_matrix_dPhi(phisize,S.grids)
         self.array_bnorm=curpol*bnorm.get_bnorm(path_bnorm,self.Sp)
 
         self.dask_rot_tensor = da.from_array(self.rot_tensor, asarray=False)
         self.dask_matrixd_phi=da.from_array(self.matrixd_phi,chunks={1:self.chunk_theta_coil,2:self.chunk_zeta_coil}, asarray=False)
-
-        eijk = np.zeros((3, 3, 3))
-        eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
-        eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
-        self.dask_eijk=da.from_array(eijk, asarray=False)
 
     def compute_gradient_of(self,paramS=None,S=None):
         #compute the shape gradient by a optimization first method
@@ -64,7 +60,7 @@ class Shape_gradient():
             if S is None:
                 raise Exception('No surface given')
         else :
-            S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
+            S=Surface_Fourier(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
         # for latter, when we will implement GPU support
         f,f_np,get = lambda x : x,lambda x : x,lambda x : x
         #tensors computations
@@ -78,7 +74,7 @@ class Shape_gradient():
         D=1/(da.linalg.norm(T,axis=-1)**3)
         DD=1/(da.linalg.norm(T,axis=-1)**5)
         Qj=tools.compute_Qj(matrixd_phi,dpsi,S_dS)
-        LS=(mu_0/(4*np.pi))*contract('ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->olm',T,matrixd_phi,self.rot_tensor,dpsi,self.dask_eijk,D,normalp,optimize=True)/(S.nbpts[0]*S.nbpts[1])
+        LS=(mu_0/(4*np.pi))*contract('ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->olm',T,matrixd_phi,self.rot_tensor,dpsi,tools.eijk,D,normalp,optimize=True)/(S.nbpts[0]*S.nbpts[1])
 
         # We solve the inverse problem
         BT=-self.array_bnorm
@@ -115,11 +111,11 @@ class Shape_gradient():
         
         K=np.einsum('sijpql,sijpq->sijpql',T,D)
         DxK= -(np.einsum('sijpq,sab->sijpqab',D,self.rot_tensor)-3*np.einsum('sijpq,sijpqa,sijpqb,sbc->sijpqac',DD,T,T,self.rot_tensor))
-        Zp_aux= -(mu_0/(4*np.pi))*contract('sijpqa,sbe,abd,dpq,pq->ijpqe',K,self.rot_tensor,self.dask_eijk,normalp,self.Sp.dS/self.Sp.npts,optimize=True)
+        Zp_aux= -(mu_0/(4*np.pi))*contract('sijpqa,sbe,abd,dpq,pq->ijpqe',K,self.rot_tensor,tools.eijk,normalp,self.Sp.dS/self.Sp.npts,optimize=True)
         def Zp(k,j):
             return contract('ijpqe,pq,ija->ijae',Zp_aux,k,j)
         def Z_p_hat(k,j):
-            return (mu_0/(4*np.pi))*contract('saf,sijpqad,sce,pq,cpq,ebd,ijb,pq->ijf',self.dask_rot_tensor,DxK,self.dask_rot_tensor,k,normalp,self.dask_eijk,j,self.Sp.dS/self.Sp.npts)
+            return (mu_0/(4*np.pi))*contract('saf,sijpqad,sce,pq,cpq,ebd,ijb,pq->ijf',self.dask_rot_tensor,DxK,self.dask_rot_tensor,k,normalp,tools.eijk,j,self.Sp.dS/self.Sp.npts)
         def dLdtheta(k,j):
             return (-1*Z_p_hat(k,j),-1*Zp(k,j))
         def dQdtheta(j1,j2):
@@ -128,45 +124,11 @@ class Shape_gradient():
         I1_matrix2=self.lamb*dQdtheta(j_S_vector,j_S_vector)
         x, y = dask.optimize(I1_vector, I1_matrix+I1_matrix2)
         result['I1']=da.compute(x,y)
-        # h=self.lamb*np.ones(len(LS_R)) + LS_dagger_B_tilde+ self.lamb*Qj_inv_R@Qj[2:,:2]@[self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes]
-        # result['h']=h.compute()
-        # LS_j_S_hat=np.einsum('oij,o',LS_R,j_S_R)
-        # I2_vector,I2_matrix =dLdtheta(-2*LS_j_S_hat,j_to_vector(M_lambda_R@h))
-        # tmp_vec,tmp_mat= dLdtheta(-2*np.einsum('opq,o',LS_dagger_R,M_lambda_R@h),j_to_vector(h))
-        # I2_vector+=tmp_vec
-        # I2_matrix+=tmp_mat
-        # I2_matrix+=dQdtheta(-2*self.lamb*j_to_vector(j_S_R),j_to_vector(M_lambda_R@h))
-        # # we start the dRHS/dtheta
-        # I3_vector,I3_matrix =dLdtheta(2*B_tilde,j_to_vector(M_lambda_R@h))
-        # tmp_vec3,tmp_mat3= dLdtheta(np.einsum('tpq,t',LS_R,M_lambda_R@h), np.einsum('tijl,t->ijl',j_space_to_vector[:2],[self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes]))
-        # # the tricky part with derivative of Q
-        # flag1=j_to_vector(-2*self.lamb*Qj_inv_R@M_lambda_R@h)
-        # flag2=j_to_vector(np.concatenate(([self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes],Qj_inv_R@Qj[2:,:2]@[self.net_poloidal_current_Amperes ,self.net_toroidal_current_Amperes])))
-        # tmp_mat4=dQdtheta(flag1,flag2)
-        # I3_vector=I3_vector+tmp_vec3
-        # I3_matrix=I3_matrix+tmp_mat3+tmp_mat4
-        # result['I2']=da.compute(I2_vector,I2_matrix)
-
-        #DEBUG
-        # j1=np.random.random(129)
-        # j2=np.random.random(129)
-        # tmp1=contract('oth,t,h->o',dQj,j1,j2)
-        # I1_matrix =dQdtheta(j_to_vector(j1),j_to_vector(j2))
-        # tmp2=(0*np.einsum('ija,oija,ij->o',I1_vector,theta,S.dS/S.npts)+np.einsum('ijab,oijab,ij->o',I1_matrix,dtildetheta,S.dS/S.npts)).compute()
-        # I2_matrix =dQdtheta(j_to_vector(j2),j_to_vector(j1))
-        # tmp3=(0*np.einsum('ija,oija,ij->o',I1_vector,theta,S.dS/S.npts)+np.einsum('ijab,oijab,ij->o',I2_matrix,dtildetheta,S.dS/S.npts)).compute()
-        # np.max(np.abs(tmp2-tmp1))
-        
-
-
-
-        
-
         return result
     def compute_gradient_df(self,paramS):
         #compute the shape gradient by a differentiation first method
         result={}
-        S=Toroidal_surface(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
+        S=Surface_Fourier(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
         theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
         T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
         #LS=tools.compute_LS(T,self.matrixd_phi,S.dpsi,self.rot_tensor,self.Sp.n)
@@ -188,12 +150,12 @@ class Shape_gradient():
         DD=1/(np.linalg.norm(T,axis=-1)**5)
         dask_D=da.from_array(D,chunks=(3,self.chunk_theta_coil,self.chunk_zeta_coil,self.chunk_theta_plasma,self.chunk_zeta_plasma), asarray=False)
         dask_DD=da.from_array(DD,chunks=(3,self.chunk_theta_coil,self.chunk_zeta_coil,self.chunk_theta_plasma,self.chunk_zeta_plasma), asarray=False)
-        LS_dask=contract('ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->olm',dask_T,self.dask_matrixd_phi,self.dask_rot_tensor,dask_dpsi,self.dask_eijk,dask_D,dask_normalp,optimize=True)
+        LS_dask=contract('ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->olm',dask_T,self.dask_matrixd_phi,self.dask_rot_tensor,dask_dpsi,tools.eijk,dask_D,dask_normalp,optimize=True)
         LS=(mu_0/(4*np.pi))*LS_dask.compute()/(self.ntheta_coil*self.nzeta_coil)
 
-        dLS_dask=-contract('inb,ajkb,ojkw,ipz,wzjk,qnp,ijklm,qlm->aolm',self.dask_rot_tensor,dask_theta,self.dask_matrixd_phi,self.dask_rot_tensor,dask_dpsi,self.dask_eijk,dask_D,dask_normalp,optimize=True)
-        dLS_dask+=3*contract('ibc,ajkc,ijklmb,ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->aolm',self.dask_rot_tensor,dask_theta,dask_T,dask_T,self.dask_matrixd_phi,self.dask_rot_tensor,dask_dpsi,self.dask_eijk,dask_DD,dask_normalp,optimize=True)
-        dLS_dask+=contract('ijklmn,ojkw,ipz,ajkbz,wbjk,qnp,ijklm,qlm->aolm',dask_T,self.dask_matrixd_phi,self.dask_rot_tensor,dask_dtildetheta,dask_dpsi,self.dask_eijk,dask_D,dask_normalp,optimize=True)
+        dLS_dask=-contract('inb,ajkb,ojkw,ipz,wzjk,qnp,ijklm,qlm->aolm',self.dask_rot_tensor,dask_theta,self.dask_matrixd_phi,self.dask_rot_tensor,dask_dpsi,tools.eijk,dask_D,dask_normalp,optimize=True)
+        dLS_dask+=3*contract('ibc,ajkc,ijklmb,ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->aolm',self.dask_rot_tensor,dask_theta,dask_T,dask_T,self.dask_matrixd_phi,self.dask_rot_tensor,dask_dpsi,tools.eijk,dask_DD,dask_normalp,optimize=True)
+        dLS_dask+=contract('ijklmn,ojkw,ipz,ajkbz,wbjk,qnp,ijklm,qlm->aolm',dask_T,self.dask_matrixd_phi,self.dask_rot_tensor,dask_dtildetheta,dask_dpsi,tools.eijk,dask_D,dask_normalp,optimize=True)
         dLSdtheta=(mu_0/(4*np.pi))*dLS_dask.compute()/(self.ntheta_coil*self.nzeta_coil)
         dask_dQj=tools.compute_dQjdtheta(self.dask_matrixd_phi,dask_dpsi,dask_dS,dask_dtheta,dask_dSdtheta)
         dQj=dask_dQj.compute()
@@ -249,6 +211,6 @@ class Shape_gradient():
         
         dcbdj=(2*np.einsum('oi,i,i->o',np.reshape(tmp,(tmp.shape[0],-1)),B_err,plasma_dS_normalized))
         result['dcost_B_dtheta']=self.Np*dcbdj
-        result['shape_gradient']=(dcbdj+self.lamb*dcjdj)*self.Np
+        result['EM_shape_gradient']=(dcbdj+self.lamb*dcjdj)*self.Np
 
         return result

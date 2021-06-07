@@ -1,17 +1,19 @@
-from toroidal_surface import *
-import tools
-import bnorm
 import logging
 import configparser
+import numpy as np
 from opt_einsum import contract
 from scipy.constants import mu_0
+
+from src.surface.surface_Fourier import Surface_Fourier
+import src.tools as tools
+import src.tools.bnorm as bnorm
 #an example of Regcoil version in python
-def cost_surface(config,S=None,Sp=None):
+def EM_cost(config,S=None,Sp=None):
     if config['other']['dask']=='True':
-        return cost_surface_dask(config,S,Sp)
+        return EM_cost_dask(config,S,Sp)
     else:
-        return cost_surface_without_dask(config,S,Sp)
-def cost_surface_without_dask(config,S,Sp):
+        return EM_cost_without_dask(config,S,Sp)
+def EM_cost_without_dask(config,S,Sp):
     #initilization of the parameters
     lamb = float(config['other']['lamb'])
     Np = int(config['geometry']['Np'])
@@ -41,11 +43,11 @@ def cost_surface_without_dask(config,S,Sp):
 
     #initialization of the surfaces
     if S is None:
-        S_parametrization=Toroidal_surface.load_file(path_cws)
-        S=Toroidal_surface(S_parametrization,(ntheta_coil,nzeta_coil),Np)
+        S_parametrization=Surface_Fourier.load_file(path_cws)
+        S=Surface_Fourier(S_parametrization,(ntheta_coil,nzeta_coil),Np)
     if Sp is None:
-        Sp_parametrization=Toroidal_surface.load_file(path_plasma)
-        Sp=Toroidal_surface(Sp_parametrization,(ntheta_plasma,nzeta_plasma),Np)
+        Sp_parametrization=Surface_Fourier.load_file(path_plasma)
+        Sp=Surface_Fourier(Sp_parametrization,(ntheta_plasma,nzeta_plasma),Np)
 
     
 
@@ -57,7 +59,7 @@ def cost_surface_without_dask(config,S,Sp):
     LS=tools.compute_LS(T,matrixd_phi,S.dpsi,rot_tensor,Sp.n)
     array_bnorm=curpol*bnorm.get_bnorm(path_bnorm,Sp)
     ### Regcoil:
-    cost_surface_output={}
+    EM_cost_output={}
     LS_matrix=np.transpose(np.reshape(LS[2:,:,:],(LS.shape[0]-2,-1)))#matrix shape
     BTn=net_poloidal_current_Amperes*LS[0]+net_toroidal_current_Amperes*LS[1]+array_bnorm
     BTn_flat=-BTn.flatten()# - for 2 reasons: we use inward convention (thus -array_bnorm)
@@ -73,13 +75,13 @@ def cost_surface_without_dask(config,S,Sp):
     j_S=np.concatenate(([net_poloidal_current_Amperes,net_toroidal_current_Amperes],j_S_partial))
     # we save the results
     B_err= (LS_matrix @ j_S_partial)- BTn_flat
-    cost_surface_output['err_max_B']=np.max(np.abs(B_err))
-    cost_surface_output['max_j']=np.max(np.linalg.norm(np.einsum('oijk,kdij,ij,o->ijd',matrixd_phi,S.dpsi,1/S.dS,j_S,optimize=True),axis=2))
-    cost_surface_output['cost_B']=Np*np.einsum('i,i,i->',B_err,B_err,plasma_dS_normalized)
-    cost_surface_output['cost_J']=Np*np.einsum('i,ij,j->',j_S,Qj,j_S)
-    return cost_surface_output
+    EM_cost_output['err_max_B']=np.max(np.abs(B_err))
+    EM_cost_output['max_j']=np.max(np.linalg.norm(np.einsum('oijk,kdij,ij,o->ijd',matrixd_phi,S.dpsi,1/S.dS,j_S,optimize=True),axis=2))
+    EM_cost_output['cost_B']=Np*np.einsum('i,i,i->',B_err,B_err,plasma_dS_normalized)
+    EM_cost_output['cost_J']=Np*np.einsum('i,ij,j->',j_S,Qj,j_S)
+    return EM_cost_output
 
-def cost_surface_dask(config,S,Sp):
+def EM_cost_dask(config,S,Sp):
     #new version without Lagrange multipliers
     import dask.array as da
     #initilization of the parameters
@@ -109,11 +111,11 @@ def cost_surface_dask(config,S,Sp):
 
     #initialization of the surfaces
     if S is None:
-        S_parametrization=Toroidal_surface.load_file(path_cws)
-        S=Toroidal_surface(S_parametrization,(ntheta_coil,nzeta_coil),Np)
+        S_parametrization=Surface_Fourier.load_file(path_cws)
+        S=Surface_Fourier(S_parametrization,(ntheta_coil,nzeta_coil),Np)
     if Sp is None:
-        Sp_parametrization=Toroidal_surface.load_file(path_plasma)
-        Sp=Toroidal_surface(Sp_parametrization,(ntheta_plasma,nzeta_plasma),Np)
+        Sp_parametrization=Surface_Fourier.load_file(path_plasma)
+        Sp=Surface_Fourier(Sp_parametrization,(ntheta_plasma,nzeta_plasma),Np)
 
     if cupy:
         import cupy as cp
@@ -133,10 +135,7 @@ def cost_surface_dask(config,S,Sp):
     S_dS= f(da.from_array(S.dS,chunks=(chunk_theta_coil,chunk_zeta_coil), asarray=False))
     D=1/(da.linalg.norm(T,axis=-1)**3)
     DD=1/(da.linalg.norm(T,axis=-1)**5)
-    eijk = np.zeros((3, 3, 3))
-    eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
-    eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
-    eijk= f_np(eijk)
+    eijk= f_np(tools.eijk)
     Qj=tools.compute_Qj(matrixd_phi,dpsi,S_dS)
     K=np.einsum('sijpqa,sijpq->sijpqa',T,D)
     LS=(mu_0/(4*np.pi))*contract('sijpqa,tijh,sbc,hcij,dab,dpq->tpq',K,matrixd_phi,rot_tensor,dpsi,eijk,normalp,optimize=True)/(ntheta_coil*nzeta_coil)
@@ -145,7 +144,7 @@ def cost_surface_dask(config,S,Sp):
     LS=get(LS.compute())
     BT=-curpol*bnorm.get_bnorm(path_bnorm,Sp)
     ### Regcoil:
-    cost_surface_output={}
+    EM_cost_output={}
     #WARNING : we restrict our space to hangle a constraint free pb
     LS_R=LS[2:]
     Qj_inv_R=np.linalg.inv(Qj[2:,2:])
@@ -163,13 +162,13 @@ def cost_surface_dask(config,S,Sp):
     # we save the results
 
     B_err= np.einsum('hpq,h',LS,j_S)- BT
-    cost_surface_output['err_max_B']=np.max(np.abs(B_err))
-    cost_surface_output['max_j']=np.max(np.linalg.norm(np.einsum('oijk,kdij,ij,o->ijd',get(matrixd_phi.compute()),S.dpsi,1/S.dS,j_S,optimize=True),axis=2))
-    cost_surface_output['cost_B']=Np*np.einsum('pq,pq,pq->',B_err,B_err,Sp.dS/Sp.npts)
-    cost_surface_output['cost_J']=Np*np.einsum('i,ij,j->',j_S,Qj,j_S)
-    cost_surface_output['cost']=cost_surface_output['cost_B']+lamb*cost_surface_output['cost_J']
-    return cost_surface_output
-def cost_surface_dask_with_multipliers(config,S,Sp):
+    EM_cost_output['err_max_B']=np.max(np.abs(B_err))
+    EM_cost_output['max_j']=np.max(np.linalg.norm(np.einsum('oijk,kdij,ij,o->ijd',get(matrixd_phi.compute()),S.dpsi,1/S.dS,j_S,optimize=True),axis=2))
+    EM_cost_output['cost_B']=Np*np.einsum('pq,pq,pq->',B_err,B_err,Sp.dS/Sp.npts)
+    EM_cost_output['cost_J']=Np*np.einsum('i,ij,j->',j_S,Qj,j_S)
+    EM_cost_output['cost']=EM_cost_output['cost_B']+lamb*EM_cost_output['cost_J']
+    return EM_cost_output
+def EM_cost_dask_with_multipliers(config,S,Sp):
     #new version with Lagrange multipliers
     import dask.array as da
     #initilization of the parameters
@@ -199,11 +198,11 @@ def cost_surface_dask_with_multipliers(config,S,Sp):
 
     #initialization of the surfaces
     if S is None:
-        S_parametrization=Toroidal_surface.load_file(path_cws)
-        S=Toroidal_surface(S_parametrization,(ntheta_coil,nzeta_coil),Np)
+        S_parametrization=Surface_Fourier.load_file(path_cws)
+        S=Surface_Fourier(S_parametrization,(ntheta_coil,nzeta_coil),Np)
     if Sp is None:
-        Sp_parametrization=Toroidal_surface.load_file(path_plasma)
-        Sp=Toroidal_surface(Sp_parametrization,(ntheta_plasma,nzeta_plasma),Np)
+        Sp_parametrization=Surface_Fourier.load_file(path_plasma)
+        Sp=Surface_Fourier(Sp_parametrization,(ntheta_plasma,nzeta_plasma),Np)
 
     if cupy:
         import cupy as cp
@@ -223,10 +222,7 @@ def cost_surface_dask_with_multipliers(config,S,Sp):
     S_dS= f(da.from_array(S.dS,chunks=(chunk_theta_coil,chunk_zeta_coil), asarray=False))
     D=1/(da.linalg.norm(T,axis=-1)**3)
     DD=1/(da.linalg.norm(T,axis=-1)**5)
-    eijk = np.zeros((3, 3, 3))
-    eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
-    eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
-    eijk= f_np(eijk)
+    eijk= f_np(tools.eijk)
     Qj=tools.compute_Qj(matrixd_phi,dpsi,S_dS)
     K=np.einsum('sijpqa,sijpq->sijpqa',T,D)
     LS=(mu_0/(4*np.pi))*contract('sijpqa,tijh,sbc,hcij,dab,dpq->tpq',K,matrixd_phi,rot_tensor,dpsi,eijk,normalp,optimize=True)/(ntheta_coil*nzeta_coil)
@@ -235,7 +231,7 @@ def cost_surface_dask_with_multipliers(config,S,Sp):
     LS=get(LS.compute())
     BT=-curpol*bnorm.get_bnorm(path_bnorm,Sp)
     ### Regcoil:
-    cost_surface_output={}
+    EM_cost_output={}
     #WARNING : LS contained the poloidal and toroidal currents coordinates
     Qj_inv=np.linalg.inv(Qj)
     LS_dagger=np.einsum('ut,tij,ij->uij',Qj_inv,LS,Sp.dS/Sp.npts)
@@ -251,13 +247,13 @@ def cost_surface_dask_with_multipliers(config,S,Sp):
     # we save the results
 
     B_err= np.einsum('hpq,h',LS,j_S)- BT
-    cost_surface_output['err_max_B']=np.max(np.abs(B_err))
-    cost_surface_output['max_j']=np.max(np.linalg.norm(np.einsum('oijk,kdij,ij,o->ijd',get(matrixd_phi.compute()),S.dpsi,1/S.dS,j_S,optimize=True),axis=2))
-    cost_surface_output['cost_B']=Np*np.einsum('pq,pq,pq->',B_err,B_err,Sp.dS/Sp.npts)
-    cost_surface_output['cost_J']=Np*np.einsum('i,ij,j->',j_S,Qj,j_S)
-    return cost_surface_output
+    EM_cost_output['err_max_B']=np.max(np.abs(B_err))
+    EM_cost_output['max_j']=np.max(np.linalg.norm(np.einsum('oijk,kdij,ij,o->ijd',get(matrixd_phi.compute()),S.dpsi,1/S.dS,j_S,optimize=True),axis=2))
+    EM_cost_output['cost_B']=Np*np.einsum('pq,pq,pq->',B_err,B_err,Sp.dS/Sp.npts)
+    EM_cost_output['cost_J']=Np*np.einsum('i,ij,j->',j_S,Qj,j_S)
+    return EM_cost_output
 
-def cost_surface_dask_old(config,S,Sp):
+def EM_cost_dask_old(config,S,Sp):
     import dask.array as da
     #initilization of the parameters
     lamb = float(config['other']['lamb'])
@@ -286,11 +282,11 @@ def cost_surface_dask_old(config,S,Sp):
 
     #initialization of the surfaces
     if S is None:
-        S_parametrization=Toroidal_surface.load_file(path_cws)
-        S=Toroidal_surface(S_parametrization,(ntheta_coil,nzeta_coil),Np)
+        S_parametrization=Surface_Fourier.load_file(path_cws)
+        S=Surface_Fourier(S_parametrization,(ntheta_coil,nzeta_coil),Np)
     if Sp is None:
-        Sp_parametrization=Toroidal_surface.load_file(path_plasma)
-        Sp=Toroidal_surface(Sp_parametrization,(ntheta_plasma,nzeta_plasma),Np)
+        Sp_parametrization=Surface_Fourier.load_file(path_plasma)
+        Sp=Surface_Fourier(Sp_parametrization,(ntheta_plasma,nzeta_plasma),Np)
 
     if cupy:
         import cupy as cp
@@ -310,10 +306,7 @@ def cost_surface_dask_old(config,S,Sp):
     S_dS= f(da.from_array(S.dS,chunks=(chunk_theta_coil,chunk_zeta_coil), asarray=False))
     D=1/(da.linalg.norm(T,axis=-1)**3)
     DD=1/(da.linalg.norm(T,axis=-1)**5)
-    eijk = np.zeros((3, 3, 3))
-    eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
-    eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
-    eijk= f_np(eijk)
+    eijk= f_np(tools.eijk)
     Qj=tools.compute_Qj(matrixd_phi,dpsi,S_dS)
     K=np.einsum('sijpqa,sijpq->sijpqa',T,D)
     LS=(mu_0/(4*np.pi))*contract('sijpqa,tijh,sbc,hcij,dab,dpq->tpq',K,matrixd_phi,rot_tensor,dpsi,eijk,normalp,optimize=True)/(ntheta_coil*nzeta_coil)
@@ -326,7 +319,7 @@ def cost_surface_dask_old(config,S,Sp):
    #    LS=tools.compute_LS(T,matrixd_phi,S.dpsi,rot_tensor,Sp.n)
     array_bnorm=curpol*bnorm.get_bnorm(path_bnorm,Sp)
     ### Regcoil:
-    cost_surface_output={}
+    EM_cost_output={}
     LS_matrix=np.transpose(np.reshape(LS[2:,:,:],(LS.shape[0]-2,-1)))#matrix shape
     BTn=net_poloidal_current_Amperes*LS[0]+net_toroidal_current_Amperes*LS[1]+array_bnorm
     BTn_flat=-BTn.flatten()# - for 2 reasons: we use inward convention (thus -array_bnorm)
@@ -344,10 +337,10 @@ def cost_surface_dask_old(config,S,Sp):
     # we save the results
 
     B_err= (LS_matrix @ j_S_partial)- BTn_flat
-    cost_surface_output['err_max_B']=np.max(np.abs(B_err))
-    cost_surface_output['max_j']=np.max(np.linalg.norm(np.einsum('oijk,kdij,ij,o->ijd',get(matrixd_phi.compute()),S.dpsi,1/S.dS,j_S,optimize=True),axis=2))
-    cost_surface_output['cost_B']=Np*np.einsum('i,i,i->',B_err,B_err,plasma_dS_normalized)
-    cost_surface_output['cost_J']=Np*np.einsum('i,ij,j->',j_S,Qj,j_S)
-    cost_surface_output['cost']=cost_surface_output['cost_B']+lamb*cost_surface_output['cost_J']
-    return cost_surface_output
+    EM_cost_output['err_max_B']=np.max(np.abs(B_err))
+    EM_cost_output['max_j']=np.max(np.linalg.norm(np.einsum('oijk,kdij,ij,o->ijd',get(matrixd_phi.compute()),S.dpsi,1/S.dS,j_S,optimize=True),axis=2))
+    EM_cost_output['cost_B']=Np*np.einsum('i,i,i->',B_err,B_err,plasma_dS_normalized)
+    EM_cost_output['cost_J']=Np*np.einsum('i,ij,j->',j_S,Qj,j_S)
+    EM_cost_output['cost']=EM_cost_output['cost_B']+lamb*EM_cost_output['cost_J']
+    return EM_cost_output
 

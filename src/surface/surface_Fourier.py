@@ -1,7 +1,7 @@
 import numpy as np
-import time
+from .abstract_surface import Surface
 import logging
-class Toroidal_surface():
+class Surface_Fourier(Surface):
     def __init__(self,surface_parametrization,nbpts,Np):
         """
             A class used to represent an toroidal surface
@@ -207,13 +207,3 @@ class Toroidal_surface():
         #print(np.max(np.einsum('ijklm,mjk,ljk->ijk',dtildetheta,self.n,self.n)))
         #TODO div_theta
         return theta,dtildetheta,dtheta,dSdtheta
-        
-    
-if __name__=='__main__':
-    logging.basicConfig(level='DEBUG')
-    surface_parametrization=Toroidal_surface.load_file('code/data/li383/cws.txt')
-    #print(surface_parametrization)
-    S=Toroidal_surface(surface_parametrization,(128,128),3)
-    S.get_theta_pertubation()
-    #S.plot_surface()
-    #T=Toroidal_surface(W7x_pathfile='code/Wendelstein 7-X data/fourier.dat',nbpts=(34,31))

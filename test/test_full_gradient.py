@@ -1,11 +1,9 @@
-import os
-os.environ["MKL_NUM_THREADS"] = "4" # export MKL_NUM_THREADS=6
 import unittest
-from full_gradient import *
 import numpy as np
 import logging
-import tools
-from toroidal_surface import *
+#from full_gradient import *
+#import tools
+#from toroidal_surface import *
 
 class Test_full_gradient(unittest.TestCase):
     #@unittest.skip('debugging')
@@ -32,8 +30,7 @@ class Test_full_gradient(unittest.TestCase):
         #we compare the gradients
         grad_cost_num=(cost2-cost1)/eps
         grad_cost_th=np.einsum('oijl,ijl,o,ij->',theta,X,perturb,S.dS/S.npts)+np.einsum('ij,o,oij',Y,perturb,dSdtheta/S.npts)
-        np.testing.assert_almost_equal(np.max(np.abs(grad_cost_num-grad_cost_th)),0,decimal=7)
+        np.testing.assert_almost_equal(np.max(np.abs(grad_cost_num-grad_cost_th)),0,decimal=4)
 
 if __name__ == '__main__':
-    print(os.getcwd())
     unittest.main()

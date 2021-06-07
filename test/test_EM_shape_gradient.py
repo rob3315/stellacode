@@ -1,37 +1,33 @@
-import os
-os.environ["MKL_NUM_THREADS"] = "4" # export MKL_NUM_THREADS=6
 import unittest
-from shape_gradient import *
 import numpy as np
 import logging
-import cost_surface
 
-class Test_shape_gradient(unittest.TestCase):
+from src.costs.EM_shape_gradient import *
+from src.costs.EM_cost import *
+from src.surface.surface_Fourier import *
+
+class Test_EM_shape_gradient(unittest.TestCase):
     #@unittest.skip('debugging')
     def test_compatible_cost(self):
         np.random.seed(2)
-        #from dask.distributed import Client
-        #client = Client(processes=False,
-        #                n_workers=5, threads_per_worker=4)
-        #client.scheduler_info()['services']
-        shape_grad=Shape_gradient('config_file/config_small.ini')
+        shape_grad=EM_shape_gradient('config_file/config_small.ini')
         S_parametrization=shape_grad.S_parametrization
-        S_parametrization2=Toroidal_surface.load_file('data/li383/cws.txt')
-        S=Toroidal_surface(S_parametrization,(17,19),3)
-        Sp_parametrization=Toroidal_surface.load_file('data/li383/plasma_surf.txt')
-        Sp=Toroidal_surface(Sp_parametrization,(16,18),3)
+        S_parametrization2=Surface_Fourier.load_file('data/li383/cws.txt')
+        S=Surface_Fourier(S_parametrization,(17,19),3)
+        Sp_parametrization=Surface_Fourier.load_file('data/li383/plasma_surf.txt')
+        Sp=Surface_Fourier(Sp_parametrization,(16,18),3)
         cost_from_shape_opti=shape_grad.compute_gradient_df(S_parametrization)
-        cost_from_cost_surface=cost_surface.cost_surface(shape_grad.config)
-        cost_from_cost_surface2=cost_surface.cost_surface_dask_old(shape_grad.config,S,Sp)
+        cost_from_cost_surface=EM_cost(shape_grad.config)
+        cost_from_cost_surface2=EM_cost_dask_old(shape_grad.config,S,Sp)
         np.testing.assert_almost_equal(cost_from_cost_surface['cost'],cost_from_shape_opti['cost'])
         np.testing.assert_almost_equal(cost_from_cost_surface2['cost'],cost_from_shape_opti['cost'])
-    def test_shape_gradient_df(self):
+    def test_EM_shape_gradient_df(self):
         np.random.seed(2)
         #from dask.distributed import Client
         #client = Client(processes=False,
         #                n_workers=5, threads_per_worker=4)
         #client.scheduler_info()['services']
-        shape_grad=Shape_gradient('config_file/config_small.ini')
+        shape_grad=EM_shape_gradient('config_file/config_small.ini')
         S_parametrization=shape_grad.S_parametrization
         eps=1e-6
         ls=len(S_parametrization[0])
@@ -40,12 +36,12 @@ class Test_shape_gradient(unittest.TestCase):
         
         #we apply one pertubation
         perturb=(2*np.random.random(2*ls)-1)
-        new_param=Toroidal_surface.change_param(S_parametrization, eps*perturb)
+        new_param=Surface_Fourier.change_param(S_parametrization, eps*perturb)
         result2=shape_grad.compute_gradient_df(new_param)
 
         #we list the element to test
         quantities=['LS_matrix','RHS','j_S_partial','cost_J','cost_B','cost']
-        gradient_quantities=['dLS_matrix_dtheta','dRHS_dtheta','dj_S_partial_dtheta','dcost_J_dtheta','dcost_B_dtheta','shape_gradient']
+        gradient_quantities=['dLS_matrix_dtheta','dRHS_dtheta','dj_S_partial_dtheta','dcost_J_dtheta','dcost_B_dtheta','EM_shape_gradient']
         decimal_precision=[8,7,-4,-13,2,2]
         for quantity,grad,precision in zip(quantities,gradient_quantities,decimal_precision):
             print(quantity,grad)
@@ -56,12 +52,12 @@ class Test_shape_gradient(unittest.TestCase):
             dq=np.einsum('a,a...->...',perturb,grad_q1)
             np.testing.assert_array_almost_equal(dq,dq_num,decimal=precision)
             #print(dq.shape)
-    def test_shape_gradient_of(self):
+    def test_EM_shape_gradient_of(self):
         np.random.seed(2)
         #from dask.distributed import Client
         #client = Client()
         #print(client.scheduler_info()['services'])
-        shape_grad=Shape_gradient('config_file/config_small.ini')
+        shape_grad=EM_shape_gradient('config_file/config_small.ini')
         S_parametrization=shape_grad.S_parametrization
         eps=1e-6
         #we compute the shape derivative
@@ -79,51 +75,15 @@ class Test_shape_gradient(unittest.TestCase):
         #II=2*lamb*contract('p,pq,oq',j_S,Qj[:,2:],dj_S_partial_dtheta)+2*contract('ij,ij,qij,oq->o',(contract('abc,a->bc',LS,j_S)-BT),shape_grad.Sp.dS/shape_grad.Sp.npts,LS[2:],dj_S_partial_dtheta)
         #np.testing.assert_array_almost_equal(lamb*result1['dcost_J_dtheta']/shape_grad.Np,I+II)
         #np.testing.assert_array_almost_equal(result1['dcost_B_dtheta']/shape_grad.Np,I+II)
-        np.testing.assert_array_almost_equal(result1['shape_gradient']/shape_grad.Np,I)
+        np.testing.assert_array_almost_equal(result1['EM_shape_gradient']/shape_grad.Np,I)
         #III=2*contract('p,pq,oq',result2['h'].compute(),Qj[2:,2:],dj_S_partial_dtheta)
         result2=shape_grad.compute_gradient_of(S_parametrization)
 
-        S=Toroidal_surface(S_parametrization,(shape_grad.ntheta_coil,shape_grad.nzeta_coil),shape_grad.Np)
+        S=Surface_Fourier(S_parametrization,(shape_grad.ntheta_coil,shape_grad.nzeta_coil),shape_grad.Np)
         theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
         X1,X2=result2['I1']
         gradient=np.einsum('ija,oija,ij->o',X1,theta,S.dS/S.npts)+np.einsum('ijab,oijab,ij->o',X2,dtildetheta,S.dS/S.npts)
         np.testing.assert_array_almost_equal(I,gradient)
-        print(os.getcwd())
-        """
-        from full_gradient import *
-        full_grad=Full_gradient('config_file/config_small.ini')
-        def f(param_array):
-            (m,n,Rmn,Zmn)=full_grad.S_parametrization
-            R=param_array[:len(m)]
-            Z=param_array[len(m):]
-            param=((m,n,R,Z))
-            return full_grad.cost(param)
-        def gradf(param_array):
-            (m,n,Rmn,Zmn)=full_grad.S_parametrization
-            R=param_array[:len(m)]
-            Z=param_array[len(m):]
-            param=((m,n,R,Z))
-            return full_grad.grad_cost(param)
-        S_param_complete=full_grad.S_parametrization
-        S_param=np.concatenate((S_param_complete[2],S_param_complete[3]))
-        grad=gradf(S_param)
-        f(S_param)
-        perturb=np.random.random(442)
-        new_param=S_param+eps*perturb
-        t0=time.time()
-        old_cost=f(S_param)
-        new_cost=f(new_param)
-        gradient=gradf(S_param)
-        print('numerical cost obtained: {:10e} and {:10e}'.format(old_cost,new_cost))
-        print('numerical gradient : {:10e}'.format((new_cost-old_cost)/eps))
-        print('gradient computed : {:10e}'.format(np.dot(gradient,perturb)))
-        shape_grad=Shape_gradient('config_file/config_small.ini')
-        result1=shape_grad.compute_gradient_df(shape_grad.S_parametrization)
-        result1['cost']
-        result1['cost_B']+shape_grad.lamb*result1['cost_J']
-        cost_regcoil_dic=cost_surface.cost_surface(shape_grad.config)"""
-
 
 if __name__ == '__main__':
-    print(os.getcwd())
     unittest.main()
