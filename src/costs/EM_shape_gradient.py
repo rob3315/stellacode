@@ -22,8 +22,6 @@ class EM_shape_gradient(Abstract_shape_gradient):
         self.ntheta_coil   = int(config['geometry']['ntheta_coil'])
         nzeta_plasma = int(config['geometry']['nzeta_plasma'])
         self.nzeta_coil   = int(config['geometry']['nzeta_coil'])
-        mpol_coil  = int(config['geometry']['mpol_coil'])
-        ntor_coil  = int(config['geometry']['ntor_coil'])
         self.net_poloidal_current_Amperes = float(config['other']['net_poloidal_current_Amperes'])/self.Np#11884578.094260072
         self.net_toroidal_current_Amperes = float(config['other']['net_toroidal_current_Amperes'])#0
         curpol=float(config['other']['curpol'])#4.9782004309255496
@@ -34,7 +32,11 @@ class EM_shape_gradient(Abstract_shape_gradient):
         path_cws=str(config['geometry']['path_cws'])#'code/li383/cws.txt'
         path_bnorm=str(config['other']['path_bnorm'])#'code/li383/bnorm.txt'
         self.path_output=str(config['other']['path_output'])#'coeff_full_opt'
+
+        mpol_coil  = int(config['geometry']['mpol_coil'])
+        ntor_coil  = int(config['geometry']['ntor_coil'])
         phisize=(mpol_coil,ntor_coil)
+
         if config['other']['dask']!= 'True':
             raise Exception('dask is needed for Shape gradient')
         self.chunk_theta_coil=int(config['dask_parameters']['chunk_theta_coil'])
@@ -57,6 +59,7 @@ class EM_shape_gradient(Abstract_shape_gradient):
     def cost(self,S):
         EM_cost_dic=EM_cost_dask(self.config,S=S,Sp=self.Sp)
         EM_cost=EM_cost_dic['cost_B']+ self.lamb*EM_cost_dic['cost_J']
+        logging.info('Chi_B : {:5e}, Chi_j = {:5e}, EM cost {:5e}'.format(EM_cost_dic['cost_B'],EM_cost_dic['cost_J'],EM_cost))
         return EM_cost
     def shape_gradient(self,S,theta_pertubation):
         theta,dtildetheta,dtheta,dSdtheta=theta_pertubation

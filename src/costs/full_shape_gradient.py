@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 import configparser
 
@@ -37,6 +38,7 @@ class Full_shape_gradient():
         c=0
         for elt in self.lst_cost:
             c+=elt.cost(S)
+        logging.info('Total cost : {:5e}'.format(c))
         return c
     def shape_grad(self,param_S_array):
         R=param_S_array[:len(self.m)]

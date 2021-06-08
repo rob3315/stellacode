@@ -1,6 +1,6 @@
 import numpy as np
 import configparser
-
+import logging
 from src.costs.abstract_shape_gradient import Abstract_shape_gradient
 from src.surface.surface_Fourier import Surface_Fourier
 from src.costs.aux import f_non_linear,grad_f_non_linear
@@ -30,7 +30,9 @@ class Distance_shape_gradient(Abstract_shape_gradient):
         T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
         dist=np.linalg.norm(T,axis=-1)
         dist_min=np.amin(dist,axis=(0,3,4))
-        return self.Np*np.einsum('ij,ij->',self.vf(dist_min),S.dS/S.npts)
+        cost=self.Np*np.einsum('ij,ij->',self.vf(dist_min),S.dS/S.npts)
+        logging.info('min_distance {:5e} m, Distance cost : {:5e}'.format(np.min(dist_min),cost))
+        return cost
     def shape_gradient(self, S, theta_pertubation):
         #compute the necessary tools for the gradient of the cost distance,
         # the gradient is \int_S X dtheta dS + \int_S Y dS/dtheta
