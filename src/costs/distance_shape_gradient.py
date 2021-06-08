@@ -2,6 +2,7 @@ import numpy as np
 import configparser
 
 from src.costs.abstract_shape_gradient import Abstract_shape_gradient
+from src.surface.surface_Fourier import Surface_Fourier
 from src.costs.aux import f_non_linear,grad_f_non_linear
 import src.tools as tools
 
@@ -11,19 +12,29 @@ class Distance_shape_gradient(Abstract_shape_gradient):
             config = configparser.ConfigParser()
             config.read(path_config_file)
         self.config=config
+        # Preparation of the plasma and geometric properties
         self.Np=int(config['geometry']['Np'])
+        ntheta_plasma = int(config['geometry']['ntheta_plasma'])
+        nzeta_plasma = int(config['geometry']['nzeta_plasma'])
+        path_plasma=str(config['geometry']['path_plasma'])#'code/li383/plasma_surf.txt'
+        Sp_parametrization=Surface_Fourier.load_file(path_plasma)
+        self.Sp=Surface_Fourier(Sp_parametrization,(ntheta_plasma,nzeta_plasma),self.Np)
+        self.rot_tensor=tools.get_rot_tensor(self.Np)
+        # distance cost parameters
         self.d_min_hard = float(config['optimization_parameters']['d_min_hard'])
         self.d_min_soft= float(config['optimization_parameters']['d_min_soft'])
         self.d_min_penalization= float(config['optimization_parameters']['d_min_penalization'])
         self.vf = np.vectorize(lambda x : f_non_linear(self.d_min_hard,self.d_min_soft,self.d_min_penalization,x))
-        self.rot_tensor=tools.get_rot_tensor(self.Np)
-    def cost(self, S, T):
+        
+    def cost(self, S):
+        T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
         dist=np.linalg.norm(T,axis=-1)
         dist_min=np.amin(dist,axis=(0,3,4))
         return self.Np*np.einsum('ij,ij->',self.vf(dist_min),S.dS/S.npts)
-    def shape_gradient(self, S, T, theta_pertubation):
+    def shape_gradient(self, S, theta_pertubation):
         #compute the necessary tools for the gradient of the cost distance,
         # the gradient is \int_S X dtheta dS + \int_S Y dS/dtheta
+        T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
         ls,lu,lv,lu_plasma,lv_plasma,_=T.shape
         dist=np.linalg.norm(T,axis=-1)
         dist_min=np.min(dist,axis=(0,3,4))
