@@ -18,6 +18,10 @@ Python code for CWS shape optimization.
     pip install vtk
     pip install mayavi
     ```
+5. (optional) run the tests. It can be memory expensive, around 16-20 GB and takes a few minutes.
+    ```
+    python -m unittest discover -s test
+    ```
 ## Basic use
 1. Ensure the virtual environment is activated
     ```
