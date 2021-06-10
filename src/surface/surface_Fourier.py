@@ -72,12 +72,12 @@ class Surface_Fourier(Surface):
 
 
         phi = 2*np.pi*vgrid/self.Np #we draw only one segment of the whole torus
-# what we do (but faster):
-#        for i in range(len(u)):
-#            for j in range(len(v)):
-#                for k in range(len(n)):
-#                    R[i,j]+=Rmn[k]*np.cos(2*np.pi*(m[k]*u[i]-n[k]*v[j]))
-#                    Z[i,j]+=Zmn[k]*np.sin(2*np.pi*(m[k]*u[i]+n[k]*v[j]))
+        # what we do (but faster):
+        #        for i in range(len(u)):
+        #            for j in range(len(v)):
+        #                for k in range(len(n)):
+        #                    R[i,j]+=Rmn[k]*np.cos(2*np.pi*(m[k]*u[i]-n[k]*v[j]))
+        #                    Z[i,j]+=Zmn[k]*np.sin(2*np.pi*(m[k]*u[i]+n[k]*v[j]))
         #for sa in np.array_split(np.arange(len(m)), max(int(len(u)*len(v)*len(m)/Toroidal_surface.sat),1)): # to avoid memory saturation
         tmp=np.tensordot(m,ugrid,0)+np.tensordot(n,vgrid,0)# m*u+n*v#            
         R+=np.tensordot(Rmn,np.cos(2*np.pi*tmp),1)#sum_n,m(Rmn*np.cos(2*pi*(m*u+n*v))
@@ -186,7 +186,7 @@ class Surface_Fourier(Surface):
         boldpsi[1,:,:,:]=self.dpsi[1]/self.dS[np.newaxis,:,:]
         return boldpsi
 
-    def get_theta_pertubation(self):
+    def get_theta_pertubation(self,curv=False):
         """return theta, dtheta and div_S theta"""
         (m,n,Rmn,Zmn)=self.surface_parametrization
         (lu,lv)=self.nbpts
@@ -228,10 +228,18 @@ class Surface_Fourier(Surface):
         dNdtheta=np.einsum('dij,aije,def->aijf',self.dpsi[0],dtheta[:,:,:,1,:],eijk)
         dNdtheta-=np.einsum('dij,aije,def->aijf',self.dpsi[1],dtheta[:,:,:,0,:],eijk)
         dSdtheta=np.einsum('aijd,dij->aij',dNdtheta,self.N)/self.dS
+        result={}
+        result['theta']=theta
+        result['dtildetheta']=dtildetheta
+        result['dtheta']=dtheta
+        result['dSdtheta']=dSdtheta
+        theta,dtildetheta,dtheta,dSdtheta
+
+
         #ndiv_S_theta += (self.dS_u+
         #print(np.max(np.einsum('ijklm,mjk,ljk->ijk',dtildetheta,self.n,self.n)))
         #TODO div_theta
-        return theta,dtildetheta,dtheta,dSdtheta
+        return result
 
 def expand_for_plot(S):
     """from a toroidal_surface surface return X,Y,Z
@@ -257,7 +265,7 @@ def plot_function_on_surface(S,f):
     from mayavi import mlab
     """Plot f the surface given by S.X,S.Y,S.Z"""
     X,Y,Z=expand_for_plot(S)
-    fc2=np.concatenate((f[:,0],f),axis=1)
+    fc2=np.concatenate((f,f[0:1,:]),axis=0)
     s = mlab.mesh(X,Y,Z,representation='mesh',scalars=fc2)
     mlab.colorbar(s,nb_labels=4,label_fmt='%.1E',orientation='vertical')
     mlab.show()

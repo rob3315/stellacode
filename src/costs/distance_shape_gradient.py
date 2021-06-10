@@ -56,7 +56,7 @@ class Distance_shape_gradient(Abstract_shape_gradient):
         grad_d_min=T_min/dist_min[:,:,np.newaxis]
         X=-1*vgradf[:,:,np.newaxis]*grad_d_min
 
-        theta,dtildetheta,dtheta,dSdtheta=theta_pertubation
+        theta,dSdtheta=theta_pertubation['theta'],theta_pertubation['dSdtheta']
         grad_distance=self.Np*(np.einsum('oijl,ijl,ij->o',theta,X,S.dS/S.npts)+np.einsum('ij,oij->o',Y,dSdtheta/S.npts))
         return grad_distance
         

@@ -62,7 +62,7 @@ class EM_shape_gradient(Abstract_shape_gradient):
         logging.info('Chi_B : {:5e}, Chi_j = {:5e}, EM cost {:5e}'.format(EM_cost_dic['cost_B'],EM_cost_dic['cost_J'],EM_cost))
         return EM_cost
     def shape_gradient(self,S,theta_pertubation):
-        theta,dtildetheta,dtheta,dSdtheta=theta_pertubation
+        theta,dtildetheta=theta_pertubation['theta'],theta_pertubation['dtildetheta']
         result=self.compute_gradient_of(S=S)
         I_vector,I_matrix=result['I1']
         EM_grad=self.Np*(np.einsum('ija,oija,ij->o',I_vector,theta,S.dS/S.npts)+np.einsum('ijab,oijab,ij->o',I_matrix,dtildetheta,S.dS/S.npts))
@@ -144,7 +144,8 @@ class EM_shape_gradient(Abstract_shape_gradient):
         #compute the shape gradient by a differentiation first method
         result={}
         S=Surface_Fourier(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
-        theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
+        theta_pertubation=S.get_theta_pertubation()
+        theta,dtildetheta,dtheta,dSdtheta=theta_pertubation['theta'],theta_pertubation['dtildetheta'],theta_pertubation['dtheta'],theta_pertubation['dSdtheta']
         T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
         #LS=tools.compute_LS(T,self.matrixd_phi,S.dpsi,self.rot_tensor,self.Sp.n)
         Qj=tools.compute_Qj(self.matrixd_phi,S.dpsi,S.dS)

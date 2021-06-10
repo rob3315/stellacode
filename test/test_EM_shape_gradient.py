@@ -80,7 +80,9 @@ class Test_EM_shape_gradient(unittest.TestCase):
         result2=shape_grad.compute_gradient_of(S_parametrization)
 
         S=Surface_Fourier(S_parametrization,(shape_grad.ntheta_coil,shape_grad.nzeta_coil),shape_grad.Np)
-        theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
+        theta_pertubation=S.get_theta_pertubation()
+        theta=theta_pertubation['theta']
+        dtildetheta=theta_pertubation['dtildetheta']
         X1,X2=result2['I1']
         gradient=np.einsum('ija,oija,ij->o',X1,theta,S.dS/S.npts)+np.einsum('ijab,oijab,ij->o',X2,dtildetheta,S.dS/S.npts)
         np.testing.assert_array_almost_equal(I,gradient)

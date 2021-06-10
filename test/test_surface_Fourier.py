@@ -31,7 +31,8 @@ class Test_toridal_surface(unittest.TestCase):
         surface_parametrization=Surface_Fourier.load_file('data/li383/cws.txt')
         ls=len(surface_parametrization[0])#total number of hamonics
         S=Surface_Fourier(surface_parametrization,(lu,lv),3)
-        theta,dtildetheta,_,_=S.get_theta_pertubation()
+        theta_pertubation=S.get_theta_pertubation()
+        dtildetheta=theta_pertubation['dtildetheta']
         perim=np.einsum('ij->',S.dS)/(lu*lv)
         perturb=(2*np.random.random(2*ls)-1)
         new_param=Surface_Fourier.change_param(surface_parametrization, eps*perturb)
@@ -49,7 +50,9 @@ class Test_toridal_surface(unittest.TestCase):
         surface_parametrization=Surface_Fourier.load_file('data/li383/cws.txt')
         ls=len(surface_parametrization[0])#total number of hamonics
         S=Surface_Fourier(surface_parametrization,(lu,lv),3)
-        theta,dtildetheta,_,_=S.get_theta_pertubation()
+        theta_pertubation=S.get_theta_pertubation()
+        theta=theta_pertubation['theta']
+        dtildetheta=theta_pertubation['dtildetheta']
         f=np.random.random((lu,lv))
         int_f=np.einsum('ij,ij->',f,S.dS)/(lu*lv)
         perturb=(2*np.random.random(2*ls)-1)
@@ -69,8 +72,8 @@ class Test_toridal_surface(unittest.TestCase):
         ls=len(surface_parametrization[0])#total number of hamonics
         S=Surface_Fourier(surface_parametrization,(lu,lv),3)
 
-        theta,dtildetheta,dtheta,dSdtheta=S.get_theta_pertubation()
-
+        theta_pertubation=S.get_theta_pertubation()
+        dSdtheta=theta_pertubation['dSdtheta']
         perturb=(2*np.random.random(2*ls)-1)
         new_param=Surface_Fourier.change_param(surface_parametrization, eps*perturb)
         new_S=Surface_Fourier(new_param,(lu,lv),3)
@@ -78,6 +81,12 @@ class Test_toridal_surface(unittest.TestCase):
         ddS_num=(new_S.dS-S.dS)/eps
         ddS=np.einsum('cij,c',dSdtheta,perturb)
         np.testing.assert_almost_equal(ddS_num,ddS,decimal=2)
+    def test_curvature_derivative(self):
+        lu,lv=128,128
+        surface_parametrization=Surface_Fourier.load_file('data/li383/cws.txt')
+        surface_parametrization=Surface_Fourier.load_file('data/li383/cws.txt')
+        S=Surface_Fourier(surface_parametrization,(lu,lv),3)
+        
 
 if __name__ == '__main__':
     unittest.main()
