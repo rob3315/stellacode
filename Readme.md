@@ -44,3 +44,7 @@ Python code for CWS shape optimization.
     ```
     rm -rf stellacage_code
     ```
+## License
+Copyright 2021-present Rémi Robin,
+
+Released under the [MPL 2 license](https://mozilla.org/MPL/2.0).
