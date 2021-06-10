@@ -3,29 +3,11 @@ import configparser
 import logging
 from src.surface.surface_Fourier import Surface_Fourier
 from src.costs.full_shape_gradient import Full_shape_gradient
+from src.surface.surface_Fourier import plot
 
 logging.basicConfig(level=logging.INFO)
 import pickle
-def expand_for_plot(S):
-    """from a toroidal_surface surface return X,Y,Z
-    and add redundancy of first row"""
-    shape=(S.X.shape[0]+1,S.X.shape[1])
-    lst=[]
-    for elt in [S.X,S.Y,S.Z]:
-        new_elt=np.zeros(shape)
-        new_elt[:-1,:]=elt
-        new_elt[-1,:]=elt[0,:]
-        lst.append(new_elt.copy())
-    return lst
 
-
-def plot(lst_S):
-    from mayavi import mlab
-    lst_s=[]
-    for S in lst_S:
-        X,Y,Z=expand_for_plot(S)
-        lst_s.append(mlab.mesh(X,Y,Z,representation='mesh',colormap='Wistia'))
-    mlab.show()
 
 if __name__=='__main__':
     S_parametrization=Surface_Fourier.load_file('data/li383/cws.txt')

@@ -143,6 +143,31 @@ class Surface_Fourier(Surface):
             self.dS_v=np.sum(dNdv*N,axis=0)/self.dS
             self.n_u=dNdu/self.dS-self.dS_u*N/(self.dS**2)
             self.n_v=dNdv/self.dS-self.dS_v*N/(self.dS**2)
+        ## curvature computation
+                        #curvature computations :
+            #First fundamental form of the surface (E,F,G)
+            E=np.einsum('lij,lij->ij', dpsi[0], dpsi[0]) 
+            F=np.einsum('lij,lij->ij', dpsi[0], dpsi[1]) 
+            G=np.einsum('lij,lij->ij', dpsi[1], dpsi[1]) 
+            self.I=(E,F,G)
+            #m=np.cross(dpsi[0],dpsi[1],axisa=0, axisb=0) 
+            #p=np.sqrt(np.einsum('ijl,ijl->ij', m, m)) 
+            #n=m/p[:,:,np.newaxis]
+            # Second fundamental of the surface (L,M,N)
+            L= np.einsum('lij,lij->ij', dpsi_uu, self.n) #e
+            M= np.einsum('lij,lij->ij', dpsi_uv, self.n) #f
+            N= np.einsum('lij,lij->ij', dpsi_vv, self.n) #g
+            self.II=(L,M,N)
+            # K = det(second fundamental) / det(first fundamental)
+            # Gaussian Curvature
+            K=(L*N-M**2)/(E*G-F**2)
+            #trace of (second fundamental)(first fundamental^-1)
+            # Mean Curvature
+            H = ((E*N + G*L - 2*F*M)/((E*G - F**2)))/2
+            Pmax = H + np.sqrt(H**2 - K)
+            Pmin = H - np.sqrt(H**2 - K)
+            principles = [Pmax,Pmin]
+            self.principles=principles
 
 
     def plot_surface(self):
@@ -207,3 +232,33 @@ class Surface_Fourier(Surface):
         #print(np.max(np.einsum('ijklm,mjk,ljk->ijk',dtildetheta,self.n,self.n)))
         #TODO div_theta
         return theta,dtildetheta,dtheta,dSdtheta
+
+def expand_for_plot(S):
+    """from a toroidal_surface surface return X,Y,Z
+    and add redundancy of first row"""
+    shape=(S.X.shape[0]+1,S.X.shape[1])
+    lst=[]
+    for elt in [S.X,S.Y,S.Z]:
+        new_elt=np.zeros(shape)
+        new_elt[:-1,:]=elt
+        new_elt[-1,:]=elt[0,:]
+        lst.append(new_elt.copy())
+    return lst
+
+
+def plot(lst_S):
+    from mayavi import mlab
+    lst_s=[]
+    for S in lst_S:
+        X,Y,Z=expand_for_plot(S)
+        lst_s.append(mlab.mesh(X,Y,Z,representation='mesh',colormap='Wistia'))
+    mlab.show()
+def plot_function_on_surface(S,f):
+    from mayavi import mlab
+    """Plot f the surface given by S.X,S.Y,S.Z"""
+    X,Y,Z=expand_for_plot(S)
+    fc2=np.concatenate((f[:,0],f),axis=1)
+    s = mlab.mesh(X,Y,Z,representation='mesh',scalars=fc2)
+    mlab.colorbar(s,nb_labels=4,label_fmt='%.1E',orientation='vertical')
+    mlab.show()
+    return(s)
