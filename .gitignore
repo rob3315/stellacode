@@ -2,5 +2,4 @@ dask-worker-space/
 main/__pycache__/
 *.checkpoint.ipynb
 .vscode/settings.json
-*.png
 *.pyc

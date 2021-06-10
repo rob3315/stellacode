@@ -27,4 +27,16 @@ Python code for CWS shape optimization.
     ```
     jupyter-notebook
     ```
-3. open a file your Browser, for example test_gradient_shape_opti.ipynb
+3. open a file your Browser, for example : examples/test_gradient_shape_opti.ipynb
+![screenshot](screen_jupyter14-08-55.png)
+
+## Uninstall
+1. delete the virtual environment
+    ```
+    conda deactivate
+    conda env remove -n stellacage_code
+    ```
+2. remove the git folder (from the parent folder of stellacage_code)
+    ```
+    rm -rf stellacage_code
+    ```
