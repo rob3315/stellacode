@@ -1,5 +1,6 @@
 Python code for CWS shape optimization.
 ---
+TODO :  add link to article
 ## Installation steps
 1. Check that [python 3](https://www.python.org/downloads/), [Anaconda](https://www.anaconda.com/products/individual) and [git](https://git-scm.com/downloads) are installed.
 2. Clone the git repository :
@@ -45,6 +46,6 @@ Python code for CWS shape optimization.
     rm -rf stellacage_code
     ```
 ## License
-Copyright 2021-present Rémi Robin,
+Copyright 2021-present [Rémi Robin](https://rrobin.pages.math.cnrs.fr/) and [Stellacage](https://www.ljll.math.upmc.fr/~sigalotti/cage/stellacage.html),
 
 Released under the [MPL 2 license](https://mozilla.org/MPL/2.0).
