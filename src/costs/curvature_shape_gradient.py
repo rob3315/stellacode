@@ -16,12 +16,16 @@ class Curvature_shape_gradient(Abstract_shape_gradient):
         self.nzeta_coil   = int(config['geometry']['nzeta_coil'])
         self.c0=float(config['optimization_parameters']['curvature_c0'])
         self.c1=float(config['optimization_parameters']['curvature_c1'])
-        self.vf = np.vectorize(lambda x : f_e(self.c0,self.c1,x))
+        self.f = lambda x : f_e(self.c0,self.c1,np.max((x,0.)))
+        self.gf = lambda x : grad_f_e(self.c0,self.c1,np.max((x,0.)))
         
     def cost(self, S):
-        abs_curv=np.maximum(np.abs(S.principles[0]),np.abs(S.principles[1]))
-        cost=self.Np*np.einsum('ij,ij->',self.vf(abs_curv),S.dS/S.npts)
-        logging.info('maximal curvature {:5e} m^-1, curvature cost : {:5e}'.format(np.max(abs_curv),cost))
+        pmax,pmin=S.principles[0],S.principles[1]
+        f_pmax=np.array([[self.f(elt) for elt in x] for x in pmax])
+        f_pmin=np.array([[self.f(-elt) for elt in x] for x in pmin])
+        cost=self.Np*np.einsum('ij,ij->',f_pmax,S.dS/S.npts)
+        cost+=self.Np*np.einsum('ij,ij->',f_pmin,S.dS/S.npts)
+        logging.info('maximal curvature {:5e} m^-1, curvature cost : {:5e}'.format(max(np.max(f_pmax),np.max(-f_pmin)),cost))
         return cost
     def curvature_derivative(self,S,theta_peturbation):
         dtheta=theta_peturbation['dtheta']
@@ -61,4 +65,15 @@ class Curvature_shape_gradient(Abstract_shape_gradient):
         return result
 
     def shape_gradient(self, S, theta_pertubation):
-        pass
+        result_curvature_derivative=self.curvature_derivative(S,theta_pertubation)
+        dPmax=result_curvature_derivative['dPmax']
+        dPmin=result_curvature_derivative['dPmin']
+        pmax,pmin=S.principles[0],S.principles[1]
+        dSdtheta=theta_pertubation['dSdtheta']
+        grad_f_pmax=np.array([[self.gf(elt) for elt in x] for x in pmax])
+        f_pmax=np.array([[self.f(elt) for elt in x] for x in pmax])
+        grad_f_pmin=np.array([[self.gf(-elt) for elt in x] for x in pmin])
+        f_pmin=np.array([[self.f(-elt) for elt in x] for x in pmin])
+        grad=self.Np*np.einsum('ij,oij,ij->o',grad_f_pmax,dPmax,S.dS/S.npts)+self.Np*np.einsum('ij,oij->o',f_pmax,dSdtheta/S.npts)
+        grad+=self.Np*np.einsum('ij,oij,ij->o',grad_f_pmin,-dPmin,S.dS/S.npts)+self.Np*np.einsum('ij,oij->o',f_pmin,dSdtheta/S.npts)
+        return grad

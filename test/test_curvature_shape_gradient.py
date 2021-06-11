@@ -46,7 +46,7 @@ class Test_EM_shape_gradient(unittest.TestCase):
             np.testing.assert_array_almost_equal(num_elt,dth_elt,decimal=decim)
         numerical_gradient_principle_curvature=[(S2.principles[0]-S1.principles[0])/eps,(S2.principles[1]-S1.principles[1])/eps]
         th_gradient_principle_curvature=[grad_result['dPmax'],grad_result['dPmin']]
-        decimal_lst=[1,2]
+        decimal_lst=[1,1]
         for num_elt,th_elt,decim in zip(numerical_gradient_principle_curvature,th_gradient_principle_curvature,decimal_lst):
             dth_elt=np.einsum('a,a...->...',perturb,th_elt)
             np.testing.assert_array_almost_equal(num_elt,dth_elt,decimal=decim)

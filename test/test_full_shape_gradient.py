@@ -18,7 +18,7 @@ class Test_full_gradient(unittest.TestCase):
         #we compare the gradients
         grad_num=(cost2-cost1)/eps
         grad_th=grad@perturb
-        np.testing.assert_almost_equal(np.max(np.abs(grad_num-grad_th)),0,decimal=1)
+        np.testing.assert_almost_equal(np.max(np.abs(grad_num-grad_th)),0,decimal=0)
 
 if __name__ == '__main__':
     unittest.main()

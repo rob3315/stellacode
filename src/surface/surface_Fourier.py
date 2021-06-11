@@ -188,7 +188,7 @@ class Surface_Fourier(Surface):
         boldpsi[1,:,:,:]=self.dpsi[1]/self.dS[np.newaxis,:,:]
         return boldpsi
 
-    def get_theta_pertubation(self,compute_curvature=False):
+    def get_theta_pertubation(self,compute_curvature=True):
         """return theta, dtheta and div_S theta"""
         (m,n,Rmn,Zmn)=self.surface_parametrization
         (lu,lv)=self.nbpts

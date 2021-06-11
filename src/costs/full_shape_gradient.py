@@ -5,6 +5,7 @@ import configparser
 import src.costs.EM_shape_gradient as EM
 from src.costs.distance_shape_gradient import Distance_shape_gradient
 from src.costs.perimeter_shape_gradient import Perimeter_shape_gradient
+from src.costs.curvature_shape_gradient import Curvature_shape_gradient
 from src.surface.surface_Fourier import Surface_Fourier
 # The main object of 
 class Full_shape_gradient():
@@ -29,6 +30,9 @@ class Full_shape_gradient():
         if config['optimization_parameters']['perim']=='True':
             self.perim=Perimeter_shape_gradient(config=config)
             self.lst_cost.append(self.perim)
+        if config['optimization_parameters']['curvature']=='True':
+            self.curv=Curvature_shape_gradient(config=config)
+            self.lst_cost.append(self.curv)
         
     def cost(self,param_S_array):
         R=param_S_array[:len(self.m)]
