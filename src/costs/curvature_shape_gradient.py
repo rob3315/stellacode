@@ -31,6 +31,33 @@ class Curvature_shape_gradient(Abstract_shape_gradient):
         dG=2*np.einsum('lij,oijl->oij', S.dpsi[1], dtheta[:,:,:,1,:]) 
         (E,F,G)=S.I
         result['dI']=(dE,dF,dG)
+        (d2theta_uu,d2theta_uv,d2theta_vv)=theta_peturbation['d2theta']
+        dndtheta=theta_peturbation['dndtheta']
+        dL= np.einsum('oijl,lij->oij', d2theta_uu, S.n)+np.einsum('lij,oijl->oij', S.dpsi_uu, dndtheta) #e
+        dM= np.einsum('oijl,lij->oij', d2theta_uv, S.n)+np.einsum('lij,oijl->oij', S.dpsi_uv, dndtheta) #f
+        dN= np.einsum('oijl,lij->oij', d2theta_vv, S.n)+np.einsum('lij,oijl->oij', S.dpsi_vv, dndtheta) #g
+        result['dII']=(dL,dM,dN)
+        L,M,N=S.II
+
+        det1=(E*G-F**2)
+        det2=(L*N-M**2)
+        ddet1=dE*G+dG*E-2*dF*F
+        ddet2=dL*N+dN*L-2*dM*M
+        K=(L*N-M**2)/(E*G-F**2)
+        dK=ddet2/det1-ddet1*det2/(det1)**2
+        
+        #trace of (second fundamental)(first fundamental^-1)
+        # Mean Curvature
+        H = ((E*N + G*L - 2*F*M)/((E*G - F**2)))/2
+        up=(E*N + G*L - 2*F*M)
+        dup=dE*N+dN*E+dG*L+dL*G-2*dF*M-2*dM*F
+        dH=(dup/det1 -ddet1*up/(det1)**2)/2
+        result['dK']=dK
+        result['dH']=dH
+        dPmax = dH + (dH*H-0.5*dK)/np.sqrt(H**2 - K)
+        dPmin = dH - (dH*H-0.5*dK)/np.sqrt(H**2 - K)
+        result['dPmax']=dPmax
+        result['dPmin']=dPmin
         return result
 
     def shape_gradient(self, S, theta_pertubation):

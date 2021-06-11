@@ -161,9 +161,11 @@ class Surface_Fourier(Surface):
             # K = det(second fundamental) / det(first fundamental)
             # Gaussian Curvature
             K=(L*N-M**2)/(E*G-F**2)
+            self.K=K
             #trace of (second fundamental)(first fundamental^-1)
             # Mean Curvature
             H = ((E*N + G*L - 2*F*M)/((E*G - F**2)))/2
+            self.H=H
             Pmax = H + np.sqrt(H**2 - K)
             Pmin = H - np.sqrt(H**2 - K)
             principles = [Pmax,Pmin]
@@ -186,7 +188,7 @@ class Surface_Fourier(Surface):
         boldpsi[1,:,:,:]=self.dpsi[1]/self.dS[np.newaxis,:,:]
         return boldpsi
 
-    def get_theta_pertubation(self):
+    def get_theta_pertubation(self,compute_curvature=False):
         """return theta, dtheta and div_S theta"""
         (m,n,Rmn,Zmn)=self.surface_parametrization
         (lu,lv)=self.nbpts
@@ -194,10 +196,11 @@ class Surface_Fourier(Surface):
         Np=self.Np
         ls=len(m)#half of the number of degree of freedom for the surface
         #convention is first R then Z
+        result={}
         theta=np.zeros((2*ls,lu,lv,3))#perturbation of the surface
         dtheta=np.zeros((2*ls,lu,lv,2,3))#perturbation of the surface
         dtildetheta=np.zeros((2*ls,lu,lv,3,3))#perturbation of extended vector field
-        div_S_theta=np.zeros((2*ls,lu,lv))
+        #div_S_theta=np.zeros((2*ls,lu,lv))
 
         phi=2*np.pi*vgrid/Np
         tmp=np.tensordot(m,ugrid,0)+np.tensordot(n,vgrid,0)# m*u+n*v#            
@@ -215,6 +218,38 @@ class Surface_Fourier(Surface):
         dtheta[:ls,:,:,1,1]=np.einsum('i,ijk->ijk',n,-2*np.pi*np.sin(2*np.pi*tmp)*np.sin(phi))#dR/dv *sin(phi)
         dtheta[:ls,:,:,1,1]+=np.einsum('ijk,jk->ijk',R, 2*np.pi/self.Np*np.cos(phi))#R dsin(phi)/dv
         dtheta[ls:,:,:,1,2]=np.einsum('i,ijk->ijk',n,2*np.pi*np.cos(2*np.pi*tmp))#dZ/dv
+        if compute_curvature:
+            d2theta_uu=np.zeros((2*ls,lu,lv,3))
+            d2theta_uv=np.zeros((2*ls,lu,lv,3))
+            d2theta_vv=np.zeros((2*ls,lu,lv,3))
+            dRdu=np.einsum('o,oij->oij',m,-2*np.pi*np.sin(2*np.pi*tmp))
+            dRdv=np.einsum('o,oij->oij',n,-2*np.pi*np.sin(2*np.pi*tmp))
+
+            d2theta_uu[:ls,:,:,0]+=np.einsum('o,oij->oij',m**2,-(2*np.pi)**2*np.cos(2*np.pi*tmp)*np.cos(phi))#d^2R/du^2 *cos(phi)=d^2X/du^2
+            d2theta_uu[:ls,:,:,1]+=np.einsum('o,oij->oij',m**2,-(2*np.pi)**2*np.cos(2*np.pi*tmp)*np.sin(phi))#d^2R/du^2 *sin(phi)=d^2Y/du^2
+            d2theta_uu[ls:,:,:,2]=np.einsum('o,oij->oij',m**2,-(2*np.pi)**2*np.sin(2*np.pi*tmp))#d^2Z/du^2
+            
+
+            d2theta_uv[:ls,:,:,0]+=np.einsum('o,oij->oij',m*n,-(2*np.pi)**2*np.cos(2*np.pi*tmp)*np.cos(phi))#d^2R/dudv *cos(phi)
+            d2theta_uv[:ls,:,:,0]+=np.einsum('oij,ij->oij',-dRdu,2*np.pi/self.Np*np.sin(phi))#dR/du dcos(phi)/dv
+            d2theta_uv[:ls,:,:,1]+=np.einsum('o,oij->oij',m*n,-(2*np.pi)**2*np.cos(2*np.pi*tmp)*np.sin(phi))#d^2R/dudv *sin(phi)
+            d2theta_uv[:ls,:,:,1]+=np.einsum('oij,ij->oij',dRdu,2*np.pi/self.Np*np.cos(phi))#dR/du dsin(phi)/dv
+            d2theta_uv[ls:,:,:,2]+=np.einsum('o,oij->oij',m*n,-(2*np.pi)**2*np.sin(2*np.pi*tmp))#d^2Z/dudv
+
+
+            d2theta_vv[:ls,:,:,0]+=np.einsum('o,oij->oij',n**2,-(2*np.pi)**2*np.cos(2*np.pi*tmp)*np.cos(phi))#d^2R/dv^2 *cos(phi)
+            d2theta_vv[:ls,:,:,0]+=-R*((2*np.pi/self.Np)**2*np.cos(phi))[np.newaxis,:,:]#R d^2cos(phi)/dv^2
+            d2theta_vv[:ls,:,:,0]+=np.einsum('oij,ij->oij',-2*dRdv,2*np.pi/self.Np*np.sin(phi))#dR/dv dcos(phi)/dv
+
+            d2theta_vv[:ls,:,:,1]+=np.einsum('o,oij->oij',n**2,-(2*np.pi)**2*np.cos(2*np.pi*tmp)*np.sin(phi))#d^2R/dv^2 *sin(phi)
+            d2theta_vv[:ls,:,:,1]+=-R*((2*np.pi/self.Np)**2*np.sin(phi))[np.newaxis,:,:]#R d^2sin(phi)/dv^2
+            d2theta_vv[:ls,:,:,1]+=np.einsum('oij,ij->oij',2*dRdv,2*np.pi/self.Np*np.cos(phi))#dR/du dsin(phi)/dv
+
+            d2theta_vv[ls:,:,:,2]=np.einsum('o,oij->oij',n**2,-(2*np.pi)**2*np.sin(2*np.pi*tmp))#d^2Z/dv^2
+            #dpsi_vv[1,:,:]+= -R*(2*np.pi/self.Np)**2*np.sin(phi)#R d^2sin(phi)/dv^2
+            #dpsi_vv[1,:,:]+= 2* dRdv*2*np.pi/self.Np*np.cos(phi)#R dsin(phi)/dv
+
+            result['d2theta']=(d2theta_uu,d2theta_uv,d2theta_vv)
 
         # we use a local chart around the surface and invert it
         dtilde_psi=np.array([self.dpsi[0],self.dpsi[1],self.n])
@@ -228,7 +263,8 @@ class Surface_Fourier(Surface):
         dNdtheta=np.einsum('dij,aije,def->aijf',self.dpsi[0],dtheta[:,:,:,1,:],eijk)
         dNdtheta-=np.einsum('dij,aije,def->aijf',self.dpsi[1],dtheta[:,:,:,0,:],eijk)
         dSdtheta=np.einsum('aijd,dij->aij',dNdtheta,self.N)/self.dS
-        result={}
+        dndtheta=np.einsum('oijl,ij->oijl',dNdtheta,1/self.dS)-np.einsum('oij,lij,ij->oijl',dSdtheta,self.N,1/(self.dS)**2)
+        result['dndtheta']=dndtheta
         result['theta']=theta
         result['dtildetheta']=dtildetheta
         result['dtheta']=dtheta
