@@ -59,7 +59,8 @@ class EM_shape_gradient(Abstract_shape_gradient):
     def cost(self,S):
         EM_cost_dic=EM_cost_dask(self.config,S=S,Sp=self.Sp)
         EM_cost=EM_cost_dic['cost_B']+ self.lamb*EM_cost_dic['cost_J']
-        logging.info('Chi_B : {:5e}, Chi_j = {:5e}, EM cost {:5e}'.format(EM_cost_dic['cost_B'],EM_cost_dic['cost_J'],EM_cost))
+        logging.info('Chi_B : {:5e}, Chi_j : {:5e}, EM cost : {:5e}'.format(EM_cost_dic['cost_B'],EM_cost_dic['cost_J'],EM_cost))
+        logging.info('sup j {:5e}, sup B_err : {:5e}'.format(EM_cost_dic['max_j'],EM_cost_dic['err_max_B']))
         return EM_cost
     def shape_gradient(self,S,theta_pertubation):
         theta,dtildetheta=theta_pertubation['theta'],theta_pertubation['dtildetheta']

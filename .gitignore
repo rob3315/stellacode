@@ -3,3 +3,5 @@ main/__pycache__/
 *.checkpoint.ipynb
 .vscode/settings.json
 *.pyc
+tmp/
+figures/
