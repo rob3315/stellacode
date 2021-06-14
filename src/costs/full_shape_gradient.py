@@ -41,7 +41,8 @@ class Full_shape_gradient():
         S=Surface_Fourier(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
         c=0
         for elt in self.lst_cost:
-            c+=elt.cost(S)
+            new_cost,_+=elt.cost(S)
+            c+=new_cost
         logging.info('Total cost : {:5e}'.format(c))
         return c
     def shape_grad(self,param_S_array):

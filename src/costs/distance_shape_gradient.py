@@ -32,7 +32,7 @@ class Distance_shape_gradient(Abstract_shape_gradient):
         dist_min=np.amin(dist,axis=(0,3,4))
         cost=self.Np*np.einsum('ij,ij->',self.vf(dist_min),S.dS/S.npts)
         logging.info('min_distance {:5e} m, Distance cost : {:5e}'.format(np.min(dist_min),cost))
-        return cost
+        return cost, {'min_distance' : np.min(dist_min)}
     def shape_gradient(self, S, theta_pertubation):
         #compute the necessary tools for the gradient of the cost distance,
         # the gradient is \int_S X dtheta dS + \int_S Y dS/dtheta

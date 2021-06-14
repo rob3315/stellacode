@@ -25,8 +25,10 @@ class Curvature_shape_gradient(Abstract_shape_gradient):
         f_pmin=np.array([[self.f(-elt) for elt in x] for x in pmin])
         cost=self.Np*np.einsum('ij,ij->',f_pmax,S.dS/S.npts)
         cost+=self.Np*np.einsum('ij,ij->',f_pmin,S.dS/S.npts)
-        logging.info('maximal curvature {:5e} m^-1, curvature cost : {:5e}'.format(max(np.max(pmax),np.max(-pmin)),cost))
-        return cost
+        aux_dic={}
+        aux_dic['max_curvature']=max(np.max(pmax),np.max(-pmin))
+        logging.info('maximal curvature {:5e} m^-1, curvature cost : {:5e}'.format(aux_dic['max_curvature'],cost))
+        return cost,aux_dic
     def curvature_derivative(self,S,theta_peturbation):
         dtheta=theta_peturbation['dtheta']
         result={}
