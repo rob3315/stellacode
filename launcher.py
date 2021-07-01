@@ -52,5 +52,5 @@ def launch(path_config_file=None,config=None):
     with open('{}/result'.format(output_folder_name),'wb') as output_file:
         pickle.dump(optimize_shape,output_file)
 if __name__ == '__main__':
-    #launch(sys.argv[1])# launch the script with the argument of the call python launcher.py path_to_config
-    launch('config_file/config_full.ini')
+    launch(sys.argv[1])# launch the script with the argument of the call python launcher.py path_to_config
+    #launch('config_file/config_full.ini')

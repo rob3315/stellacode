@@ -17,8 +17,10 @@ class Perimeter_shape_gradient(Abstract_shape_gradient):
     def cost(self,S):
         perimeter=self.Np*np.sum(S.dS)/S.npts
         perim_cost= (f_e(self.c0,self.c1,perimeter))
+        aux_dic={}
+        aux_dic['perimeter']=perimeter
         logging.info('perimeter :{:5e} m^2, perimeter cost : {:5e}'.format(perimeter,perim_cost))
-        return perim_cost
+        return perim_cost,aux_dic
     def shape_gradient(self,S,theta_peturbation):
         dSdtheta=theta_peturbation['dSdtheta']
         perim=self.Np*np.sum(S.dS)/S.npts
