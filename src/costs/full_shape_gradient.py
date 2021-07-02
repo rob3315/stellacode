@@ -46,7 +46,14 @@ class Full_shape_gradient():
             c+=new_cost
         logging.info('Total cost : {:5e}'.format(c))
         return c
-    def shape_grad(self,param_S_array):
+    def shape_gradient(self,param_S_array):
+        """Full_shape_gradient only needs the surface parametrization
+
+        :param param_S_array:
+        :type param_S_array: 1D array
+        :return: the shape gradient
+        :rtype: 1D array
+        """
         R=param_S_array[:len(self.m)]
         Z=param_S_array[len(self.m):]
         paramS=((self.m,self.n,R,Z))

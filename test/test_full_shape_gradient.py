@@ -14,7 +14,7 @@ class Test_full_gradient(unittest.TestCase):
         new_param=param+ eps*perturb
         cost2=full_grad.cost(new_param)
         #We compute the gradient
-        grad=full_grad.shape_grad(param)
+        grad=full_grad.shape_gradient(param)
         #we compare the gradients
         grad_num=(cost2-cost1)/eps
         grad_th=grad@perturb

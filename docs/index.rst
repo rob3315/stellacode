@@ -23,8 +23,14 @@ Welcome to stellacage code's documentation!
 **Stellacage code** is a Python library for Coil Winding Surface (CWS) optimization in Stellarator physics.
 The main repository is hosted `here <https://plmlab.math.cnrs.fr/rrobin/stellacage_code>`_ .
 
+Differences and similarities with `Regcoil <https://github.com/landreman/regcoil>`_
+---------------------------------------------------------------------------------------
 
-.. note::
+The `Regcoil <https://github.com/landreman/regcoil>`_ code developed
+by `Landreman Group <https://terpconnect.umd.edu/~mattland/>`_ possesses many comparable features.
+TODO
+
+.. warning::
 
    This project is under active development.
 
