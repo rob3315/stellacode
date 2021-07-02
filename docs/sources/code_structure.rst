@@ -1,3 +1,3 @@
 Code structure
 ================
-The code has been thought to ba relatively modular 
+The code structure has been thought to be (relatively) easily extended to other costs and surfaces parametrizations.

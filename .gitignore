@@ -8,3 +8,4 @@ figures/
 # Sphinx documentation
 docs/_build/
 docs/_autosummary/
+public/

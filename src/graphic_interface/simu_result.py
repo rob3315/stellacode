@@ -11,7 +11,14 @@ from src.costs.curvature_shape_gradient import Curvature_shape_gradient
 from src.surface.surface_Fourier import Surface_Fourier
 
 class Simu_result():
-    def __init__(self,path) -> None:
+    """A class to easily handle results of simulations
+
+    :param path: path to a folder with a config.ini file and `scipy.optimize.OptimizeResult` object in a file named *result*
+    :type path: String
+    :raises Exception: unable to find the folder with right files
+    """
+    def __init__(self,path):
+
         self.path=path
         # we try to load the different file
         try :
@@ -37,6 +44,10 @@ class Simu_result():
         self.curv=Curvature_shape_gradient(config=config)
         self.successful=True
     def get_data_dic(self):
+        """get the different costs of the results of the simulation
+
+        :rtype: dictionary
+        """
         dic={}
         dic['Name']=self.path
         dic['lambda']=str(self.lamb)
@@ -69,7 +80,10 @@ class Simu_result():
         return dic
         #'Name', 'lambda', 'Penalization', 'cost B', 'max B', 'cost j', 'max j', 'EM cost', 'Distance', 'perimeter', 'Max curv')
     def get_data_dic_ref(self):
-        #We use the ini_param instead of the optimize object
+        """get the different costs of the surface used to initialize the optimization
+
+        :rtype: dictionary
+        """
         dic={}
         dic['Name']='ref'
         dic['lambda']=str(self.lamb)
@@ -95,7 +109,11 @@ class Simu_result():
         self.S_ref=S
         return dic
 def load_all_simulation(path):
-    #load all the simulation folders in the given path
+    """Load all the folder in a given path
+
+    :type path: String
+    :rtype: list :class:`Simu_result`
+    """
     lst_simu=[]
     with os.scandir(path) as it :
         for entry in it:

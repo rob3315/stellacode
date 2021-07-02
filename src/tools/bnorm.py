@@ -1,5 +1,13 @@
 import numpy as np
 def get_bnorm(pathfile,plasma):
+    """get the normal field target from a file
+
+    :param pathfile: path to extract
+    :type pathfile: string
+    :param plasma: the plasma
+    :type plasma: Surface
+    :rtype: 2D float array
+    """
     data=[]
     with open(pathfile,'r') as f:
         for line in f:

@@ -9,6 +9,7 @@ from src.costs.curvature_shape_gradient import Curvature_shape_gradient
 from src.surface.surface_Fourier import Surface_Fourier
 # The main object of 
 class Full_shape_gradient():
+    """Put together all the costs"""
     def __init__(self,path_config_file=None,config=None):
         if config is None:
             config = configparser.ConfigParser()

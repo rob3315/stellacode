@@ -7,6 +7,7 @@ from src.costs.aux import f_non_linear,grad_f_non_linear
 import src.tools as tools
 
 class Distance_shape_gradient(Abstract_shape_gradient):
+    """Non linear penalization of the distance to the plasma (lower bound)"""
     def __init__(self,path_config_file=None,config=None):
         if config is None:
             config = configparser.ConfigParser()

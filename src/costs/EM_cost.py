@@ -1,3 +1,5 @@
+"""Various implementation of the main cost"""
+
 import logging
 import configparser
 import numpy as np
@@ -9,6 +11,7 @@ import src.tools as tools
 import src.tools.bnorm as bnorm
 #an example of Regcoil version in python
 def EM_cost(config,S=None,Sp=None):
+    """dispatch depending on the dask option in config"""
     if config['other']['dask']=='True':
         return EM_cost_dask(config,S,Sp)
     else:
@@ -82,7 +85,17 @@ def EM_cost_without_dask(config,S,Sp):
     return EM_cost_output
 
 def EM_cost_dask(config,S,Sp):
-    #new version without Lagrange multipliers
+    """new version without Lagrange multipliers, to use by default
+
+    :param config: 
+    :type config: :class:`configparser.ConfigParser`
+    :param S:
+    :type S: `Surface`
+    :param Sp:
+    :type Sp: `Surface`
+    :return: various component of the cost
+    :rtype: dictionary
+    """
     import dask.array as da
     #initilization of the parameters
     lamb = float(config['other']['lamb'])
@@ -169,7 +182,6 @@ def EM_cost_dask(config,S,Sp):
     EM_cost_output['cost']=EM_cost_output['cost_B']+lamb*EM_cost_output['cost_J']
     return EM_cost_output
 def EM_cost_dask_with_multipliers(config,S,Sp):
-    #new version with Lagrange multipliers
     import dask.array as da
     #initilization of the parameters
     lamb = float(config['other']['lamb'])
@@ -254,6 +266,7 @@ def EM_cost_dask_with_multipliers(config,S,Sp):
     return EM_cost_output
 
 def EM_cost_dask_old(config,S,Sp):
+    """old version"""
     import dask.array as da
     #initilization of the parameters
     lamb = float(config['other']['lamb'])

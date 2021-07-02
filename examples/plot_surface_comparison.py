@@ -21,7 +21,7 @@ if __name__=='__main__':
     full_grad=Full_shape_gradient(config=config)
     full_grad.cost(np.concatenate((Rmn,Zmn)))
     
-    with open('output/output_BFGS_incomplete','rb') as file:
+    with open('tmp/with_curv_lambda_small/result','rb') as file:
         new_param=pickle.load(file)
     print(new_param.fun)
     full_grad.cost(new_param.x)
@@ -32,4 +32,4 @@ if __name__=='__main__':
     
     Sp_parametrization=Surface_Fourier.load_file('data/li383/plasma_surf.txt')
     Sp=Surface_Fourier(Sp_parametrization,(resolution,resolution),3)
-    plot([S2,Sp])
+    plot([S2,S])

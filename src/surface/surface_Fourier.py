@@ -2,28 +2,16 @@ import numpy as np
 from .abstract_surface import Surface
 import logging
 class Surface_Fourier(Surface):
+    """A class used to represent an toroidal surface with Fourier coefficients
+        
+    :param surface_parametrization: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
+    :type surface_parametrization: (int[],int[],float[],float[])
+    :param nbpts: see :func:`.abstract_surface.Abstract_surface`
+    :type nbpts: (int,int)
+    :param Np: see `.abstract_surface.Abstract_surface`
+    :type Np: int
+    """
     def __init__(self,surface_parametrization,nbpts,Np):
-        """
-            A class used to represent an toroidal surface
-            ...
-            arguments
-            ----------
-            surface_parametrization : (m,n,Rmn,Zmn)
-                4 lists to parametrise the surface
-            nbpts : (int,int)
-                nb of toroidal and poloidal point
-            Np : int
-                nb of rotation needed to get the full torus
-
-            Methods
-            -------
-            load_file(pathfile)
-                extract the surface_parametrization from a file
-            compute_surface_attributes(self,deg)
-                compute all numerical elements used in the shape optimization
-            plot_surface(self):
-                plot the surface
-        """
         self.Np=Np
         self.nbpts=nbpts
         self.npts=nbpts[0]*nbpts[1]
@@ -189,7 +177,7 @@ class Surface_Fourier(Surface):
         return boldpsi
 
     def get_theta_pertubation(self,compute_curvature=True):
-        """return theta, dtheta and div_S theta"""
+        """return a dictionary with the shape derivative of several elements"""
         (m,n,Rmn,Zmn)=self.surface_parametrization
         (lu,lv)=self.nbpts
         ugrid,vgrid=self.grids
@@ -289,6 +277,7 @@ def expand_for_plot(S):
 
 
 def plot(lst_S):
+    """plot a list of surfaces"""
     from mayavi import mlab
     lst_s=[]
     for S in lst_S:
@@ -296,8 +285,8 @@ def plot(lst_S):
         lst_s.append(mlab.mesh(X,Y,Z,representation='mesh',colormap='Wistia'))
     mlab.show()
 def plot_function_on_surface(S,f):
-    from mayavi import mlab
     """Plot f the surface given by S.X,S.Y,S.Z"""
+    from mayavi import mlab
     X,Y,Z=expand_for_plot(S)
     fc2=np.concatenate((f,f[0:1,:]),axis=0)
     s = mlab.mesh(X,Y,Z,representation='mesh',scalars=fc2)

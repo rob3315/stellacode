@@ -12,6 +12,7 @@ from src.costs.EM_cost import EM_cost_dask
 import src.tools as tools
 import src.tools.bnorm as bnorm
 class EM_shape_gradient(Abstract_shape_gradient):
+    """Main cost coming from the inverse problem"""
     def __init__(self,path_config_file=None,config=None):
         if config is None:
             config = configparser.ConfigParser()

@@ -6,6 +6,8 @@ from src.costs.abstract_shape_gradient import Abstract_shape_gradient
 from src.costs.aux import f_e,grad_f_e
 
 class Curvature_shape_gradient(Abstract_shape_gradient):
+    """Non linear penalization on the curvature (upper bound)
+    """
     def __init__(self,path_config_file=None,config=None):
         if config is None:
             config = configparser.ConfigParser()
