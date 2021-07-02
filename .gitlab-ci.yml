@@ -37,6 +37,7 @@ deploy-job:      # This job runs in the deploy stage.
   script:
     - echo "Deploying Documentation"
     - pip install -U sphinx
+    - pip install sphinx-autoapi
     - sphinx-build -b html docs public
     - echo "Documentation successfully deployed."
   artifacts:
