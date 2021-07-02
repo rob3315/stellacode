@@ -40,6 +40,11 @@ deploy-job:      # This job runs in the deploy stage.
     - pip install sphinx-autoapi
     - sphinx-build -b html docs public
     - echo "Documentation successfully deployed."
+  tags:
+    - dind
+  only:
+    - master
   artifacts:
     paths:
-        - public
+      - public
+
