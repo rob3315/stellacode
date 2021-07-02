@@ -1,3 +1,5 @@
+![pipeline](https://plmlab.math.cnrs.fr/rrobin/stellacage_code/badges/master/pipeline.svg)
+
 stellacage code
 ---
 
