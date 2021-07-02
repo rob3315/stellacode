@@ -6,6 +6,9 @@ from src.costs.abstract_shape_gradient import Abstract_shape_gradient
 from src.costs.aux import f_e,grad_f_e
 
 class Perimeter_shape_gradient(Abstract_shape_gradient):
+    """ Implementation of Abstract_shape_gradient with non linear penalization
+    of the perimeter
+    """
     def __init__(self,path_config_file=None,config=None):
         if config is None:
             config = configparser.ConfigParser()
