@@ -22,6 +22,7 @@ test:
   stage: test
   script:
   - pip install -U sphinx
+  - pip install sphinx-autoapi
   - sphinx-build -b html docs public
 
 
