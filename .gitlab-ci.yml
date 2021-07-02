@@ -23,10 +23,6 @@ test:
   script:
   - pip install -U sphinx
   - sphinx-build -b html . public
-  only:
-  - branches
-  except:
-  - master
 
 
 unit-test-job:   # This job runs in the test stage.
@@ -45,5 +41,3 @@ deploy-job:      # This job runs in the deploy stage.
   artifacts:
     paths:
         - public
-    only:
-        - master
