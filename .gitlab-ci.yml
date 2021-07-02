@@ -32,7 +32,7 @@ unit-test-job:   # This job runs in the test stage.
     - echo "test stage is empty..."
 
 
-deploy-job:      # This job runs in the deploy stage.
+pages:      # This job runs in the deploy stage.
   stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
   script:
     - echo "Deploying Documentation"
