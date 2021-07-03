@@ -6,15 +6,15 @@ Installation
 2. Clone the git repository :
     ::
 
-        git clone https://plmlab.math.cnrs.fr/rrobin/stellacage_code.git    #clone the repo
-        cd stellacage_code/ #go to the new folder
+        git clone https://plmlab.math.cnrs.fr/rrobin/stellacode.git    #clone the repo
+        cd stellacode/ #go to the new folder
 
 #. Create a virtual python environment with conda with the needed package:
     ::
 
-        # create a new virtual environment named stellacage_code
-        conda create --name stellacage_code python=3.6 matplotlib scipy dask opt_einsum jupyter
-        conda activate stellacage_code # activate the environment
+        # create a new virtual environment named stellacode
+        conda create --name stellacode python=3.6 matplotlib scipy dask opt_einsum jupyter
+        conda activate stellacode # activate the environment
     
 4. (optional) install `Mayavi <https://docs.enthought.com/mayavi/mayavi/>`_ for 3D visualization
     ::

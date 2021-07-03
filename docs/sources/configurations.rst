@@ -1,6 +1,6 @@
 Set your own settings for your simulations
 =============================================
-The input of stellacage_code is a config file with INI text-structure.
+The input of stellacode is a config file with INI text-structure.
 This file contain all the numerical parameters and a link to the surfaces files and the bnorm file.
 
 the config file

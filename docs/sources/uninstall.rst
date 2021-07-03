@@ -4,9 +4,9 @@ Uninstall
     ::
 
         conda deactivate
-        conda env remove -n stellacage_code
+        conda env remove -n stellacode
     
-2. remove the git folder (from the parent folder of stellacage_code)
+2. remove the git folder (from the parent folder of stellacode)
     ::
 
-        rm -rf stellacage_code
+        rm -rf stellacode

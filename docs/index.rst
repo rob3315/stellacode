@@ -1,9 +1,9 @@
-.. stellacage code documentation master file, created by
+.. stellacode documentation master file, created by
    sphinx-quickstart on Thu Jul  1 16:30:00 2021.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to stellacage code's documentation!
+Welcome to stellacode's documentation!
 ===========================================
 .. toctree::
    :maxdepth: 2
@@ -20,8 +20,8 @@ Welcome to stellacage code's documentation!
    featured.png
 
 
-**Stellacage code** is a Python library for Coil Winding Surface (CWS) optimization in Stellarator physics.
-The main repository is hosted `here <https://plmlab.math.cnrs.fr/rrobin/stellacage_code>`_ .
+**Stellacode** is a Python library for Coil Winding Surface (CWS) optimization in Stellarator physics.
+The main repository is hosted `here <https://plmlab.math.cnrs.fr/rrobin/stellacode>`_ .
 
 Differences and similarities with `Regcoil <https://github.com/landreman/regcoil>`_
 ---------------------------------------------------------------------------------------
