@@ -21,6 +21,7 @@ build-job:       # This job runs in the build stage, which runs first.
 test:
   stage: test
   script:
+  - apt-get install -y pandoc
   - pip install -U sphinx
   - pip install sphinx-autoapi nbsphinx nbsphinx-link pandoc
   - sphinx-build -b html docs public
@@ -36,6 +37,7 @@ pages:      # This job runs in the deploy stage.
   stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
   script:
     - echo "Deploying Documentation"
+    - apt-get install -y pandoc
     - pip install -U sphinx
     - pip install sphinx-autoapi nbsphinx nbsphinx-link pandoc
     - sphinx-build -b html docs public
