@@ -1,6 +1,6 @@
 dask-worker-space/
 main/__pycache__/
-*.checkpoint.ipynb
+*checkpoint.ipynb
 .vscode/settings.json
 *.pyc
 tmp/

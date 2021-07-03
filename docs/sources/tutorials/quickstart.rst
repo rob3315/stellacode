@@ -11,3 +11,5 @@ Launch the first tutorials with Jupyter notebook
 ::
 
     jupyter-notebook examples/tutorial_compute_cost_surface.ipynb
+
+You can find the executed tutorial `Here <notebook_compute_cost.nblink>`_ .

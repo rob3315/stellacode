@@ -6,7 +6,7 @@
 Welcome to stellacode's documentation!
 ===========================================
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    sources/installation
    sources/tutorials/quickstart
