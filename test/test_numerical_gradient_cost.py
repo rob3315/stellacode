@@ -15,7 +15,7 @@ import src.tools as tools
 class Test_numerical_gradient(unittest.TestCase):
     def test_EM_cost(self):
         np.random.seed(2)
-        shape_grad=EM_shape_gradient('config_file/config_small.ini')
+        shape_grad=EM_shape_gradient('config_file/config_small_debug.ini')
         S_parametrization=shape_grad.S_parametrization
         S1=Surface_Fourier(S_parametrization,(17,19),3)
         eps=1e-9
@@ -33,8 +33,8 @@ class Test_numerical_gradient(unittest.TestCase):
 
     def test_distance_cost(self):
         np.random.seed(2)
-        shape_grad_EM=EM_shape_gradient('config_file/config_small.ini')
-        shape_grad=Distance_shape_gradient('config_file/config_small.ini')
+        shape_grad_EM=EM_shape_gradient('config_file/config_small_debug.ini')
+        shape_grad=Distance_shape_gradient('config_file/config_small_debug.ini')
         S_parametrization=shape_grad_EM.S_parametrization
         S1=Surface_Fourier(S_parametrization,(17,19),3)
         eps=1e-9
@@ -51,8 +51,8 @@ class Test_numerical_gradient(unittest.TestCase):
         np.testing.assert_array_almost_equal(dcost,dcost_num,decimal=3)
     def test_perimeter_cost(self):
         np.random.seed(2)
-        shape_grad_EM=EM_shape_gradient('config_file/config_small.ini')
-        shape_grad=Perimeter_shape_gradient('config_file/config_small.ini')
+        shape_grad_EM=EM_shape_gradient('config_file/config_small_debug.ini')
+        shape_grad=Perimeter_shape_gradient('config_file/config_small_debug.ini')
         S_parametrization=shape_grad_EM.S_parametrization
         S1=Surface_Fourier(S_parametrization,(17,19),3)
         eps=1e-9
