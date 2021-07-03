@@ -15,3 +15,4 @@ Launch the first tutorials with Jupyter notebook
 
 .. toctree::
     First_steps_with_Stellacode.nblink
+    run_a_shape_optimization

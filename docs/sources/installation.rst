@@ -16,15 +16,25 @@ Installation
         conda create --name stellacode python=3.6 matplotlib scipy dask opt_einsum jupyter
         conda activate stellacode # activate the environment
     
-4. (optional) install `Mayavi <https://docs.enthought.com/mayavi/mayavi/>`_ for 3D visualization
+4. (optional) Install `Mayavi <https://docs.enthought.com/mayavi/mayavi/>`_ for 3D visualization
     ::
 
         pip install vtk
         pip install mayavi
     
-5. (optional) run the tests. It can be memory expensive, around 16-20 GB and takes a few minutes.
+5. (optional) Run the tests.
+    .. warning::
+
+        It can be memory expensive, around 16-20 GB and takes a few minutes.
+    
     ::
 
         python -m unittest discover -s test
 
-
+1. (very optional) Install the package to compile the documentation (`available here <https://rrobin.pages.math.cnrs.fr/stellacode/>`_ ).
+    ::
+    
+        conda install -c conda-forge pandoc
+        pip install -U sphinx
+        pip install sphinx-autoapi nbsphinx nbsphinx-link
+  
