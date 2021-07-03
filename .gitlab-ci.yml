@@ -22,7 +22,7 @@ test:
   stage: test
   script:
   - pip install -U sphinx
-  - pip install sphinx-autoapi
+  - pip install sphinx-autoapi nbsphinx nbsphinx-link
   - sphinx-build -b html docs public
 
 
@@ -37,7 +37,7 @@ pages:      # This job runs in the deploy stage.
   script:
     - echo "Deploying Documentation"
     - pip install -U sphinx
-    - pip install sphinx-autoapi
+    - pip install sphinx-autoapi nbsphinx nbsphinx-link
     - sphinx-build -b html docs public
     - echo "Documentation successfully deployed."
   tags:
