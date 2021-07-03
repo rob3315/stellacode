@@ -20,8 +20,11 @@ Welcome to Stellacode's documentation!
    featured.png
 
 
-**Stellacode** is a Python library for Coil Winding Surface (CWS) optimization in Stellarator physics.
+**Stellacode** is an open source Python library (under `MPL 2 license <https://www.mozilla.org/en-US/MPL/2.0/FAQ/>`_) for Coil Winding Surface (CWS) optimization in Stellarator physics.
 The main repository is hosted `here <https://plmlab.math.cnrs.fr/rrobin/stellacode>`_ .
+
+The code is developped inside the `Stellacage <https://www.ljll.math.upmc.fr/~sigalotti/cage/stellacage.html>`_ collaboration between `Inria <https://www.inria.fr/en>`_ and `Renaissance fusion <https://stellarator.energy/>`_ .
+
 
 Differences and similarities with `Regcoil <https://github.com/landreman/regcoil>`_
 ---------------------------------------------------------------------------------------
