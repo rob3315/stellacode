@@ -9,7 +9,7 @@ Installation
         git clone https://plmlab.math.cnrs.fr/rrobin/stellacode.git    #clone the repo
         cd stellacode/ #go to the new folder
 
-#. Create a virtual python environment with conda with the needed package:
+#. Create a virtual python environment with conda with the needed packages:
     ::
 
         # create a new virtual environment named stellacode

@@ -7,7 +7,7 @@ class Test_full_gradient(unittest.TestCase):
     def test_full_numerical_gradient(self):
         np.random.seed(25)
         eps=1e-9
-        full_grad=Full_shape_gradient(path_config_file='config_file/config_small.ini')
+        full_grad=Full_shape_gradient(path_config_file='config_file/config_small_debug.ini')
         param=full_grad.init_param
         cost1=full_grad.cost(param)
         perturb=(2*np.random.random(len(param))-1)

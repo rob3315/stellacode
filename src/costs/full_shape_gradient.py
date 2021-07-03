@@ -34,12 +34,20 @@ class Full_shape_gradient():
         if config['optimization_parameters']['curvature']=='True':
             self.curv=Curvature_shape_gradient(config=config)
             self.lst_cost.append(self.curv)
-        
-    def cost(self,param_S_array):
+    
+    def get_surface(self,param_S_array):
+        """Return the surface associated with the 1D input
+
+        :param param_S_array: a float 1D array
+        :rtype: Surface
+        """
         R=param_S_array[:len(self.m)]
         Z=param_S_array[len(self.m):]
         paramS=((self.m,self.n,R,Z))
-        S=Surface_Fourier(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
+        return Surface_Fourier(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
+
+    def cost(self,param_S_array):
+        S=self.get_surface(param_S_array)
         c=0
         for elt in self.lst_cost:
             new_cost,_=elt.cost(S)
@@ -54,10 +62,7 @@ class Full_shape_gradient():
         :return: the shape gradient
         :rtype: 1D array
         """
-        R=param_S_array[:len(self.m)]
-        Z=param_S_array[len(self.m):]
-        paramS=((self.m,self.n,R,Z))
-        S=Surface_Fourier(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
+        S=self.get_surface(param_S_array)
         theta_pertubation=S.get_theta_pertubation()
         shape_grad=(self.lst_cost[0]).shape_gradient(S,theta_pertubation)
         for elt in self.lst_cost[1:]:

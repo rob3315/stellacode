@@ -10,7 +10,7 @@ class Test_EM_shape_gradient(unittest.TestCase):
     #@unittest.skip('debugging')
     def test_compatible_cost(self):
         np.random.seed(2)
-        shape_grad=EM_shape_gradient('config_file/config_small.ini')
+        shape_grad=EM_shape_gradient('config_file/config_small_debug.ini')
         S_parametrization=shape_grad.S_parametrization
         S_parametrization2=Surface_Fourier.load_file('data/li383/cws.txt')
         S=Surface_Fourier(S_parametrization,(17,19),3)
@@ -27,7 +27,7 @@ class Test_EM_shape_gradient(unittest.TestCase):
         #client = Client(processes=False,
         #                n_workers=5, threads_per_worker=4)
         #client.scheduler_info()['services']
-        shape_grad=EM_shape_gradient('config_file/config_small.ini')
+        shape_grad=EM_shape_gradient('config_file/config_small_debug.ini')
         S_parametrization=shape_grad.S_parametrization
         eps=1e-6
         ls=len(S_parametrization[0])
@@ -57,7 +57,7 @@ class Test_EM_shape_gradient(unittest.TestCase):
         #from dask.distributed import Client
         #client = Client()
         #print(client.scheduler_info()['services'])
-        shape_grad=EM_shape_gradient('config_file/config_small.ini')
+        shape_grad=EM_shape_gradient('config_file/config_small_debug.ini')
         S_parametrization=shape_grad.S_parametrization
         eps=1e-6
         #we compute the shape derivative
