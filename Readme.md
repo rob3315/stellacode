@@ -1,9 +1,9 @@
-![pipeline](https://plmlab.math.cnrs.fr/rrobin/stellacode/badges/master/pipeline.svg)
+[![pipeline status](https://plmlab.math.cnrs.fr/rrobin/stellacode/badges/master/pipeline.svg)](https://plmlab.math.cnrs.fr/rrobin/stellacode/commits/master)
 
-stellacage code
+Stellacode
 ---
 
-stellacage code is a python package for coil winding surface shape optimization.
+Stellacode is a python package for coil winding surface shape optimization.
 
 TODO :  add link to article
 
