@@ -10,6 +10,8 @@ Compute the cost of one surface
 Launch the first tutorials with Jupyter notebook
 ::
 
-    jupyter-notebook examples/tutorial_compute_cost_surface.ipynb
+    jupyter-notebook examples/First_steps_with_Stellacode.ipynb
 
-You can find the executed tutorial `Here <notebook_compute_cost.nblink>`_ .
+
+.. toctree::
+    First_steps_with_Stellacode.nblink
