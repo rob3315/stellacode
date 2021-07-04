@@ -31,7 +31,7 @@ Installation
 
         python -m unittest discover -s test
 
-1. (very optional) Install the package to compile the documentation (`available here <https://rrobin.pages.math.cnrs.fr/stellacode/>`_ ).
+6. (very optional) Install the package to compile the documentation (`available here <https://rrobin.pages.math.cnrs.fr/stellacode/>`_ ).
     ::
     
         conda install -c conda-forge pandoc
