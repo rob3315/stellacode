@@ -43,11 +43,16 @@ class Simu_result():
         self.perim=Perimeter_shape_gradient(config=config)
         self.curv=Curvature_shape_gradient(config=config)
         self.successful=True
-    def get_data_dic(self):
+    def get_data_dic(self,surf_param=None):
         """get the different costs of the results of the simulation
+
+        :param surf_param: surface to use, if None, use the last one of the simulation
+        :type surf_param: 1D array
 
         :rtype: dictionary
         """
+        if surf_param is None:
+            surf_param=self.x
         dic={}
         dic['Name']=self.path
         dic['lambda']=str(self.lamb)
@@ -59,8 +64,8 @@ class Simu_result():
         if self.config['optimization_parameters']['curvature']=='True':
             Penalization+='C'
         dic['Penalization']=Penalization
-        R=self.x[:len(self.m)]
-        Z=self.x[len(self.m):]
+        R=surf_param[:len(self.m)]
+        Z=surf_param[len(self.m):]
         paramS=((self.m,self.n,R,Z))
         S=Surface_Fourier(paramS,(self.ntheta_coil,self.nzeta_coil),self.Np)
         EM_cost,EM_dic=self.EM.cost(S)
