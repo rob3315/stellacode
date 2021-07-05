@@ -11,7 +11,7 @@ Welcome to Stellacode's documentation!
    sources/installation
    sources/tutorials/quickstart
    sources/configurations
-   sources/code_structure
+   sources/contribute
    sources/uninstall
    sources/license
 

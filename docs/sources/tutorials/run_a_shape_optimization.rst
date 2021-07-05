@@ -28,4 +28,18 @@ You can use the notebook *show_simu.ipynb* in the root folder of Stellacode to e
 
 Customize on your cluster
 -------------------------------
-TODO (dask config and so on)
+In order to ensure a reasonnable Parallelization, Stellacode uses `Dask <https://dask.org/>`_ (only for the most costly part, it would be great to use it for everything).
+We refer to the `Dask documentation <https://docs.dask.org/en/latest/setup.html>`_ for further details.
+
+.. warning:: 
+    Several layers of parallelization takes place in Stellacode:
+       - **Dask** will parallelize the *Task graph* generated (which increase for smaller chunks)
+       - **Numpy** parallelize all linear algebra computations.
+
+    As a consequence, it is important to limit numpy cores usage (for a single thread). For example if numpy uses MKL, you can use the following line **before** importing numpy.
+    ::
+    
+        os.environ["MKL_NUM_THREADS"] = "4" # export MKL_NUM_THREADS=6
+    
+
+

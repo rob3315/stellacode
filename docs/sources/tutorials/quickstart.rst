@@ -5,7 +5,7 @@ First ensure that that you have activated the virtual environment associated wit
 
     conda activate stellacode # activate the environment
 
-Compute the cost of one surface
+Tutorials
 -------------------------------------
 Launch the first tutorials with Jupyter notebook
 ::
