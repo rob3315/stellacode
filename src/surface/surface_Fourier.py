@@ -282,14 +282,14 @@ def plot(lst_S):
     lst_s=[]
     for S in lst_S:
         X,Y,Z=expand_for_plot(S)
-        lst_s.append(mlab.mesh(X,Y,Z,representation='mesh',colormap='Wistia'))
+        lst_s.append(mlab.mesh(X,Y,Z,representation='surface',colormap='Wistia'))
     mlab.show()
 def plot_function_on_surface(S,f):
     """Plot f the surface given by S.X,S.Y,S.Z"""
     from mayavi import mlab
     X,Y,Z=expand_for_plot(S)
     fc2=np.concatenate((f,f[0:1,:]),axis=0)
-    s = mlab.mesh(X,Y,Z,representation='mesh',scalars=fc2)
+    s = mlab.mesh(X,Y,Z,representation='surface',scalars=fc2)
     mlab.colorbar(s,nb_labels=4,label_fmt='%.1E',orientation='vertical')
     mlab.show()
     return(s)
