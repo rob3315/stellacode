@@ -38,20 +38,20 @@ class Distance_shape_gradient(Abstract_shape_gradient):
         #compute the necessary tools for the gradient of the cost distance,
         # the gradient is \int_S X dtheta dS + \int_S Y dS/dtheta
         T=tools.get_tensor_distance(S,self.Sp,self.rot_tensor)
-        ls,lu,lv,lu_plasma,lv_plasma,_=T.shape
+        Np,lu,lv,lu_plasma,lv_plasma,_=T.shape
         dist=np.linalg.norm(T,axis=-1)
         dist_min=np.min(dist,axis=(0,3,4))
         dist_=np.einsum('sijpq->ijspq',dist)
         indexes=np.argmin(np.reshape(dist_,(lu,lv,-1)),axis=-1)
-        aux= lambda  x : np.unravel_index(x,(ls,lu_plasma,lv_plasma))
+        aux= lambda  x : np.unravel_index(x,(Np,lu_plasma,lv_plasma))
         v_aux=np.vectorize(aux)
-        indexes_fulls,indexes_fullp,indexes_fullq=v_aux(indexes)
+        indexes_fullNp,indexes_fullp,indexes_fullq=v_aux(indexes)
         T_min=np.zeros((lu,lv,3))
         vgradf=np.zeros((lu,lv))
         Y=np.zeros((lu,lv))
         for i in range(lu):
             for j in range(lv):
-                T_min[i,j,:]=self.rot_tensor[(ls-indexes_fulls[i,j])%ls]@ T[indexes_fulls[i,j],i,j,indexes_fullp[i,j],indexes_fullq[i,j],:]
+                T_min[i,j,:]=self.rot_tensor[(Np-indexes_fullNp[i,j])%Np]@ T[indexes_fullNp[i,j],i,j,indexes_fullp[i,j],indexes_fullq[i,j],:]
                 vgradf[i,j]=grad_f_non_linear(self.d_min_hard,self.d_min_soft,self.d_min_penalization,dist_min[i,j])
                 Y[i,j]=f_non_linear(self.d_min_hard,self.d_min_soft,self.d_min_penalization,dist_min[i,j])
         grad_d_min=T_min/dist_min[:,:,np.newaxis]
