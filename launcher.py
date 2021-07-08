@@ -44,7 +44,7 @@ def launch(path_config_file=None,config=None):
         info['Nfeval'] += 1
         return res
     def gradf(X, info):
-        return full_grad.shape_grad(X)
+        return full_grad.shape_gradient(X)
     #The optimization
     optimize_shape=scipy.optimize.minimize(f, full_grad.init_param, jac=gradf,args=({'Nfeval':0},),options={'maxiter':max_iter,'return_all':True})
     # We save the 
