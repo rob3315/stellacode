@@ -10,14 +10,8 @@
 image: continuumio/miniconda3
 
 stages:          # List of stages for jobs, and their order of execution
-  - build
   - test
   - deploy
-
-build-job:       # This job runs in the build stage, which runs first.
-  stage: build
-  script:
-    - echo "build stage is empty..."
 
 test:
   stage: test
@@ -26,12 +20,6 @@ test:
   - pip install -U sphinx
   - pip install sphinx-autoapi nbsphinx nbsphinx-link pandoc
   - sphinx-build -b html docs public
-
-
-unit-test-job:   # This job runs in the test stage.
-  stage: test    # It only starts when the job in the build stage completes successfully.
-  script:
-    - echo "test stage is empty..."
 
 
 pages:      # This job runs in the deploy stage.
