@@ -26,7 +26,7 @@ def f_non_linear(d_min_hard, d_min_soft, d_min_penalization, x):
 
 
 def grad_f_non_linear(d_min_hard, d_min_soft, d_min_penalization, x):
-    """gradient of :func:`f_non_linear`
+    """gradient of :func: f_non_linear
     """
     if d_min_hard < x:
         if x >= d_min_soft:
@@ -61,7 +61,7 @@ def f_e(c0, c1, x):
 
 
 def grad_f_e(c0, c1, x):
-    """gradient of :func:`f_e`
+    """gradient of :func: f_e
     """
     if 0 <= x and x <= c1:
         if x < c0:
