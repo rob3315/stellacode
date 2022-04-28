@@ -3,7 +3,7 @@ import numpy as np
 import configparser
 from src.surface.surface_Fourier import Surface_Fourier
 from src.costs.abstract_shape_gradient import Abstract_shape_gradient
-from src.costs.aux import f_e, grad_f_e
+from src.costs.auxi import f_e, grad_f_e
 
 
 class Curvature_shape_gradient(Abstract_shape_gradient):

@@ -3,7 +3,7 @@ import configparser
 import logging
 from src.costs.abstract_shape_gradient import Abstract_shape_gradient
 from src.surface.surface_Fourier import Surface_Fourier
-from src.costs.aux import f_non_linear, grad_f_non_linear
+from src.costs.auxi import f_non_linear, grad_f_non_linear
 import src.tools as tools
 
 
