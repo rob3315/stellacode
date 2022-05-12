@@ -110,7 +110,7 @@ def compute_LS_old(T, j, dS, normalp):
     normalp 3 x lu2 x lv2"""
     lu1, lv1 = dS.shape
     D = 1/(np.linalg.norm(T, axis=-1)**3)
-    # for cross product
+    # for cross product 
     eijk = np.zeros((3, 3, 3))
     eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
     eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
@@ -133,7 +133,7 @@ def compute_LS(T, matrixd_phi, dpsi, rot_tensor, normalp):
     eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
     # the terrible formula...
     LS = contract('ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->olm', T,
-                  matrixd_phi, rot_tensor, dpsi, eijk, D, normalp, optimize=True)
+                  matrixd_phi, rot_tensor,  dpsi, eijk, D, normalp, optimize=True)
     return (mu_0/(4*np.pi))*LS/(lu1*lv1)
 
 

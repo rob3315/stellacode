@@ -6,7 +6,7 @@ from scipy.constants import mu_0
 import dask.array as da
 import dask
 
-from src.surface.surface_Fourier import Surface_Fourier
+from src.surface.surface_from_file import surface_from_file
 from src.costs.abstract_shape_gradient import Abstract_shape_gradient
 from src.costs.EM_cost import EM_cost_dask
 import src.tools as tools
@@ -59,12 +59,9 @@ class EM_shape_gradient(Abstract_shape_gradient):
         self.chunk_theta = int(config['dask_parameters']['chunk_theta'])
 
         # initialization of the surfaces
-        self.S_parametrization = Surface_Fourier.load_file(path_cws)
-        S = Surface_Fourier(self.S_parametrization,
-                            (self.ntheta_coil, self.nzeta_coil), self.Np)
-        Sp_parametrization = Surface_Fourier.load_file(path_plasma)
-        self.Sp = Surface_Fourier(
-            Sp_parametrization, (ntheta_plasma, nzeta_plasma), self.Np)
+        self.S = surface_from_file(path_cws)
+        self.Sp = surface_from_file(path_plasma)
+
         self.rot_tensor = tools.get_rot_tensor(self.Np)
         self.matrixd_phi = tools.get_matrix_dPhi(phisize, S.grids)
         self.array_bnorm = curpol*bnorm.get_bnorm(path_bnorm, self.Sp)
@@ -93,12 +90,6 @@ class EM_shape_gradient(Abstract_shape_gradient):
     def compute_gradient_of(self, paramS=None, S=None):
         # compute the shape gradient by a optimization first method
         result = {}
-        if paramS is None:
-            if S is None:
-                raise Exception('No surface given')
-        else:
-            S = Surface_Fourier(
-                paramS, (self.ntheta_coil, self.nzeta_coil), self.Np)
         # for latter, when we will implement GPU support
         f, f_np, get = lambda x: x, lambda x: x, lambda x: x
         # tensors computations

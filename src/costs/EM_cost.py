@@ -6,7 +6,7 @@ import numpy as np
 from opt_einsum import contract
 from scipy.constants import mu_0
 
-from src.surface.surface_Fourier import Surface_Fourier
+from src.surface.surface_from_file import surface_from_file
 import src.tools as tools
 import src.tools.bnorm as bnorm
 # an example of Regcoil version in python
@@ -54,12 +54,9 @@ def EM_cost_without_dask(config, S, Sp):
 
     # initialization of the surfaces
     if S is None:
-        S_parametrization = Surface_Fourier.load_file(path_cws)
-        S = Surface_Fourier(S_parametrization, (ntheta_coil, nzeta_coil), Np)
+        S = surface_from_file(path_cws)
     if Sp is None:
-        Sp_parametrization = Surface_Fourier.load_file(path_plasma)
-        Sp = Surface_Fourier(Sp_parametrization,
-                             (ntheta_plasma, nzeta_plasma), Np)
+        Sp = surface_from_file(path_plasma)
 
     # tensors computations
     rot_tensor = tools.get_rot_tensor(Np)
@@ -141,12 +138,9 @@ def EM_cost_dask(config, S, Sp):
 
     # initialization of the surfaces
     if S is None:
-        S_parametrization = Surface_Fourier.load_file(path_cws)
-        S = Surface_Fourier(S_parametrization, (ntheta_coil, nzeta_coil), Np)
+        S = surface_from_file(path_cws)
     if Sp is None:
-        Sp_parametrization = Surface_Fourier.load_file(path_plasma)
-        Sp = Surface_Fourier(Sp_parametrization,
-                             (ntheta_plasma, nzeta_plasma), Np)
+        Sp = surface_from_file(path_plasma)
 
     if cupy:
         import cupy as cp
@@ -250,12 +244,9 @@ def EM_cost_dask_with_multipliers(config, S, Sp):
 
     # initialization of the surfaces
     if S is None:
-        S_parametrization = Surface_Fourier.load_file(path_cws)
-        S = Surface_Fourier(S_parametrization, (ntheta_coil, nzeta_coil), Np)
+        S = surface_from_file(path_cws)
     if Sp is None:
-        Sp_parametrization = Surface_Fourier.load_file(path_plasma)
-        Sp = Surface_Fourier(Sp_parametrization,
-                             (ntheta_plasma, nzeta_plasma), Np)
+        Sp = surface_from_file(path_plasma)
 
     if cupy:
         import cupy as cp
@@ -350,12 +341,9 @@ def EM_cost_dask_old(config, S, Sp):
 
     # initialization of the surfaces
     if S is None:
-        S_parametrization = Surface_Fourier.load_file(path_cws)
-        S = Surface_Fourier(S_parametrization, (ntheta_coil, nzeta_coil), Np)
+        S = surface_from_file(path_cws)
     if Sp is None:
-        Sp_parametrization = Surface_Fourier.load_file(path_plasma)
-        Sp = Surface_Fourier(Sp_parametrization,
-                             (ntheta_plasma, nzeta_plasma), Np)
+        Sp = surface_from_file(path_plasma)
 
     if cupy:
         import cupy as cp

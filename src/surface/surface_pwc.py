@@ -176,14 +176,18 @@ class Surface_PWC(Surface):
 
     II = property(_get_II)
 
-    def change_param(param, dcoeff):
-        pass
-
     def get_theta_pertubation(self, compute_curvature):
         """
         Compute the perturbations of a surface
         """
         pass
+
+    def change_param_opti(self, param):
+        new_fourier_coeffs = np.reshape(param, (len(param) // 2, 2))
+        self.__compute_r(new_fourier_coeffs)
+        self.__compute_points()
+        self.__compute_r_prime(new_fourier_coeffs)
+        self.__compute_first_derivatives()
 
     def __compute_r(self, fourier_coeffs):
         """

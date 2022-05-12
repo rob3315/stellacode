@@ -4,6 +4,7 @@ import logging
 from src.costs.abstract_shape_gradient import Abstract_shape_gradient
 from src.surface.surface_Fourier import Surface_Fourier
 from src.costs.auxi import f_non_linear, grad_f_non_linear
+from src.surface.surface_from_file import surface_from_file
 import src.tools as tools
 
 
@@ -21,9 +22,7 @@ class Distance_shape_gradient(Abstract_shape_gradient):
         nzeta_plasma = int(config['geometry']['nzeta_plasma'])
         # 'code/li383/plasma_surf.txt'
         path_plasma = str(config['geometry']['path_plasma'])
-        Sp_parametrization = Surface_Fourier.load_file(path_plasma)
-        self.Sp = Surface_Fourier(
-            Sp_parametrization, (ntheta_plasma, nzeta_plasma), self.Np)
+        self.Sp = surface_from_file(path_plasma)
         self.rot_tensor = tools.get_rot_tensor(self.Np)
         # distance cost parameters
         self.d_min_hard = float(

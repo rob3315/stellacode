@@ -132,16 +132,17 @@ class Surface(metaclass=ABCMeta):
     II = property(_get_II)
 
     @abstractmethod
-    def change_param(param, dcoeff):
-        """from a surface parameters and an array of modification,
-        return the right surface parameters
-        :param param: a complex type
-        :param dcoeff: the perturbation to apply
-        :type dcoeff: 1D array
-
-        where is this thing used?
+    def _get_param(self):
+        """
+        Get the parametrization of the surface.
         """
         pass
+
+    @abstractmethod
+    def _set_param(self):
+        """
+        Set the parametrization 
+        """
 
     @abstractmethod
     def get_theta_pertubation(self, compute_curvature):
@@ -149,3 +150,25 @@ class Surface(metaclass=ABCMeta):
         Compute the perturbations of a surface
         """
         pass
+
+    @abstractmethod
+    def change_param_opti(self, param):
+        """
+        Modifies the current surface with new parameters.
+        Those parameters are the ones used when optimizing the shape.
+        """
+        pass
+
+    """
+    @abstractmethod
+    def change_param(param, dcoeff):
+        from a surface parameters and an array of modification,
+        return the right surface parameters
+        :param param: a complex type
+        :param dcoeff: the perturbation to apply
+        :type dcoeff: 1D array
+
+        where is this thing used?
+        
+        pass
+    """
