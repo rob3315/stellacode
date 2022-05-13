@@ -63,7 +63,7 @@ class EM_shape_gradient(Abstract_shape_gradient):
         self.Sp = surface_from_file(path_plasma)
 
         self.rot_tensor = tools.get_rot_tensor(self.Np)
-        self.matrixd_phi = tools.get_matrix_dPhi(phisize, S.grids)
+        self.matrixd_phi = tools.get_matrix_dPhi(phisize, self.S.grids)
         self.array_bnorm = curpol*bnorm.get_bnorm(path_bnorm, self.Sp)
 
         self.dask_rot_tensor = da.from_array(self.rot_tensor, asarray=False)
@@ -87,7 +87,7 @@ class EM_shape_gradient(Abstract_shape_gradient):
                            np.einsum('ijab,oijab,ij->o', I_matrix, dtildetheta, S.dS/S.npts))
         return EM_grad
 
-    def compute_gradient_of(self, paramS=None, S=None):
+    def compute_gradient_of(self, S=None):
         # compute the shape gradient by a optimization first method
         result = {}
         # for latter, when we will implement GPU support

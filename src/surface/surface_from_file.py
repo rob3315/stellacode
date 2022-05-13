@@ -1,11 +1,10 @@
-from msilib.schema import Error
-from surface_Fourier import Surface_Fourier
-from surface_pwc import Surface_PWC
+from src.surface.surface_Fourier import Surface_Fourier
+from src.surface.surface_pwc import Surface_PWC
 
 
 def surface_from_file(pathfile):
     with open(pathfile, 'r') as f:
-        first_line = next(f)
+        first_line = next(f).strip()
     if first_line == "fourier":
         return Surface_Fourier.load_file(pathfile)
     elif first_line == "pwc":

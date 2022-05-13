@@ -141,21 +141,15 @@ class Surface(metaclass=ABCMeta):
     @abstractmethod
     def _set_param(self):
         """
-        Set the parametrization 
+        Set the parametrization of the surface.
         """
+
+    param = property(_get_param, _set_param)
 
     @abstractmethod
     def get_theta_pertubation(self, compute_curvature):
         """
         Compute the perturbations of a surface
-        """
-        pass
-
-    @abstractmethod
-    def change_param_opti(self, param):
-        """
-        Modifies the current surface with new parameters.
-        Those parameters are the ones used when optimizing the shape.
         """
         pass
 

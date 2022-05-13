@@ -6,8 +6,6 @@ import src.costs.EM_shape_gradient as EM
 from src.costs.distance_shape_gradient import Distance_shape_gradient
 from src.costs.perimeter_shape_gradient import Perimeter_shape_gradient
 from src.costs.curvature_shape_gradient import Curvature_shape_gradient
-from src.surface.surface_Fourier import Surface_Fourier
-# The main object of
 
 
 class Full_shape_gradient():
@@ -24,9 +22,8 @@ class Full_shape_gradient():
 
         # Initialization of the different costs :
         self.EM = EM.EM_shape_gradient(config=config)
-        (m, n, Rmn, Zmn) = self.EM.S_parametrization
-        self.m, self.n = m, n
-        self.init_param = np.concatenate((Rmn, Zmn))
+        self.S = self.EM.S
+        self.init_param = self.S.param
         self.lst_cost = [self.EM]
         if config['optimization_parameters']['d_min'] == 'True':
             self.dist = Distance_shape_gradient(config=config)
@@ -38,27 +35,22 @@ class Full_shape_gradient():
             self.curv = Curvature_shape_gradient(config=config)
             self.lst_cost.append(self.curv)
 
-    def get_surface(self, param_S_array):
-        """Return the surface associated with the 1D input
-
-        :param param_S_array: a float 1D array
-        :rtype: Surface
+    def get_surface(self):
         """
-        R = param_S_array[:len(self.m)]
-        Z = param_S_array[len(self.m):]
-        paramS = ((self.m, self.n, R, Z))
-        return Surface_Fourier(paramS, (self.ntheta_coil, self.nzeta_coil), self.Np)
+        Returns the surface.
+        """
+        return self.S
 
-    def cost(self, param_S_array):
-        S = self.get_surface(param_S_array)
+    def cost(self, param):
+        self.S.param = param
         c = 0
         for elt in self.lst_cost:
-            new_cost, _ = elt.cost(S)
+            new_cost, _ = elt.cost(self.S)
             c += new_cost
         logging.info('Total cost : {:5e}'.format(c))
         return c
 
-    def shape_gradient(self, param_S_array):
+    def shape_gradient(self, param):
         """Full_shape_gradient only needs the surface parametrization
 
         :param param_S_array:
@@ -66,9 +58,10 @@ class Full_shape_gradient():
         :return: the shape gradient
         :rtype: 1D array
         """
-        S = self.get_surface(param_S_array)
-        theta_pertubation = S.get_theta_pertubation()
-        shape_grad = (self.lst_cost[0]).shape_gradient(S, theta_pertubation)
+        self.S.param = param
+        theta_pertubation = self.S.get_theta_pertubation()
+        shape_grad = (self.lst_cost[0]).shape_gradient(
+            self.S, theta_pertubation)
         for elt in self.lst_cost[1:]:
-            shape_grad += elt.shape_gradient(S, theta_pertubation)
+            shape_grad += elt.shape_gradient(self.S, theta_pertubation)
         return shape_grad

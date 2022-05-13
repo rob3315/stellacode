@@ -16,22 +16,109 @@ class Surface_Fourier(Surface):
 
     def __init__(self, surface_parametrization, nbpts, Np):
         self.Np = Np
-        self.nbpts = nbpts
-        self.npts = nbpts[0]*nbpts[1]
+        self.__nbpts = nbpts
+        self.__npts = nbpts[0]*nbpts[1]
         self.surface_parametrization = surface_parametrization
+        self.__param = np.concatenate(
+            (surface_parametrization[2], surface_parametrization[3]))
         self.compute_surface_attributes()  # computation of the surface attributes
         logging.debug('creation of a Toroidal surface successfull')
 
-    def load_file(pathfile):
+    @classmethod
+    def load_file(cls, pathfile):
         """load file with the format m,n,Rmn,Zmn"""
         data = []
         with open(pathfile, 'r') as f:
+            next(f)
             for line in f:
                 data.append(str.split(line))
+
+        nbpts = (int(data[0][0]), int(data[0][1]))
+        Np = int(data[0][2])
+        data.pop(0)
+
         adata = np.array(data, dtype='float64')
         m, n, Rmn, Zmn = adata[:, 0], adata[:, 1], adata[:, 2], adata[:, 3]
+        surface_parametrization = (m, n, Rmn, Zmn)
         logging.debug('file extraction successfull')
-        return (m, n, Rmn, Zmn)
+        return cls(surface_parametrization, nbpts, Np)
+
+    def _get_npts(self):
+        return self.__npts
+
+    npts = property(_get_npts)
+
+    def _get_nbpts(self):
+        return self.__nbpts
+
+    nbpts = property(_get_nbpts)
+
+    def _get_grids(self):
+        return self.__grids
+
+    grids = property(_get_grids)
+
+    def _get_P(self):
+        return self.__P
+
+    P = property(_get_P)
+
+    def _get_dpsi(self):
+        return self.__dpsi
+
+    dpsi = property(_get_dpsi)
+
+    def _get_dS(self):
+        return self.__dS
+
+    dS = property(_get_dS)
+
+    def _get_n(self):
+        return self.__n
+
+    n = property(_get_n)
+
+    def _get_principles(self):
+        return self.__principles
+
+    principles = property(_get_principles)
+
+    def _get_I(self):
+        return self.__I
+
+    I = property(_get_I)
+
+    def _get_dpsi_uu(self):
+        return self.__dpsi_uu
+
+    dpsi_uu = property(_get_dpsi_uu)
+
+    def _get_dpsi_uv(self):
+        return self.__dpsi_uv
+
+    dpsi_uv = property(_get_dpsi_uv)
+
+    def _get_dpsi_vv(self):
+        return self.__dpsi_vv
+
+    dpsi_vv = property(_get_dpsi_vv)
+
+    def _get_II(self):
+        return self.__II
+
+    II = property(_get_II)
+
+    def _get_param(self):
+        return self.__param
+
+    def _set_param(self, param):
+        self.__param = param
+        m, n = self.surface_parametrization[0], self.surface_parametrization[1]
+        Rmn, Zmn = param[:len(m)], param[len(m):]
+        self.surface_parametrization = (m, n, Rmn, Zmn)
+        self.compute_surface_attributes()
+
+    param = property(_get_param, _set_param)
 
     def change_param(param, dcoeff):
         """from a surface parameters and an array of modification,
@@ -130,19 +217,19 @@ class Surface_Fourier(Surface):
             dRdv += np.tensordot(n*Rmn, -2*np.pi*np.sin(2*np.pi*tmp), 1)
 
         # we save the result
-        self.grids = (ugrid, vgrid)
+        self.__grids = (ugrid, vgrid)
         self.R = R
         self.Z = Z
         # we generate X and Y
         self.X = R*np.cos(phi)
         self.Y = R*np.sin(phi)
-        self.P = np.einsum('kij->ijk', np.array([self.X, self.Y, self.Z]))
+        self.__P = np.einsum('kij->ijk', np.array([self.X, self.Y, self.Z]))
         if deg >= 1:
             dpsi[1, 0, :, :] += -R*2*np.pi / \
                 self.Np*np.sin(phi)  # R dcos(phi)/dv
             dpsi[1, 1, :, :] += R*2*np.pi/self.Np*np.cos(phi)  # R dsin(phi)/dv
             # we save the result
-            self.dpsi = dpsi
+            self.__dpsi = dpsi
         if deg >= 2:
             dpsi_uv[0, :, :] += -dRdu*2*np.pi / \
                 self.Np*np.sin(phi)  # R dcos(phi)/dv
@@ -157,16 +244,16 @@ class Surface_Fourier(Surface):
             dpsi_vv[1, :, :] += 2 * dRdv*2*np.pi / \
                 self.Np*np.cos(phi)  # R dsin(phi)/dv
             # we save the result
-            self.dpsi_uu = dpsi_uu
-            self.dpsi_uv = dpsi_uv
-            self.dpsi_vv = dpsi_vv
+            self.__dpsi_uu = dpsi_uu
+            self.__dpsi_uv = dpsi_uv
+            self.__dpsi_vv = dpsi_vv
 
         # We also compute surface element dS and derivatives dS_u and dS_v:
         if deg >= 1:
             N = np.cross(dpsi[0], dpsi[1], 0, 0, 0)
             self.N = N
-            self.dS = np.linalg.norm(N, axis=0)
-            self.n = N/self.dS  # normal inward unit vector
+            self.__dS = np.linalg.norm(N, axis=0)
+            self.__n = N/self.__dS  # normal inward unit vector
         if deg >= 2:
             dNdu = np.cross(dpsi_uu, dpsi[1], 0, 0, 0) + \
                 np.cross(dpsi[0], dpsi_uv, 0, 0, 0)
@@ -182,7 +269,7 @@ class Surface_Fourier(Surface):
             E = np.einsum('lij,lij->ij', dpsi[0], dpsi[0])
             F = np.einsum('lij,lij->ij', dpsi[0], dpsi[1])
             G = np.einsum('lij,lij->ij', dpsi[1], dpsi[1])
-            self.I = (E, F, G)
+            self.__I = (E, F, G)
             #m=np.cross(dpsi[0],dpsi[1],axisa=0, axisb=0)
             #p=np.sqrt(np.einsum('ijl,ijl->ij', m, m))
             # n=m/p[:,:,np.newaxis]
@@ -190,7 +277,7 @@ class Surface_Fourier(Surface):
             L = np.einsum('lij,lij->ij', dpsi_uu, self.n)  # e
             M = np.einsum('lij,lij->ij', dpsi_uv, self.n)  # f
             N = np.einsum('lij,lij->ij', dpsi_vv, self.n)  # g
-            self.II = (L, M, N)
+            self.__II = (L, M, N)
             # K = det(second fundamental) / det(first fundamental)
             # Gaussian Curvature
             K = (L*N-M**2)/(E*G-F**2)
@@ -202,7 +289,7 @@ class Surface_Fourier(Surface):
             Pmax = H + np.sqrt(H**2 - K)
             Pmin = H - np.sqrt(H**2 - K)
             principles = [Pmax, Pmin]
-            self.principles = principles
+            self.__principles = principles
 
     def plot_surface(self):
         """Plot the surface"""
@@ -216,17 +303,17 @@ class Surface_Fourier(Surface):
 
     def get_boldpsi(self):
         """old, we should eliminate"""
-        lu, lv = self.nbpts
+        lu, lv = self.__nbpts
         boldpsi = np.zeros((2, 3, lu, lv))
-        boldpsi[0, :, :, :] = self.dpsi[0]/self.dS[np.newaxis, :, :]
-        boldpsi[1, :, :, :] = self.dpsi[1]/self.dS[np.newaxis, :, :]
+        boldpsi[0, :, :, :] = self.__dpsi[0]/self.__dS[np.newaxis, :, :]
+        boldpsi[1, :, :, :] = self.__dpsi[1]/self.__dS[np.newaxis, :, :]
         return boldpsi
 
     def get_theta_pertubation(self, compute_curvature=True):
         """return a dictionary with the shape derivative of several elements"""
         (m, n, Rmn, Zmn) = self.surface_parametrization
-        (lu, lv) = self.nbpts
-        ugrid, vgrid = self.grids
+        (lu, lv) = self.__nbpts
+        ugrid, vgrid = self.__grids
         Np = self.Np
         ls = len(m)  # half of the number of degree of freedom for the surface
         # convention is first R then Z
@@ -346,33 +433,21 @@ class Surface_Fourier(Surface):
         # TODO div_theta
         return result
 
-
-def expand_for_plot(S):
-    """from a toroidal_surface surface return X,Y,Z
-    and add redundancy of first row"""
-    shape = (S.X.shape[0]+1, S.X.shape[1])
-    lst = []
-    for elt in [S.X, S.Y, S.Z]:
-        new_elt = np.zeros(shape)
-        new_elt[:-1, :] = elt
-        new_elt[-1, :] = elt[0, :]
-        lst.append(new_elt.copy())
-    return lst
-
-
-def plot(lst_S):
-    """plot a list of surfaces"""
-    from mayavi import mlab
-    lst_s = []
-    for S in lst_S:
-        X, Y, Z = expand_for_plot(S)
-        lst_s.append(
-            mlab.mesh(X, Y, Z, representation='surface', colormap='Wistia'))
-    mlab.show()
+    def expand_for_plot_part(self):
+        """from a toroidal_surface surface return X,Y,Z
+        and add redundancy of first row"""
+        shape = (self.X.shape[0]+1, self.X.shape[1])
+        lst = []
+        for elt in [self.X, self.Y, self.Z]:
+            new_elt = np.zeros(shape)
+            new_elt[:-1, :] = elt
+            new_elt[-1, :] = elt[0, :]
+            lst.append(new_elt.copy())
+        return lst
 
 
+"""
 def plot_function_on_surface(S, f):
-    """Plot f the surface given by S.X,S.Y,S.Z"""
     from mayavi import mlab
     X, Y, Z = expand_for_plot(S)
     fc2 = np.concatenate((f, f[0:1, :]), axis=0)
@@ -380,3 +455,4 @@ def plot_function_on_surface(S, f):
     mlab.colorbar(s, nb_labels=4, label_fmt='%.1E', orientation='vertical')
     mlab.show()
     return(s)
+"""
