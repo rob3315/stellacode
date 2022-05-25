@@ -60,6 +60,8 @@ def launch(path_config_file=None, config=None):
     logging.warning('optimization ended, saving file')
     with open('{}/result'.format(output_folder_name), 'wb') as output_file:
         pickle.dump(optimize_shape, output_file)
+    with open('{}/current_distribution'.format(output_folder_name), 'wb') as output_file:
+        pickle.dump(full_grad.get_j_3D(), output_file)
 
 
 if __name__ == '__main__':

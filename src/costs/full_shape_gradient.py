@@ -41,10 +41,17 @@ class Full_shape_gradient():
         """
         return self.S
 
+    def get_j_3D(self):
+        """
+        Returns the current distribution on the surface.
+        """
+        return self.j_3D
+
     def cost(self, param):
         self.S.param = param
-        c = 0
-        for elt in self.lst_cost:
+        c, EM_cost_dic = self.lst_cost[0].cost(self.S)
+        self.j_3D = EM_cost_dic['j_3D']
+        for elt in self.lst_cost[1:]:
             new_cost, _ = elt.cost(self.S)
             c += new_cost
         logging.info('Total cost : {:5e}'.format(c))

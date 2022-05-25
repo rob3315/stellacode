@@ -37,7 +37,7 @@ class Surface_Fourier(Surface):
         Np = int(data[0][2])
         data.pop(0)
 
-        adata = np.array(data, dtype='float64')
+        adata = np.array(data, dtype='float32')
         m, n, Rmn, Zmn = adata[:, 0], adata[:, 1], adata[:, 2], adata[:, 3]
         surface_parametrization = (m, n, Rmn, Zmn)
         logging.debug('file extraction successfull')
@@ -133,9 +133,9 @@ class Surface_Fourier(Surface):
         to degree deg
         deg is 0,1 or 2"""
         (m, n, Rmn, Zmn) = self.surface_parametrization
-        lu, lv = self.nbpts  # nb of toroidal and poloidal point
-        u, v = np.linspace(0, 1, lu, endpoint=False), np.linspace(
-            0, 1, lv, endpoint=False)
+        lu, lv = self.nbpts  # nb of poloidal and toroidal point
+        u, v = np.linspace(
+            0, 1, lu, endpoint=False), (np.arange(lv) + 0.5) / lv
         ugrid, vgrid = np.meshgrid(u, v, indexing='ij')
         R = np.zeros(ugrid.shape)
         Z = np.zeros(ugrid.shape)
@@ -436,14 +436,17 @@ class Surface_Fourier(Surface):
     def expand_for_plot_part(self):
         """from a toroidal_surface surface return X,Y,Z
         and add redundancy of first row"""
-        shape = (self.X.shape[0]+1, self.X.shape[1])
-        lst = []
-        for elt in [self.X, self.Y, self.Z]:
-            new_elt = np.zeros(shape)
-            new_elt[:-1, :] = elt
-            new_elt[-1, :] = elt[0, :]
-            lst.append(new_elt.copy())
-        return lst
+        shape = self.__P.shape[0] + 1, self.__P.shape[1]
+
+        X, Y, Z = np.empty(shape), np.empty(shape), np.empty(shape)
+        X[:-1:, ::] = self.__P[::, ::, 0]
+        X[-1, ::] = self.__P[0, ::, 0]
+        Y[:-1:, ::] = self.__P[::, ::, 1]
+        Y[-1, ::] = self.__P[0, ::, 1]
+        Z[:-1:, ::] = self.__P[::, ::, 2]
+        Z[-1, ::] = self.__P[0, ::, 2]
+
+        return X, Y, Z
 
 
 """
