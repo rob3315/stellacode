@@ -59,8 +59,10 @@ class EM_shape_gradient(Abstract_shape_gradient):
         self.chunk_theta = int(config['dask_parameters']['chunk_theta'])
 
         # initialization of the surfaces
-        self.S = surface_from_file(path_cws)
-        self.Sp = surface_from_file(path_plasma)
+        self.Sp = surface_from_file(
+            path_plasma, n_fp=self.Np, n_pol=ntheta_plasma, n_tor=nzeta_plasma)
+        self.S = surface_from_file(
+            path_cws, n_fp=self.Np, n_pol=self.ntheta_coil, n_tor=self.nzeta_coil)
 
         self.rot_tensor = tools.get_rot_tensor(self.Np)
         self.matrixd_phi = tools.get_matrix_dPhi(phisize, self.S.grids)

@@ -22,7 +22,8 @@ class Distance_shape_gradient(Abstract_shape_gradient):
         nzeta_plasma = int(config['geometry']['nzeta_plasma'])
         # 'code/li383/plasma_surf.txt'
         path_plasma = str(config['geometry']['path_plasma'])
-        self.Sp = surface_from_file(path_plasma)
+        self.Sp = surface_from_file(
+            path_plasma, n_fp=self.Np, n_pol=ntheta_plasma, n_tor=nzeta_plasma)
         self.rot_tensor = tools.get_rot_tensor(self.Np)
         # distance cost parameters
         self.d_min_hard = float(

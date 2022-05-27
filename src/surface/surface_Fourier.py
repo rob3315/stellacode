@@ -1,6 +1,7 @@
 import numpy as np
-from .abstract_surface import Surface
 import logging
+from scipy.io import netcdf
+from .abstract_surface import Surface
 
 
 class Surface_Fourier(Surface):
@@ -25,23 +26,30 @@ class Surface_Fourier(Surface):
         logging.debug('creation of a Toroidal surface successfull')
 
     @classmethod
-    def load_file(cls, pathfile):
+    def load_file(cls, path_surf, n_fp, n_pol, n_tor):
         """load file with the format m,n,Rmn,Zmn"""
-        data = []
-        with open(pathfile, 'r') as f:
-            next(f)
-            for line in f:
-                data.append(str.split(line))
+        if path_surf[-3::] == ".nc":
+            f = netcdf.netcdf_file(path_surf, 'r', mmap=False)
+            m = f.variables['xm'][()]
+            n = f.variables['xn'][()] / n_fp
+            Rmn = f.variables['rmnc'][()][-1]
+            Zmn = f.variables['zmns'][()][-1]
+            f.close()
+            surface_parametrization = (m, n, Rmn, Zmn)
+            logging.debug('file extraction successfull')
+            return cls(surface_parametrization, (n_pol, n_tor), n_fp)
+        else:
+            data = []
+            with open(path_surf, 'r') as f:
+                next(f)
+                for line in f:
+                    data.append(str.split(line))
 
-        nbpts = (int(data[0][0]), int(data[0][1]))
-        Np = int(data[0][2])
-        data.pop(0)
-
-        adata = np.array(data, dtype='float32')
-        m, n, Rmn, Zmn = adata[:, 0], adata[:, 1], adata[:, 2], adata[:, 3]
-        surface_parametrization = (m, n, Rmn, Zmn)
-        logging.debug('file extraction successfull')
-        return cls(surface_parametrization, nbpts, Np)
+            adata = np.array(data, dtype='float32')
+            m, n, Rmn, Zmn = adata[:, 0], adata[:, 1], adata[:, 2], adata[:, 3]
+            surface_parametrization = (m, n, Rmn, Zmn)
+            logging.debug('file extraction successfull')
+            return cls(surface_parametrization, (n_pol, n_tor), n_fp)
 
     def _get_npts(self):
         return self.__npts
