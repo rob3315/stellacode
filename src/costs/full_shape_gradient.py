@@ -54,7 +54,7 @@ class Full_shape_gradient():
         for elt in self.lst_cost[1:]:
             new_cost, _ = elt.cost(self.S)
             c += new_cost
-        logging.info('Total cost : {:5e}'.format(c))
+        logging.info(f"Total cost : {c:.5e} \n")
         return c
 
     def shape_gradient(self, param):

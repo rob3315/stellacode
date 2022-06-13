@@ -15,6 +15,12 @@ def launch(path_config_file=None, config=None):
         print('path_config : {}'.format(path_config_file))
         config = configparser.ConfigParser()
         config.read(path_config_file)
+
+    # If no bnorm file has been given, generate it from wout using BNORM.
+    if not config['other']['path_bnorm']:
+        from src.tools.generate_bnorm import generate_bnorm
+        generate_bnorm(config)
+
     # We create the temporary folder
     output_folder_name = config['other']['path_output']
     os.mkdir(output_folder_name)
@@ -46,8 +52,10 @@ def launch(path_config_file=None, config=None):
         if info['Nfeval'] % freq_save == 0:
             logging.warning(
                 'Neval : {0:4d} \n saving the intermediate shape'.format(info['Nfeval']))
-            with open('{}/intermediate{:}.res'.format(output_folder_name, info['Nfeval']), 'wb') as output_file:
-                pickle.dump(res, output_file)
+            with open('{}/intermediate_param{:}.res'.format(output_folder_name, info['Nfeval']), 'wb') as output_file:
+                pickle.dump(full_grad.S.param, output_file)
+            with open('{}/intermediate_current{:}.res'.format(output_folder_name, info['Nfeval']), 'wb') as output_file:
+                pickle.dump(full_grad.get_j_3D(), output_file)
         info['Nfeval'] += 1
         return res
 

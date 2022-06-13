@@ -1,7 +1,7 @@
 import numpy as np
 import logging
 from scipy.io import netcdf
-from .abstract_surface import Surface
+from .abstract_classes.abstract_surface import Surface
 
 
 class Surface_Fourier(Surface):
@@ -31,7 +31,7 @@ class Surface_Fourier(Surface):
         if path_surf[-3::] == ".nc":
             f = netcdf.netcdf_file(path_surf, 'r', mmap=False)
             m = f.variables['xm'][()]
-            n = f.variables['xn'][()] / n_fp
+            n = - f.variables['xn'][()] / n_fp
             Rmn = f.variables['rmnc'][()][-1]
             Zmn = f.variables['zmns'][()][-1]
             f.close()
@@ -50,6 +50,11 @@ class Surface_Fourier(Surface):
             surface_parametrization = (m, n, Rmn, Zmn)
             logging.debug('file extraction successfull')
             return cls(surface_parametrization, (n_pol, n_tor), n_fp)
+
+    def _get_n_fp(self):
+        return self.Np
+
+    n_fp = property(_get_n_fp)
 
     def _get_npts(self):
         return self.__npts
@@ -455,15 +460,3 @@ class Surface_Fourier(Surface):
         Z[-1, ::] = self.__P[0, ::, 2]
 
         return X, Y, Z
-
-
-"""
-def plot_function_on_surface(S, f):
-    from mayavi import mlab
-    X, Y, Z = expand_for_plot(S)
-    fc2 = np.concatenate((f, f[0:1, :]), axis=0)
-    s = mlab.mesh(X, Y, Z, representation='surface', scalars=fc2)
-    mlab.colorbar(s, nb_labels=4, label_fmt='%.1E', orientation='vertical')
-    mlab.show()
-    return(s)
-"""

@@ -168,12 +168,14 @@ def EM_cost_dask(config, S, Sp):
     eijk = f_np(tools.eijk)
     Qj = tools.compute_Qj(matrixd_phi, dpsi, S_dS)
     K = np.einsum('sijpqa,sijpq->sijpqa', T, D)
-    LS = (mu_0/(4*np.pi))*contract('sijpqa,tijh,sbc,hcij,dab,dpq->tpq', K, matrixd_phi,
+    # Inward normal component
+    LS = (mu_0/(4*np.pi))*contract('sijpqa,tijh,sbc,hcij,bad,dpq->tpq', K, matrixd_phi,
                                    rot_tensor, dpsi, eijk, normalp, optimize=True)/(ntheta_coil*nzeta_coil)
 
     Qj = get(Qj.compute())
     LS = get(LS.compute())
-    BT = -curpol*bnorm.get_bnorm(path_bnorm, Sp)
+    # Inward
+    BT = curpol * bnorm.get_bnorm(path_bnorm, Sp)
     # Regcoil:
     EM_cost_output = {}
     # WARNING : we restrict our space to hangle a constraint free pb
@@ -196,18 +198,20 @@ def EM_cost_dask(config, S, Sp):
     j_S = np.concatenate(
         ([net_poloidal_current_Amperes, net_toroidal_current_Amperes], j_S_R))
 
+    j_3D = np.einsum('oijk,kdij,ij,o->ijd', get(matrixd_phi.compute()),
+                     S.dpsi, 1/S.dS, j_S, optimize=True)
+
     # we save the results
     B_err = np.einsum('hpq,h', LS, j_S) - BT
+    # EM_cost_output['B_n'] = np.einsum('hpq,h', LS, j_S)
     EM_cost_output['err_max_B'] = np.max(np.abs(B_err))
-    EM_cost_output['max_j'] = np.max(np.linalg.norm(np.einsum(
-        'oijk,kdij,ij,o->ijd', get(matrixd_phi.compute()), S.dpsi, 1/S.dS, j_S, optimize=True), axis=2))
+    EM_cost_output['max_j'] = np.max(np.linalg.norm(j_3D, axis=2))
     EM_cost_output['cost_B'] = Np * \
         np.einsum('pq,pq,pq->', B_err, B_err, Sp.dS/Sp.npts)
     EM_cost_output['cost_J'] = Np*np.einsum('i,ij,j->', j_S, Qj, j_S)
     EM_cost_output['cost'] = EM_cost_output['cost_B'] + \
         lamb*EM_cost_output['cost_J']
     # Added for visualization
-    j_3D = np.einsum('a,aijm,mlij->ijl', j_S, matrixd_phi, dpsi)
     EM_cost_output['j_3D'] = j_3D
     return EM_cost_output
 

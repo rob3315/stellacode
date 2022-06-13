@@ -66,7 +66,7 @@ class EM_shape_gradient(Abstract_shape_gradient):
 
         self.rot_tensor = tools.get_rot_tensor(self.Np)
         self.matrixd_phi = tools.get_matrix_dPhi(phisize, self.S.grids)
-        self.array_bnorm = curpol*bnorm.get_bnorm(path_bnorm, self.Sp)
+        self.array_bnorm = curpol * bnorm.get_bnorm(path_bnorm, self.Sp)
 
         self.dask_rot_tensor = da.from_array(self.rot_tensor, asarray=False)
         self.dask_matrixd_phi = da.from_array(self.matrixd_phi, chunks={
@@ -110,11 +110,13 @@ class EM_shape_gradient(Abstract_shape_gradient):
         D = 1/(da.linalg.norm(T, axis=-1)**3)
         DD = 1/(da.linalg.norm(T, axis=-1)**5)
         Qj = tools.compute_Qj(matrixd_phi, dpsi, S_dS)
-        LS = (mu_0/(4*np.pi))*contract('ijklmn,ojkw,ipz,wzjk,qnp,ijklm,qlm->olm', T, matrixd_phi,
-                                       self.rot_tensor, dpsi, tools.eijk, D, normalp, optimize=True)/(S.nbpts[0]*S.nbpts[1])
+        K = np.einsum('sijpqa,sijpq->sijpqa', T, D)
+
+        LS = (mu_0/(4*np.pi))*contract('sijpqa,tijh,sbc,hcij,bad,dpq->tpq', K, matrixd_phi,
+                                       self.rot_tensor, dpsi, tools.eijk, normalp, optimize=True)/(self.S.npts)
 
         # We solve the inverse problem
-        BT = -self.array_bnorm
+        BT = self.array_bnorm
         LS_R = LS[2:]
         Qj_inv_R = np.linalg.inv(Qj[2:, 2:])
         LS_dagger_R = np.einsum(
@@ -158,8 +160,8 @@ class EM_shape_gradient(Abstract_shape_gradient):
         K = np.einsum('sijpql,sijpq->sijpql', T, D)
         DxK = -(np.einsum('sijpq,sab->sijpqab', D, self.rot_tensor)-3 *
                 np.einsum('sijpq,sijpqa,sijpqb,sbc->sijpqac', DD, T, T, self.rot_tensor))
-        Zp_aux = -(mu_0/(4*np.pi))*contract('sijpqa,sbe,abd,dpq,pq->ijpqe', K,
-                                            self.rot_tensor, tools.eijk, normalp, self.Sp.dS/self.Sp.npts, optimize=True)
+        Zp_aux = (mu_0/(4*np.pi))*contract('sijpqa,sbe,dba,dpq,pq->ijpqe', K,
+                                           self.rot_tensor, tools.eijk, normalp, self.Sp.dS/self.Sp.npts, optimize=True)
 
         def Zp(k, j):
             return contract('ijpqe,pq,ija->ijae', Zp_aux, k, j)
@@ -168,7 +170,7 @@ class EM_shape_gradient(Abstract_shape_gradient):
             return (mu_0/(4*np.pi))*contract('saf,sijpqad,sce,pq,cpq,ebd,ijb,pq->ijf', self.dask_rot_tensor, DxK, self.dask_rot_tensor, k, normalp, tools.eijk, j, self.Sp.dS/self.Sp.npts)
 
         def dLdtheta(k, j):
-            return (-1*Z_p_hat(k, j), -1*Zp(k, j))
+            return (Z_p_hat(k, j), Zp(k, j))
 
         def dQdtheta(j1, j2):
             return (contract('ijl,ijk->ijlk', j1, j2)+contract('ijl,ijk->ijlk', j2, j1)+np.einsum('ijk,ijk,ijab->ijab', j1, j2, -np.eye(3)+np.einsum('aij,bij->ijab', S.n, S.n)))

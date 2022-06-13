@@ -10,12 +10,12 @@ PI = np.pi
 
 class PWC_Surface(Surface):
     """
-    A class used to represent an abstract pwc toroidal surface.
+    A class used to represent an abstract piecewise cylindrical toroidal surface.
     """
     @abstractmethod
     def _get_n_fp(self):
         """
-        Number of field periods.
+        Gets the number of field periods.
         """
         pass
 
@@ -24,7 +24,7 @@ class PWC_Surface(Surface):
     @abstractmethod
     def _get_n_cyl(self):
         """
-        Number of cylinders per field period.
+        Gets the number of cylinders per field period.
         """
         pass
 
@@ -33,7 +33,7 @@ class PWC_Surface(Surface):
     @abstractmethod
     def _get_symmetry(self):
         """
-        Symmetry.
+        Gets the Stellarator symmetry.
         """
         pass
 
@@ -42,7 +42,7 @@ class PWC_Surface(Surface):
     @abstractmethod
     def _get_R0(self):
         """
-        Major radius.
+        Gets the major radius.
         """
         pass
 
@@ -51,7 +51,7 @@ class PWC_Surface(Surface):
     @abstractmethod
     def _get_r(self):
         """
-        Gets the function of theta which describes the section.
+        Gets the function r(theta) which describes the section.
         """
         pass
 
@@ -60,7 +60,7 @@ class PWC_Surface(Surface):
     @abstractmethod
     def _get_r_prime(self):
         """
-        Gets the derivative of the function which desribes the section.
+        Gets the derivative of r(theta).
         """
         pass
 
@@ -116,7 +116,8 @@ class PWC_Surface(Surface):
             [0, 0, 1]
         ], dtype=float_type)
 
-        np.einsum("ij,uvj->uvi", symmetry_matrix, other_half, out=other_half)
+        np.einsum("ij,uvj->uvi", symmetry_matrix,
+                  other_half, out=other_half)
 
         two_cylinders = np.concatenate((points, other_half), axis=1)
         res = np.concatenate((points, other_half), axis=1)
@@ -157,7 +158,7 @@ class PWC_Surface(Surface):
 
     def compute_first_derivatives(self):
         """
-        Computes the derivatives of the transformation.
+        Computes the derivatives of the transformation from the abstract torus to the real one.
         """
         n_u, n_v = self.nbpts
         us = np.linspace(0, 1, n_u, endpoint=False, dtype=float_type)
@@ -167,112 +168,105 @@ class PWC_Surface(Surface):
         thetagrid = 2 * PI * ugrid
         phigrid = 2 * PI / self.n_fp * vgrid
 
-        dxdphi = np.empty(ugrid.shape, dtype=float_type)
+        dxdtheta = (np.cos(phigrid) / np.sin(phigrid + self.alpha)) * (
+            np.cos(thetagrid) * self.r_prime(thetagrid) - np.sin(thetagrid) * self.r(thetagrid))
+
+        dxdu = dxdtheta * 2 * PI
 
         dxdphi = - self.R0 * np.tan(self.alpha) * (1 + np.tan(phigrid)**2) / (
             np.tan(self.alpha) + np.tan(phigrid))**2 - np.cos(thetagrid) * self.r(thetagrid) * np.cos(self.alpha) / np.sin(phigrid + self.alpha)**2
 
-        dxdu = dxdphi * 2 * PI / self.n_fp
+        dxdv = dxdphi * 2 * PI / self.n_fp
 
-        dxdtheta = (np.cos(phigrid) / np.sin(phigrid + self.alpha)) * (
-            np.cos(thetagrid) * self.r_prime(thetagrid) - np.sin(thetagrid) * self.r(thetagrid))
+        dydtheta = np.tan(phigrid) * dxdtheta
 
-        dxdv = dxdtheta * 2 * PI
+        dydu = dydtheta * 2 * PI
 
         dydphi = (1 + np.tan(phigrid)**2) * \
             self.__P[::, :self.n_v // self.n_cyl:, 0] + \
             np.tan(phigrid) * dxdphi
 
-        dydu = dydphi * 2 * PI / self.n_fp
-
-        dydtheta = np.tan(phigrid) * dxdtheta
-
-        dydv = dydtheta * 2 * PI
-
-        dzdphi = np.tan(self.beta) * dydphi
-
-        dzdu = dzdphi * 2 * PI / self.n_fp
+        dydv = dydphi * 2 * PI / self.n_fp
 
         dzdtheta = np.tan(self.beta) * dydtheta + (np.cos(thetagrid) * self.r(
             thetagrid) + np.sin(thetagrid) * self.r_prime(thetagrid)) / np.cos(self.beta)
 
-        dzdv = dzdtheta * 2 * PI
+        dzdu = dzdtheta * 2 * PI
 
-        jacobian = np.einsum('ijuv->uvij', np.array([
-            [dxdu, dxdv],
-            [dydu, dydv],
-            [dzdu, dzdv]
-        ]), dtype=float_type)
+        dzdphi = np.tan(self.beta) * dydphi
 
-        jacobian_sym = np.empty((*ugrid.shape, 3, 2), dtype=float_type)
+        dzdv = dzdphi * 2 * PI / self.n_fp
 
-        jacobian_sym = np.copy(jacobian[::, ::-1])
+        jacobianT = np.array([
+            [dxdu, dydu, dzdu],
+            [dxdv, dydv, dzdv]
+        ])
+
+        jacobianT_sym = np.copy(jacobianT[:, :, :, ::-1])
 
         angle = 2 * PI / (self.n_fp * self.n_cyl)
 
-        sym_mat_1 = np.array([
+        sym_mat_1T = np.array([
             [np.cos(2 * angle), np.sin(2 * angle), 0],
             [np.sin(2 * angle), - np.cos(2 * angle), 0],
             [0, 0, 1]
         ], dtype=float_type)
 
-        sym_mat_2 = np.array([
-            [-1, 0],
-            [0, 1]
+        sym_mat_2T = np.array([
+            [1, 0],
+            [0, -1]
         ], dtype=float_type)
 
-        np.einsum("ik,uvkj->uvij", sym_mat_1, jacobian_sym, out=jacobian_sym)
-        np.einsum("uvik,kj->uvij", jacobian_sym, sym_mat_2, out=jacobian_sym)
-        # jacobian_sym = sym_mat_1 @ jacobian_sym @ sym_mat_2
+        np.einsum("ik,kjuv->ijuv", sym_mat_2T,
+                  jacobianT_sym, out=jacobianT_sym)
+        np.einsum("ikuv,kj->ijuv", jacobianT_sym,
+                  sym_mat_1T, out=jacobianT_sym)
 
-        two_cylinders_jacobian = np.concatenate(
-            (jacobian, jacobian_sym), axis=1)
+        two_cylinders_jacobianT = np.concatenate(
+            (jacobianT, jacobianT_sym), axis=3)
 
-        full_jacobian = np.concatenate((jacobian, jacobian_sym), axis=1)
+        full_jacobianT = np.concatenate((jacobianT, jacobianT_sym), axis=3)
 
         if self.symmetry:
             angle = 4 * PI / (self.n_fp * self.n_cyl)
 
-            sym_mat_2 = np.array([
+            sym_mat_2T = np.array([
                 [-1, 0],
                 [0, -1]
             ], dtype=float_type)
 
             for _ in range(self.n_cyl // 2 - 1):
-                symmetry_matrix = np.array([
+                symmetry_matrixT = np.array([
                     [np.cos(2 * angle), np.sin(2 * angle), 0],
                     [np.sin(2 * angle), - np.cos(2 * angle), 0],
                     [0, 0, -1]
                 ], dtype=float_type)
 
-                np.einsum("ik,uvkj->uvij", symmetry_matrix, np.roll(
-                    two_cylinders_jacobian[::-1, ::-1], 1, axis=0), out=two_cylinders_jacobian)
-                np.einsum("uvik,kj->uvij", two_cylinders_jacobian,
-                          sym_mat_2, out=two_cylinders_jacobian)
-                # two_cylinders_jacobian = symmetry_matrix @ np.roll(two_cylinders_jacobian[::-1, ::-1], 1, axis=0) @ sym_mat_2
+                np.einsum("ik,kjuv->ijuv", sym_mat_2T, np.roll(
+                    two_cylinders_jacobianT[::-1, ::-1], 1, axis=0), out=two_cylinders_jacobianT)
+                np.einsum("ikuv,kj->ijuv", two_cylinders_jacobianT,
+                          symmetry_matrixT, out=two_cylinders_jacobianT)
 
-                full_jacobian = np.concatenate(
-                    (full_jacobian, two_cylinders_jacobian), axis=1)
+                full_jacobianT = np.concatenate(
+                    (full_jacobianT, two_cylinders_jacobianT), axis=3)
 
                 angle += 4 * PI / (self.n_fp * self.n_cyl)
 
         else:
             angle = 4 * PI / (self.n_fp * self.n_cyl)
-            rotation_matrix = np.array([
-                [np.cos(angle), -np.sin(angle), 0],
-                [np.sin(angle), np.cos(angle), 0],
+            rotation_matrixT = np.array([
+                [np.cos(angle), np.sin(angle), 0],
+                [-np.sin(angle), np.cos(angle), 0],
                 [0, 0, 1]
             ], dtype=float_type)
             for _ in range(self.n_cyl // 2 - 1):
-                np.einsum("ik,uvkj->uvij", rotation_matrix,
-                          two_cylinders_jacobian, out=two_cylinders_jacobian)
-                # two_cylinders_jacobian = rotation_matrix @ two_cylinders_jacobian
+                np.einsum("ikuv,kj->uvij",
+                          two_cylinders_jacobianT, rotation_matrixT, out=two_cylinders_jacobianT)
 
-                full_jacobian = np.concatenate(
-                    (full_jacobian, two_cylinders_jacobian), axis=1)
+                full_jacobianT = np.concatenate(
+                    (full_jacobianT, two_cylinders_jacobianT), axis=3)
 
-        self.__dpsi = np.einsum('uvij->jiuv', full_jacobian, dtype=float_type)
-        self.__dpsi = self.__dpsi[::-1]
+        self.__dpsi = full_jacobianT
 
         self.__N = np.cross(self.__dpsi[0], self.__dpsi[1], 0, 0, 0)
         self.__dS = np.linalg.norm(self.__N, axis=0)
@@ -300,8 +294,7 @@ class PWC_Surface(Surface):
 
     def expand_for_plot_part(self):
         """
-        from a toroidal_surface surface return X,Y,Z
-        and add redundancy of first column
+        Returns X, Y, Z arrays of one field period, adding redundancy of first column.
         """
         shape = self.__P.shape[0] + 1, self.__P.shape[1]
 
@@ -317,8 +310,7 @@ class PWC_Surface(Surface):
 
     def expand_for_plot_whole(self):
         """
-        from a toroidal_surface surface return X,Y,Z
-        and add redundancy of first column
+        Returns X, Y, Z arrays of the whole Stellarator,
         """
         X, Y, Z = self.expand_for_plot_part()
 
@@ -332,17 +324,6 @@ class PWC_Surface(Surface):
         self.__rotation(2*PI / self.n_fp)
 
         return np.concatenate((X, X[:, 0][:, np.newaxis]), axis=1), np.concatenate((Y, Y[:, 0][:, np.newaxis]), axis=1), np.concatenate((Z, Z[:, 0][:, np.newaxis]), axis=1)
-
-    def plot_part(self, representation='surface'):
-        mlab.mesh(*self.expand_for_plot_part(),
-                  representation=representation, colormap='Wistia')
-        mlab.plot3d(np.linspace(0, 10, 100), np.zeros(
-            100), np.zeros(100), color=(1, 0, 0))
-        mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100),
-                    np.zeros(100), color=(0, 1, 0))
-        mlab.plot3d(np.zeros(100), np.zeros(100),
-                    np.linspace(0, 10, 100), color=(0, 0, 1))
-        mlab.show()
 
     def plot_whole_surface(self, representation='surface'):
         mlab.mesh(*self.expand_for_plot_whole(),
