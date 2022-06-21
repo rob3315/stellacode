@@ -432,11 +432,11 @@ class Surface_PWC_Ell_Tri(PWC_Surface):
                 symmetry_matrix = np.array([
                     [np.cos(2 * angle), np.sin(2 * angle), 0],
                     [np.sin(2 * angle), - np.cos(2 * angle), 0],
-                    [0, 0, -1]
+                    [0, 0, 1]
                 ], dtype=float_type)
 
                 np.einsum("ij,kuvj->kuvi", symmetry_matrix,
-                          np.roll(two_cylinders_perturbation[::, ::-1, ::-1], 1, axis=1), out=two_cylinders_perturbation)
+                          two_cylinders_perturbation[..., ::-1, ::], out=two_cylinders_perturbation)
                 full_perturbation = np.concatenate(
                     (full_perturbation, two_cylinders_perturbation), axis=2)
                 angle += 4 * PI / (self.n_fp * self.n_cyl)
@@ -484,7 +484,7 @@ class Surface_PWC_Ell_Tri(PWC_Surface):
             angle = 4 * PI / (self.n_fp * self.n_cyl)
 
             sym_mat_2T = np.array([
-                [-1, 0],
+                [1, 0],
                 [0, -1]
             ])
 
@@ -492,11 +492,11 @@ class Surface_PWC_Ell_Tri(PWC_Surface):
                 symmetry_matrixT = np.array([
                     [np.cos(2 * angle), np.sin(2 * angle), 0],
                     [np.sin(2 * angle), - np.cos(2 * angle), 0],
-                    [0, 0, -1]
+                    [0, 0, 1]
                 ])
 
-                np.einsum("ik,luvkj->luvij", sym_mat_2T, np.roll(
-                    two_cylinders_dperturbation[::-1, ::-1], 1, axis=0), out=two_cylinders_dperturbation)
+                np.einsum("ik,luvkj->luvij", sym_mat_2T,
+                          two_cylinders_dperturbation[::, ::, ::-1], out=two_cylinders_dperturbation)
                 np.einsum("luvik,kj->luvij", two_cylinders_dperturbation,
                           symmetry_matrixT, out=two_cylinders_dperturbation)
 

@@ -76,6 +76,9 @@ class Surface_PWC_Fourier(PWC_Surface):
         """
         Creates a Surface_PWC object from a text file.
         """
+        if n_pol % 4 == 0:
+            print("WARNING : n_pol is a multiple of four. Some results may be wrong.")
+
         data = []
         with open(path_surf, 'r') as f:
             next(f)
@@ -275,7 +278,7 @@ class Surface_PWC_Fourier(PWC_Surface):
             (n_coeffs + 3, *ugrid.shape, 2, 3))
 
         for k in range(n):
-            # derivatives / phi = toroidal
+            # derivatives / phi
             dperturbation[k, :, :, 1, 0] = - np.cos(self.alpha) / np.sin(
                 phigrid + self.alpha)**2 * np.cos(thetagrid) * np.cos(k * thetagrid)
             dperturbation[k, :, :, 1, 1] = (
@@ -386,11 +389,11 @@ class Surface_PWC_Fourier(PWC_Surface):
                 symmetry_matrix = np.array([
                     [np.cos(2 * angle), np.sin(2 * angle), 0],
                     [np.sin(2 * angle), - np.cos(2 * angle), 0],
-                    [0, 0, -1]
+                    [0, 0, 1]
                 ], dtype=float_type)
 
                 np.einsum("ij,kuvj->kuvi", symmetry_matrix,
-                          np.roll(two_cylinders_perturbation[::, ::-1, ::-1], 1, axis=1), out=two_cylinders_perturbation)
+                          two_cylinders_perturbation[..., ::-1, :], out=two_cylinders_perturbation)
                 full_perturbation = np.concatenate(
                     (full_perturbation, two_cylinders_perturbation), axis=2)
                 angle += 4 * PI / (self.n_fp * self.n_cyl)
@@ -438,7 +441,7 @@ class Surface_PWC_Fourier(PWC_Surface):
             angle = 4 * PI / (self.n_fp * self.n_cyl)
 
             sym_mat_2T = np.array([
-                [-1, 0],
+                [1, 0],
                 [0, -1]
             ])
 
@@ -446,11 +449,11 @@ class Surface_PWC_Fourier(PWC_Surface):
                 symmetry_matrixT = np.array([
                     [np.cos(2 * angle), np.sin(2 * angle), 0],
                     [np.sin(2 * angle), - np.cos(2 * angle), 0],
-                    [0, 0, -1]
+                    [0, 0, 1]
                 ])
 
-                np.einsum("ik,luvkj->luvij", sym_mat_2T, np.roll(
-                    two_cylinders_dperturbation[::-1, ::-1], 1, axis=0), out=two_cylinders_dperturbation)
+                np.einsum("ik,luvkj->luvij", sym_mat_2T,
+                          two_cylinders_dperturbation[::, ::, ::-1], out=two_cylinders_dperturbation)
                 np.einsum("luvik,kj->luvij", two_cylinders_dperturbation,
                           symmetry_matrixT, out=two_cylinders_dperturbation)
 

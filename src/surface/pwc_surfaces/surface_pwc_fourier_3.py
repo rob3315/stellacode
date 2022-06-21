@@ -57,6 +57,9 @@ class Surface_PWC_Fourier_3(PWC_Surface_3):
         """
         Creates a Surface_PWC object from a text file.
         """
+        if n_pol % 4 == 0:
+            print("WARNING : n_pol is a multiple of four. Some results may be wrong.")
+
         data = []
         with open(path_surf, 'r') as f:
             next(f)

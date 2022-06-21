@@ -35,6 +35,11 @@ class Surface_Fourier(Surface):
             Rmn = f.variables['rmnc'][()][-1]
             Zmn = f.variables['zmns'][()][-1]
             f.close()
+            for i, x in enumerate(m):
+                x = int(x)
+                if x % 2 == 1:
+                    Rmn[i] *= -1
+                    Zmn[i] *= -1
             surface_parametrization = (m, n, Rmn, Zmn)
             logging.debug('file extraction successfull')
             return cls(surface_parametrization, (n_pol, n_tor), n_fp)
@@ -45,7 +50,7 @@ class Surface_Fourier(Surface):
                 for line in f:
                     data.append(str.split(line))
 
-            adata = np.array(data, dtype='float32')
+            adata = np.array(data, dtype='float64')
             m, n, Rmn, Zmn = adata[:, 0], adata[:, 1], adata[:, 2], adata[:, 3]
             surface_parametrization = (m, n, Rmn, Zmn)
             logging.debug('file extraction successfull')

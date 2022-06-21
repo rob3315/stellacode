@@ -129,11 +129,12 @@ class PWC_Surface(Surface):
                 symmetry_matrix = np.array([
                     [np.cos(2 * angle), np.sin(2 * angle), 0],
                     [np.sin(2 * angle), - np.cos(2 * angle), 0],
-                    [0, 0, -1]
+                    [0, 0, 1]
                 ], dtype=float_type)
-
                 np.einsum("ij,uvj->uvi", symmetry_matrix,
-                          np.roll(two_cylinders[::-1, ::-1], 1, axis=0), out=two_cylinders)
+                          two_cylinders[:, ::-1], out=two_cylinders)
+                # np.einsum("ij,uvj->uvi", symmetry_matrix,
+                # np.roll(two_cylinders[::-1, ::-1], 1, axis=0), out=two_cylinders)
                 res = np.concatenate((res, two_cylinders), axis=1)
                 angle += 4 * np.pi / (self.n_fp * self.n_cyl)
 
@@ -231,7 +232,7 @@ class PWC_Surface(Surface):
             angle = 4 * PI / (self.n_fp * self.n_cyl)
 
             sym_mat_2T = np.array([
-                [-1, 0],
+                [1, 0],
                 [0, -1]
             ], dtype=float_type)
 
@@ -239,11 +240,11 @@ class PWC_Surface(Surface):
                 symmetry_matrixT = np.array([
                     [np.cos(2 * angle), np.sin(2 * angle), 0],
                     [np.sin(2 * angle), - np.cos(2 * angle), 0],
-                    [0, 0, -1]
+                    [0, 0, 1]
                 ], dtype=float_type)
 
-                np.einsum("ik,kjuv->ijuv", sym_mat_2T, np.roll(
-                    two_cylinders_jacobianT[::-1, ::-1], 1, axis=0), out=two_cylinders_jacobianT)
+                np.einsum("ik,kjuv->ijuv", sym_mat_2T,
+                          two_cylinders_jacobianT[..., ::-1], out=two_cylinders_jacobianT)
                 np.einsum("ikuv,kj->ijuv", two_cylinders_jacobianT,
                           symmetry_matrixT, out=two_cylinders_jacobianT)
 
