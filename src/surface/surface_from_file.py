@@ -6,7 +6,10 @@ from .pwc_surfaces.surface_pwc_ell_tri_3 import Surface_PWC_Ell_Tri_3
 
 
 def surface_from_file(path_surf, n_fp, n_pol, n_tor):
+    from os import sep
     if path_surf[-3::] == ".nc":
+        return Surface_Fourier.load_file(path_surf, n_fp, n_pol, n_tor)
+    elif path_surf.rpartition(sep)[-1][:6:] == "nescin":
         return Surface_Fourier.load_file(path_surf, n_fp, n_pol, n_tor)
     else:
         with open(path_surf, 'r') as f:

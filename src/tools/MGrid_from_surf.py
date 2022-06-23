@@ -51,7 +51,7 @@ def MGrid_from_surf(rmin, rmax, zmin, zmax, nfp, rad, zee, phi, myOutput, surf: 
     print("Generating grid...")
     rs = np.linspace(rmin, rmax, rad)
     zs = np.linspace(zmin, zmax, zee)
-    phis = np.linspace(0.0, np.pi / nfp, phi)
+    phis = np.linspace(0.0, 2 * np.pi / nfp, phi, endpoint=False)
     PZRgrid = np.zeros((phi, zee, rad, 3))
     PZRgrid[:, :, :, 0], PZRgrid[:, :, :, 1], PZRgrid[:,
                                                       :, :, 2] = np.meshgrid(phis, zs, rs, indexing='ij')
@@ -67,14 +67,211 @@ def MGrid_from_surf(rmin, rmax, zmin, zmax, nfp, rad, zee, phi, myOutput, surf: 
 
     rot_tensor = get_rot_tensor(surf.n_fp)
 
-    T = XYZgrid[np.newaxis, np.newaxis, np.newaxis, :, :, :, :] - \
-        contract('opq,ijq->oijp', rot_tensor,
-                 surf.P)[:, :, :, np.newaxis, np.newaxis, np.newaxis, :]
+    try:
+        T = XYZgrid[np.newaxis, np.newaxis, np.newaxis, :, :, :, :] - \
+            contract('opq,ijq->oijp', rot_tensor,
+                     surf.P)[:, :, :, np.newaxis, np.newaxis, np.newaxis, :]
 
-    K = T / (np.linalg.norm(T, axis=-1)**3)[..., np.newaxis]
+        K = T / (np.linalg.norm(T, axis=-1)**3)[..., np.newaxis]
 
-    XYZBs = mu_0 / (4*np.pi) * contract("niq,uvq,nuvpzrj,ijc,uv->pzrc", rot_tensor,
-                                        j, K, eijk, surf.dS) / surf.npts
+        XYZBs = mu_0 / (4*np.pi) * contract("niq,uvq,nuvpzrj,ijc,uv->pzrc", rot_tensor,
+                                            j, K, eijk, surf.dS) / surf.npts
+
+    except MemoryError:
+        mem_one_point = 3 * surf.n_fp * surf.npts * XYZgrid.itemsize  # bytes
+        print(f"Computing B for one point takes {mem_one_point} bytes")
+
+        max_mem_array = 2e9  # bytes
+
+        nrad, nzee, nphi = best_discretization(
+            rad, zee, phi, max_mem_array, mem_one_point)
+
+        print(
+            f"Best discretization found :\n{nrad} r points\n{nzee} z points\n{nphi} phi points")
+
+        XYZBs = np.empty(XYZgrid.shape)
+
+        irad, izee, iphi = 0, 0, 0
+
+        while irad <= rad:
+            while izee <= zee:
+                while iphi <= phi:
+                    T = XYZgrid[np.newaxis, np.newaxis, np.newaxis, iphi:iphi+nphi, izee:izee+nzee, irad:irad+nrad, :] - \
+                        contract('opq,ijq->oijp', rot_tensor,
+                                 surf.P)[:, :, :, np.newaxis, np.newaxis, np.newaxis, :]
+
+                    K = T / (np.linalg.norm(T, axis=-1)**3)[..., np.newaxis]
+
+                    XYZBs[iphi:iphi+nphi, izee:izee+nzee, irad:irad+nrad, :] = mu_0 / (4*np.pi) * contract("niq,uvq,nuvpzrj,ijc,uv->pzrc", rot_tensor,
+                                                                                                           j, K, eijk, surf.dS) / surf.npts
+
+                    iphi += nphi
+                    print(iphi, izee, irad)
+
+                izee += nzee
+                iphi = 0
+
+            irad += nrad
+            izee = 0
+
+    rot = np.einsum("ijp->pij", np.array([
+        [-np.sin(phis), np.cos(phis), np.zeros(phi)],
+        [np.zeros(phi), np.zeros(phi), np.ones(phi)],
+        [np.cos(phis), np.sin(phis), np.zeros(phi)]
+    ]))
+
+    PZRBs = np.einsum("pck,pzrk->pzrc", rot, XYZBs)
+
+    print("...finished BiotSavart.")
+
+    print("Writing MGrid...")
+    mgridio = urf.MGridIO()
+    mgridio.stringsize = 30
+    mgridio.external_coil_groups = 1
+    mgridio.dim_00001 = 1
+    mgridio.external_coils = 1
+    mgridio.rad = rad
+    mgridio.zee = zee
+    mgridio.phi = phi
+    mgridio.nfp = nfp
+    mgridio.nextcur = 1
+    mgridio.rmin = rmin
+    mgridio.rmax = rmax
+    mgridio.zmin = zmin
+    mgridio.zmax = zmax
+    mgridio.coil_group = ['Total']
+    mgridio.mgrid_mode = 'R'
+    mgridio.raw_coil_cur = [1.0]
+    rep = urf.StructuredGridRepresentation()
+    mgridio.RZPhiGrid = urf.Volume(rep, data={'Begin': [0.0, zmin, rmin], 'End': [
+        2*np.pi/nfp, zmax, rmax], 'nCells': [phi-1, zee-1, rad-1]})
+    mgridio.magFields = [urf.Field(
+        mgridio.RZPhiGrid, rep, tensorOrder=1, tensorDimensions=[3], data={'Data': PZRBs})]
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        mgridio.write(myOutput)
+    print("...finished writing MGrid.")
+
+
+def MGrid_from_config(rmin, rmax, zmin, zmax, rad, zee, phi, myOutput, path_config_file, cws: Surface = None, plasma: Surface = None):
+    from configparser import ConfigParser
+    from ..costs.EM_cost import EM_cost
+    from ..surface import surface_from_file
+    config = ConfigParser()
+    config.read(path_config_file)
+
+    if cws is None:
+        cws = surface_from_file(str(config['geometry']['path_cws']))
+    if plasma is None:
+        plasma = surface_from_file(str(config['geometry']['path_plasma']))
+
+    EM_cost_output = EM_cost(config, cws, plasma)
+    j_3D = EM_cost_output['j_3D']
+
+    MGrid_from_surf(rmin, rmax, zmin, zmax, plasma.n_fp,
+                    rad, zee, phi, myOutput, cws, j_3D)
+
+
+def best_discretization(rad, zee, phi, max_mem_array, mem_one_point):
+    from ortools.sat.python import cp_model
+    model = cp_model.CpModel()
+    # Creates the variables.
+    nrad = model.NewIntVar(0, rad - 1, 'x')
+    nzee = model.NewIntVar(0, zee - 1, 'y')
+    nphi = model.NewIntVar(0, phi - 1, 'z')
+    nrad_nzee = model.NewIntVar(0, (rad - 1) * (zee - 1), 'xy')
+    nrad_nzee_nphi = model.NewIntVar(
+        0, (rad - 1) * (zee - 1) * (phi - 1), 'xyz')
+    # Adds an all-different constraint.
+    model.AddMultiplicationEquality(nrad_nzee, [nrad, nzee])
+    model.AddMultiplicationEquality(nrad_nzee_nphi, [nrad_nzee, nphi])
+    model.Add(nrad_nzee_nphi <= int(max_mem_array / mem_one_point))
+    model.Maximize(nrad_nzee_nphi)
+
+    # Creates a solver and solves the model.
+    solver = cp_model.CpSolver()
+
+    # Solve.
+    solver.Solve(model)
+
+    return solver.Value(nrad), solver.Value(nzee), solver.Value(nphi)
+
+
+def MGrid_from_surf_dask(rmin, rmax, zmin, zmax, nfp, rad, zee, phi, myOutput, surf: Surface, j):
+    """Generates a file that contains the magnetic field generated on a grid, by
+    a current distribution carried by a surface. The format of the file is MGrid.
+
+    :param rmin: minimum r of grid
+    :type rmin: float
+
+    :param rmax: maximum r of grid
+    :type rmax: float
+
+    :param zmin: minimum z of grid
+    :type zmin: float
+
+    :param zmax: maximum z of grid
+    :type zmax: float
+
+    :param nfp: number of field periods
+    :type nfp: int
+
+    :param rad: number of points in r direction
+    :type rad: int
+
+    :param zee: number of points in z direction
+    :type zee: int
+
+    :param phi: number of points in phi direction
+    :type phi: int
+
+    :param myOutput: name of the output file
+    :type myOutput: str
+
+    :param surf: surface that carries the current
+    :type surf: Surface
+
+    :param j: surface current distribution
+    :type j: 3D float array
+
+    :return: None
+    :rtype: NoneType
+    """
+    from src.tools import get_rot_tensor, eijk
+    from opt_einsum import contract
+    from scipy.constants import mu_0
+    import dask.array as da
+
+    rot_tensor = get_rot_tensor(surf.n_fp)
+
+    def compute_B(XYZgrid):
+        T = XYZgrid[np.newaxis, np.newaxis, np.newaxis, :, :, :, :] - contract(
+            'opq,ijq->oijp', rot_tensor, surf.P)[:, :, :, np.newaxis, np.newaxis, np.newaxis, :]
+
+        K = T / (np.linalg.norm(T, axis=-1)**3)[..., np.newaxis]
+
+        XYZBs = mu_0 / (4*np.pi) * contract("niq,uvq,nuvpzrj,ijc,uv->pzrc", rot_tensor,
+                                            j, K, eijk, surf.dS) / surf.npts
+
+        return XYZBs
+
+    print("Generating grid...")
+    rs = np.linspace(rmin, rmax, rad)
+    zs = np.linspace(zmin, zmax, zee)
+    phis = np.linspace(0.0, 2 * np.pi / nfp, phi, endpoint=False)
+    PZRgrid = np.zeros((phi, zee, rad, 3))
+    PZRgrid[:, :, :, 0], PZRgrid[:, :, :, 1], PZRgrid[:,
+                                                      :, :, 2] = np.meshgrid(phis, zs, rs, indexing='ij')
+
+    XYZgrid = np.empty(PZRgrid.shape)
+    XYZgrid[..., 0] = PZRgrid[..., 2] * np.cos(PZRgrid[..., 0])
+    XYZgrid[..., 1] = PZRgrid[..., 2] * np.sin(PZRgrid[..., 0])
+    XYZgrid[..., 2] = PZRgrid[..., 1]
+
+    XYZgrid_dask = da.from_array(XYZgrid, chunks=(10, 10, 5, 3))
+    print("...generated grid.")
+
+    print("Evaluating Biot-Savart...")
+    XYZBs = da.map_blocks(compute_B, XYZgrid_dask, dtype=np.float64).compute()
 
     rot = np.einsum("ijp->pij", np.array([
         [-np.sin(phis), np.cos(phis), np.zeros(phi)],
@@ -105,7 +302,7 @@ def MGrid_from_surf(rmin, rmax, zmin, zmax, nfp, rad, zee, phi, myOutput, surf: 
     mgridio.raw_coil_cur = [1.0]
     rep = urf.StructuredGridRepresentation()
     mgridio.RZPhiGrid = urf.Volume(rep, data={'Begin': [0.0, zmin, rmin], 'End': [
-        np.pi/nfp, zmax, rmax], 'nCells': [phi-1, zee-1, rad-1]})
+        2*np.pi/nfp, zmax, rmax], 'nCells': [phi-1, zee-1, rad-1]})
     mgridio.magFields = [urf.Field(
         mgridio.RZPhiGrid, rep, tensorOrder=1, tensorDimensions=[3], data={'Data': PZRBs})]
     if MPI.COMM_WORLD.Get_rank() == 0:
