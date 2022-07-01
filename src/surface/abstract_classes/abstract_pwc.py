@@ -1,6 +1,5 @@
 import numpy as np
 from abc import abstractmethod
-from mayavi import mlab
 
 from .abstract_surface import Surface
 
@@ -9,13 +8,22 @@ PI = np.pi
 
 
 class PWC_Surface(Surface):
-    """
-    A class used to represent an abstract piecewise cylindrical toroidal surface.
+    """A class used to represent an abstract piecewise cylindrical toroidal surface.
+    A PWC surface can be described by :
+    - a cross-section, r : theta -> r(theta)
+    - a major radius, R0
+    - an angle inside the xy plane, alpha
+    - an angle outside the xy plane, beta
+    - a number of cylinders, field periods
+    - Stellarator symmetry
+
+    If those elements are provided, in a concrete child class of the PWC_Surface class,
+    the current class can compute the positions and derivatives of the surface.
+    The pwc_surfaces folder provides examples of concrete classes. 
     """
     @abstractmethod
     def _get_n_fp(self):
-        """
-        Gets the number of field periods.
+        """See Surface class.
         """
         pass
 
@@ -23,8 +31,10 @@ class PWC_Surface(Surface):
 
     @abstractmethod
     def _get_n_cyl(self):
-        """
-        Gets the number of cylinders per field period.
+        """Gets the number of cylinders.
+
+        :return: number of cylinders
+        :rtype: int
         """
         pass
 
@@ -32,8 +42,10 @@ class PWC_Surface(Surface):
 
     @abstractmethod
     def _get_symmetry(self):
-        """
-        Gets the Stellarator symmetry.
+        """Gets the Stellarator symmetry.
+
+        :return: True iff the surface has Stellarator symmetry
+        :rtype: bool
         """
         pass
 
@@ -41,8 +53,10 @@ class PWC_Surface(Surface):
 
     @abstractmethod
     def _get_R0(self):
-        """
-        Gets the major radius.
+        """Gets the major radius.
+
+        :return: major radius
+        :rtype: float
         """
         pass
 
@@ -50,8 +64,10 @@ class PWC_Surface(Surface):
 
     @abstractmethod
     def _get_r(self):
-        """
-        Gets the function r(theta) which describes the section.
+        """Gets the function r(theta) which describes the section.
+
+        :return: function r(theta)
+        :rtype: callable
         """
         pass
 
@@ -59,8 +75,10 @@ class PWC_Surface(Surface):
 
     @abstractmethod
     def _get_r_prime(self):
-        """
-        Gets the derivative of r(theta).
+        """Gets the derivative of r(theta).
+
+        :return: r'(theta)
+        :rtype: callable
         """
         pass
 
@@ -68,8 +86,11 @@ class PWC_Surface(Surface):
 
     @abstractmethod
     def _get_alpha(self):
-        """
-        Gets the angle alpha.
+        """Gets the angle alpha.
+        Alpha is the angle in the xy plane.
+
+        :return: alpha
+        :rtype: float
         """
         pass
 
@@ -77,16 +98,25 @@ class PWC_Surface(Surface):
 
     @abstractmethod
     def _get_beta(self):
-        """
-        Get the angle beta.
+        """Get the angle beta.
+        Beta is the angle out of the xy plane.
+
+        :return: beta
+        :rtype: float
         """
         pass
 
     beta = property(_get_beta)
 
     def compute_points(self):
-        """
-        Computes the points of one part of the Stellarator.
+        """Computes the points of one part of the Stellarator.
+        This function initializes the following attributes of the surface :
+        - __P
+
+        See Surface class for more information about this attribute.
+
+        :return: None
+        :rtype: NoneType
         """
         n_u, n_v = self.nbpts
         us = np.linspace(0, 1, n_u, endpoint=False, dtype=float_type)
@@ -153,13 +183,28 @@ class PWC_Surface(Surface):
         self.__P = res
 
     def _get_P(self):
+        """Gets the points of the surface.
+
+        :return: points
+        :rtype: 3D array
+        """
         return self.__P
 
     P = property(_get_P)
 
     def compute_first_derivatives(self):
-        """
-        Computes the derivatives of the transformation from the abstract torus to the real one.
+        """Computes the derivatives of the transformation from the abstract torus to the real one.
+        This transformation is a function psi : u, v -> x, y, z
+        This function initializes the following attributes :
+        - __dpsi
+        - __N
+        - __dS
+        - __n
+
+        See Surface class for more information about these attributes.
+
+        :return: None
+        :rtype: NoneType
         """
         n_u, n_v = self.nbpts
         us = np.linspace(0, 1, n_u, endpoint=False, dtype=float_type)
@@ -169,6 +214,7 @@ class PWC_Surface(Surface):
         thetagrid = 2 * PI * ugrid
         phigrid = 2 * PI / self.n_fp * vgrid
 
+        # Compute all partial derivatives d(x,y,z)/d(u, v)
         dxdtheta = (np.cos(phigrid) / np.sin(phigrid + self.alpha)) * (
             np.cos(thetagrid) * self.r_prime(thetagrid) - np.sin(thetagrid) * self.r(thetagrid))
 
@@ -198,11 +244,14 @@ class PWC_Surface(Surface):
 
         dzdv = dzdphi * 2 * PI / self.n_fp
 
+        # Transpose of the Jacobian matrix of psi
         jacobianT = np.array([
             [dxdu, dydu, dzdu],
             [dxdv, dydv, dzdv]
         ])
 
+        # Build the transposed Jacobian of the second cylinder
+        # which is the symmetrical of the first one
         jacobianT_sym = np.copy(jacobianT[:, :, :, ::-1])
 
         angle = 2 * PI / (self.n_fp * self.n_cyl)
@@ -223,9 +272,11 @@ class PWC_Surface(Surface):
         np.einsum("ikuv,kj->ijuv", jacobianT_sym,
                   sym_mat_1T, out=jacobianT_sym)
 
+        # Transposed Jacobian of the first two cylinders
         two_cylinders_jacobianT = np.concatenate(
             (jacobianT, jacobianT_sym), axis=3)
 
+        # Build transposed Jacobian of full field period
         full_jacobianT = np.concatenate((jacobianT, jacobianT_sym), axis=3)
 
         if self.symmetry:
@@ -274,28 +325,50 @@ class PWC_Surface(Surface):
         self.__n = self.__N / self.__dS
 
     def _get_dpsi(self):
+        """Gets the transposed Jacobian of the transformation.
+
+        :return: transposed Jacobian
+        :rtype: 4D array
+        """
         return self.__dpsi
 
     dpsi = property(_get_dpsi)
 
     def _get_N(self):
+        """Gets the normal inward vectors.
+
+        :return: normal inward vectors
+        :rtype: 3D array
+        """
         return self.__N
 
     N = property(_get_N)
 
     def _get_dS(self):
+        """Gets the surface elements.
+
+        :return: surface elements
+        :rtype: 2D array
+        """
         return self.__dS
 
     dS = property(_get_dS)
 
     def _get_n(self):
+        """Gets the normalized normal inward vectors.
+
+        :return: normalized normal inward vectors
+        :rtype: 3D array
+        """
         return self.__n
 
     n = property(_get_n)
 
     def expand_for_plot_part(self):
-        """
-        Returns X, Y, Z arrays of one field period, adding redundancy of first column.
+        """Returns X, Y, Z arrays of one field period, adding redundancy of first column.
+
+        :return: X, Y, Z arrays
+        :rtype: tuple(2D array, 2D array, 2D array)
         """
         shape = self.__P.shape[0] + 1, self.__P.shape[1]
 
@@ -310,8 +383,10 @@ class PWC_Surface(Surface):
         return X, Y, Z
 
     def expand_for_plot_whole(self):
-        """
-        Returns X, Y, Z arrays of the whole Stellarator,
+        """Returns X, Y, Z arrays of the whole Stellarator.
+
+        :return: X, Y, Z arrays
+        :rtype: tuple(2D array, 2D array, 2D array)
         """
         X, Y, Z = self.expand_for_plot_part()
 
@@ -327,6 +402,12 @@ class PWC_Surface(Surface):
         return np.concatenate((X, X[:, 0][:, np.newaxis]), axis=1), np.concatenate((Y, Y[:, 0][:, np.newaxis]), axis=1), np.concatenate((Z, Z[:, 0][:, np.newaxis]), axis=1)
 
     def plot_whole_surface(self, representation='surface'):
+        """Plots the whole surface.
+
+        :return: None
+        :rtype: NoneType
+        """
+        from mayavi import mlab
         mlab.mesh(*self.expand_for_plot_whole(),
                   representation=representation, colormap='Wistia')
         mlab.plot3d(np.linspace(0, 10, 100), np.zeros(
@@ -338,8 +419,10 @@ class PWC_Surface(Surface):
         mlab.show()
 
     def __rotation(self, angle):
-        """
-        Rotation around the z axis of all the points generated.
+        """Rotation around the z axis of all the points generated.
+
+        :return: None
+        :rtype: NoneType
         """
         rotation_matrix = np.array([
             [np.cos(angle), -np.sin(angle), 0],

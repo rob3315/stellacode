@@ -23,7 +23,8 @@ def generate_bnorm(config, input="128\n128\n24\n14\n24\n20"):
     .. warning::
 
        The input argument needs to have a specific format :
-       see the form of the optionnal argument
+       see the form of the optionnal argument.
+       See the BNORM documentation for the meaning of the argument.
     """
     path_folder_wout, _, wout = config["geometry"]["path_plasma"].rpartition(
         sep)

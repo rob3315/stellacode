@@ -195,6 +195,7 @@ class Surface(metaclass=ABCMeta):
 
         This method needs to modify the surface object according to the new parameters.
         All of its attributes (points, dpsi...) need to be updated when calling _set_param.
+        Otherwise, the shape optimization algorithm will not work.
         """
 
     param = property(_get_param, _set_param)
@@ -210,8 +211,10 @@ class Surface(metaclass=ABCMeta):
 
     @abstractmethod
     def expand_for_plot_part(self):
-        """
-        Returns 3 arrays X, Y and Z which can be used to plot the surface.
+        """Returns 3 arrays X, Y and Z which can be used to plot the surface.
+
+        :return: tuple of 3 arrays
+        :rtype: tuple(array, array, array)
         """
         pass
 
@@ -291,6 +294,11 @@ class Surface(metaclass=ABCMeta):
         return einsum("uvc,cuv->uv", self.get_B_generated_on_surface(other, j), other.n)
 
     def plot(self, representation="wireframe"):
+        """Plots one field period of the surface.
+
+        :return: None
+        :rtype: NoneType
+        """
         from mayavi import mlab
         from numpy import zeros, linspace
         mlab.mesh(*self.expand_for_plot_part(),
@@ -304,6 +312,11 @@ class Surface(metaclass=ABCMeta):
         mlab.show()
 
     def plot_function_on_surface(self, f):
+        """Plots a scalar function on the surface.
+
+        :return: None
+        :rtype: NoneType        
+        """
         from mayavi import mlab
         from numpy import concatenate, zeros, linspace
         fc2 = concatenate((f, f[0:1]), axis=0)

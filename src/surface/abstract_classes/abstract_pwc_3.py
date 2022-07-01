@@ -11,6 +11,7 @@ PI = np.pi
 class PWC_Surface_3(Surface):
     """
     A class used to represent an abstract piecewise cylindrical toroidal surface with three cylinders per field period.
+    Most of the methods implemented here are very similar to those of the PWC_Surface class.
     """
     @abstractmethod
     def _get_n_fp(self):
