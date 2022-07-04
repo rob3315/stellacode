@@ -8,7 +8,7 @@ import dask
 
 from src.surface.surface_from_file import surface_from_file
 from src.costs.abstract_shape_gradient import Abstract_shape_gradient
-from src.costs.EM_cost import EM_cost_dask
+from src.costs.EM_cost import EM_cost_dask_2
 import src.tools as tools
 import src.tools.bnorm as bnorm
 
@@ -73,7 +73,7 @@ class EM_shape_gradient(Abstract_shape_gradient):
                                               1: self.chunk_theta_coil, 2: self.chunk_zeta_coil}, asarray=False)
 
     def cost(self, S):
-        EM_cost_dic = EM_cost_dask(self.config, S=S, Sp=self.Sp)
+        EM_cost_dic = EM_cost_dask_2(self.config, S=S, Sp=self.Sp)
         EM_cost = EM_cost_dic['cost_B'] + self.lamb*EM_cost_dic['cost_J']
         logging.info('Chi_B : {:5e}, Chi_j : {:5e}, EM cost : {:5e}'.format(
             EM_cost_dic['cost_B'], EM_cost_dic['cost_J'], EM_cost))

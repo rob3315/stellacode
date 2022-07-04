@@ -15,7 +15,7 @@ import src.tools.bnorm as bnorm
 def EM_cost(config, S=None, Sp=None):
     """dispatch depending on the dask option in config"""
     if config['other']['dask'] == 'True':
-        return EM_cost_dask(config, S, Sp)
+        return EM_cost_dask_2(config, S, Sp)
     else:
         return EM_cost_without_dask(config, S, Sp)
 
@@ -416,4 +416,121 @@ def EM_cost_dask_old(config, S, Sp):
     EM_cost_output['cost_J'] = Np*np.einsum('i,ij,j->', j_S, Qj, j_S)
     EM_cost_output['cost'] = EM_cost_output['cost_B'] + \
         lamb*EM_cost_output['cost_J']
+    return EM_cost_output
+
+
+def EM_cost_dask_2(config, S, Sp):
+    """new version without Lagrange multipliers, to use by default
+
+    :param config: 
+    :type config: :class:`configparser.ConfigParser`
+    :param S:
+    :type S: `Surface`
+    :param Sp:
+    :type Sp: `Surface`
+    :return: various component of the cost
+    :rtype: dictionary
+    """
+    import dask.array as da
+    # initilization of the parameters
+    lamb = float(config['other']['lamb'])
+    Np = int(config['geometry']['Np'])
+    ntheta_plasma = int(config['geometry']['ntheta_plasma'])
+    ntheta_coil = int(config['geometry']['ntheta_coil'])
+    nzeta_plasma = int(config['geometry']['nzeta_plasma'])
+    nzeta_coil = int(config['geometry']['nzeta_coil'])
+    mpol_coil = int(config['geometry']['mpol_coil'])
+    ntor_coil = int(config['geometry']['ntor_coil'])
+    net_poloidal_current_Amperes = float(
+        config['other']['net_poloidal_current_Amperes'])/Np  # 11884578.094260072
+    net_toroidal_current_Amperes = float(
+        config['other']['net_toroidal_current_Amperes'])  # 0
+    curpol = float(config['other']['curpol'])  # 4.9782004309255496
+    phisize = (mpol_coil, ntor_coil)
+    # 'code/li383/plasma_surf.txt'
+    path_plasma = str(config['geometry']['path_plasma'])
+    path_cws = str(config['geometry']['path_cws'])  # 'code/li383/cws.txt'
+    path_bnorm = str(config['other']['path_bnorm'])  # 'code/li383/bnorm.txt'
+    path_output = str(config['other']['path_output'])  # 'coeff_full_opt'
+    cupy = config['other']['cupy'] == 'True'  # dask is needed to use cupy
+
+    chunk_theta_coil = int(config['dask_parameters']['chunk_theta_coil'])
+    chunk_zeta_coil = int(config['dask_parameters']['chunk_zeta_coil'])
+    chunk_theta_plasma = int(config['dask_parameters']['chunk_theta_plasma'])
+    chunk_zeta_plasma = int(config['dask_parameters']['chunk_zeta_plasma'])
+    chunk_theta = int(config['dask_parameters']['chunk_theta'])
+
+    # initialization of the surfaces
+    if S is None:
+        S = surface_from_file(path_cws)
+    if Sp is None:
+        Sp = surface_from_file(path_plasma)
+
+    # tensors computations
+    BT = curpol * bnorm.get_bnorm(path_bnorm, Sp)
+
+    rot_tensor = tools.get_rot_tensor(Np)
+    matrixd_phi = tools.get_matrix_dPhi(phisize, S.grids)
+    dpsi = S.dpsi
+    normalp = Sp.n
+    S_dS = S.dS
+    eijk = tools.eijk
+    Qj = tools.compute_Qj(matrixd_phi, dpsi, S_dS)
+
+    def compute_B(XYZgrid):
+        T = XYZgrid[np.newaxis, np.newaxis, np.newaxis, ...] - contract(
+            'opq,ijq->oijp', rot_tensor, S.P)[..., np.newaxis, np.newaxis, :]
+
+        K = T / (np.linalg.norm(T, axis=-1)**3)[..., np.newaxis]
+
+        B = mu_0 / (4*np.pi) * contract('nuvabj,ouvk,niq,kquv,ijc->oabc', K, matrixd_phi,
+                                        rot_tensor, dpsi, eijk) / (ntheta_coil*nzeta_coil)
+        return B
+
+    XYZgrid_dask = da.from_array(Sp.P, chunks=(
+        chunk_theta_plasma, chunk_zeta_plasma, 3))
+
+    B = da.map_blocks(compute_B, XYZgrid_dask,
+                      dtype=np.float64, chunks=(len(matrixd_phi) // 10, chunk_theta_plasma, chunk_zeta_plasma, 3)).compute()
+
+    LS = contract("oabc,cab->oab", B, normalp)
+
+    LS_R = LS[2:]
+
+    Qj_inv_R = np.linalg.inv(Qj[2:, 2:])
+    LS_dagger_R = np.einsum('ut,tij,ij->uij', Qj_inv_R, LS_R, Sp.dS/Sp.npts)
+    inside_M_lambda_R = lamb * \
+        np.eye(LS_R.shape[0])+np.einsum('tpq,upq->tu', LS_dagger_R, LS_R)
+    M_lambda_R = np.linalg.inv(inside_M_lambda_R)
+    # Regcoil:
+    EM_cost_output = {}
+    # WARNING : we restrict our space to hangle a constraint free pb
+
+    # we compute the full Right Hand Side
+    B_tilde = BT - \
+        np.einsum('tpq,t', LS[:2], [
+                  net_poloidal_current_Amperes, net_toroidal_current_Amperes])
+    LS_dagger_B_tilde = np.einsum('hpq,pq->h', LS_dagger_R, B_tilde)
+    RHS = LS_dagger_B_tilde-lamb * \
+        Qj_inv_R@Qj[2:, :2]@[net_poloidal_current_Amperes,
+                             net_toroidal_current_Amperes]
+    j_S_R = M_lambda_R@RHS
+    j_S = np.concatenate(
+        ([net_poloidal_current_Amperes, net_toroidal_current_Amperes], j_S_R))
+
+    j_3D = np.einsum('oijk,kdij,ij,o->ijd', matrixd_phi,
+                     S.dpsi, 1/S.dS, j_S, optimize=True)
+
+    # we save the results
+    B_err = np.einsum('hpq,h', LS, j_S) - BT
+    # EM_cost_output['B_n'] = np.einsum('hpq,h', LS, j_S)
+    EM_cost_output['err_max_B'] = np.max(np.abs(B_err))
+    EM_cost_output['max_j'] = np.max(np.linalg.norm(j_3D, axis=2))
+    EM_cost_output['cost_B'] = Np * \
+        np.einsum('pq,pq,pq->', B_err, B_err, Sp.dS/Sp.npts)
+    EM_cost_output['cost_J'] = Np*np.einsum('i,ij,j->', j_S, Qj, j_S)
+    EM_cost_output['cost'] = EM_cost_output['cost_B'] + \
+        lamb*EM_cost_output['cost_J']
+    # Added for visualization
+    EM_cost_output['j_3D'] = j_3D
     return EM_cost_output
