@@ -44,10 +44,8 @@ class Surface_PWC_Ell_Tri(PWC_Surface):
 
     def __init__(self, n_fp, n_cyl, symmetry, n_u, n_v, param):
         if n_cyl == 1:
-            n_cyl = 2
-            param[-2] = PI / 2 - 2 * PI / n_fp
+            param[-2] = PI * (0.5 - 1 / n_fp)
             param[-1] = 0
-            symmetry = False
 
         self.__n_fp = n_fp
         self.__n_cyl = n_cyl

@@ -1,14 +1,11 @@
 """
-Some utilitary functions.
+Imports for the surface module.
 """
-
-from numpy import linspace, zeros
-from mayavi import mlab
-from configparser import ConfigParser
-
 from .surface_Fourier import Surface_Fourier
 from .pwc_surfaces.surface_pwc_fourier import Surface_PWC_Fourier
 from .pwc_surfaces.surface_pwc_ell_tri import Surface_PWC_Ell_Tri
+from .pwc_surfaces.surface_pwc_fourier_3 import Surface_PWC_Fourier_3
+from .pwc_surfaces.surface_pwc_ell_tri_3 import Surface_PWC_Ell_Tri_3
 from .surface_from_file import surface_from_file
 
 
@@ -25,6 +22,8 @@ def get_cws_and_plasma(path_config_file=None, config=None):
     :rtype: tuple (Surface, Surface)
 
     """
+    from configparser import ConfigParser
+
     if config is None:
         print('path_config : {}'.format(path_config_file))
         config = ConfigParser()
@@ -57,6 +56,9 @@ def plot_cws_and_plasma(cws, plasma):
     :rtype: NoneType
 
     """
+    from mayavi import mlab
+    from numpy import linspace, zeros
+
     mlab.mesh(*cws.expand_for_plot_part(),
               representation="wireframe", colormap="Wistia")
     mlab.mesh(*plasma.expand_for_plot_part(),

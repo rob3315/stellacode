@@ -303,6 +303,68 @@ class Surface(metaclass=ABCMeta):
         from numpy import einsum
         return einsum("uvc,cuv->uv", self.get_B_generated_on_surface(other, j), other.n)
 
+    def expand_for_plot_part(self):
+        """Returns X, Y, Z arrays of one field period, adding redundancy of first column.
+
+        :return: X, Y, Z arrays
+        :rtype: tuple(2D array, 2D array, 2D array)
+        """
+        import numpy as np
+        shape = self.P.shape[0] + 1, self.P.shape[1]
+
+        X, Y, Z = np.empty(shape), np.empty(shape), np.empty(shape)
+        X[:-1:, ::] = self.P[..., 0]
+        X[-1, ::] = self.P[0, ::, 0]
+        Y[:-1:, ::] = self.P[..., 1]
+        Y[-1, ::] = self.P[0, ::, 1]
+        Z[:-1:, ::] = self.P[..., 2]
+        Z[-1, ::] = self.P[0, ::, 2]
+
+        return X, Y, Z
+
+    def expand_for_plot_whole(self):
+        """Returns X, Y, Z arrays of the whole Stellarator.
+
+        :return: X, Y, Z arrays
+        :rtype: tuple(2D array, 2D array, 2D array)
+        """
+        import numpy as np
+        X, Y, Z = self.expand_for_plot_part()
+        points = np.stack((X, Y, Z), axis=-1)
+
+        for i in range(1, self.n_fp):
+            angle = 2 * i * np.pi / self.n_fp
+            rotation_matrix = np.array([
+                [np.cos(angle), -np.sin(angle), 0],
+                [np.sin(angle), np.cos(angle), 0],
+                [0, 0, 1]
+            ])
+            rotated_points = np.einsum("ij,uvj->uvi", rotation_matrix, points)
+            X = np.concatenate((X, rotated_points[..., 0]), axis=1)
+            Y = np.concatenate((Y, rotated_points[..., 1]), axis=1)
+            Z = np.concatenate((Z, rotated_points[..., 2]), axis=1)
+
+        return np.concatenate((X, X[:, 0][:, np.newaxis]), axis=1), np.concatenate((Y, Y[:, 0][:, np.newaxis]), axis=1), np.concatenate((Z, Z[:, 0][:, np.newaxis]), axis=1)
+
+    def plot_whole_surface(self, representation='surface'):
+        """Plots the whole surface.
+
+        :return: None
+        :rtype: NoneType
+        """
+        from mayavi import mlab
+        import numpy as np
+
+        mlab.mesh(*self.expand_for_plot_whole(),
+                  representation=representation, colormap='Wistia')
+        mlab.plot3d(np.linspace(0, 10, 100), np.zeros(
+            100), np.zeros(100), color=(1, 0, 0))
+        mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100),
+                    np.zeros(100), color=(0, 1, 0))
+        mlab.plot3d(np.zeros(100), np.zeros(100),
+                    np.linspace(0, 10, 100), color=(0, 0, 1))
+        mlab.show()
+
     def plot(self, representation="wireframe"):
         """Plots one field period of the surface.
 

@@ -101,6 +101,22 @@ class Surface_Fourier(Surface):
 
     P = property(_get_P)
 
+    def _get_psi(self):
+        (m, n, Rmn, Zmn) = self.surface_parametrization
+
+        def psi(u, v):
+            angle = m*u + n*v
+            cos = np.cos(2 * np.pi * angle)
+            sin = np.sin(2 * np.pi * angle)
+            r = np.sum(Rmn * cos)
+            z = np.sum(Zmn * sin)
+            x = r * np.cos(v * 2 * np.pi / self.n_fp)
+            y = r * np.sin(v * 2 * np.pi / self.n_fp)
+            return x, y, z
+        return psi
+
+    psi = property(_get_psi)
+
     def _get_dpsi(self):
         return self.__dpsi
 
