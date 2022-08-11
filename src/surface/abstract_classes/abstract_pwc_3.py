@@ -15,8 +15,7 @@ class PWC_Surface_3(Surface):
     """
     @abstractmethod
     def _get_n_fp(self):
-        """
-        Gets the number of field periods.
+        """See Surface class.
         """
         pass
 
@@ -24,8 +23,10 @@ class PWC_Surface_3(Surface):
 
     @abstractmethod
     def _get_R0(self):
-        """
-        Gets the major radius.
+        """Gets the major radius.
+
+        :return: major radius
+        :rtype: float
         """
         pass
 
@@ -33,8 +34,10 @@ class PWC_Surface_3(Surface):
 
     @abstractmethod
     def _get_r(self):
-        """
-        Gets the function r(theta) which describes the section.
+        """Gets the function r(theta) which describes the section.
+
+        :return: function r(theta)
+        :rtype: callable
         """
         pass
 
@@ -42,8 +45,10 @@ class PWC_Surface_3(Surface):
 
     @abstractmethod
     def _get_r_prime(self):
-        """
-        Gets the derivative of r(theta).
+        """Gets the derivative of r(theta).
+
+        :return: r'(theta)
+        :rtype: callable
         """
         pass
 
@@ -51,8 +56,11 @@ class PWC_Surface_3(Surface):
 
     @abstractmethod
     def _get_alpha(self):
-        """
-        Gets the angle alpha.
+        """Gets the angle alpha.
+        Alpha is the angle in the xy plane.
+
+        :return: alpha
+        :rtype: float
         """
         pass
 
@@ -60,22 +68,31 @@ class PWC_Surface_3(Surface):
 
     @abstractmethod
     def _get_beta(self):
-        """
-        Get the angle beta.
+        """Get the angle beta.
+        Beta is the angle out of the xy plane.
+
+        :return: beta
+        :rtype: float
         """
         pass
 
     beta = property(_get_beta)
 
     def compute_points(self):
+        """Computes the points of one part of the Stellarator.
+        This function initializes the following attributes of the surface :
+        - __P
+
+        See Surface class for more information about this attribute.
+
+        :return: None
+        :rtype: NoneType
         """
-        Computes the points of one part of the Stellarator.
-        """
-        n_u, n_v = self.nbpts
-        n_v_first_cylinder = n_v // 4
-        us = np.linspace(0, 1, n_u, endpoint=False)
-        vs = (np.arange(- n_v + 3 * n_v_first_cylinder,
-                        n_v_first_cylinder) + 0.5) / n_v
+        l_u, l_v = self.nbpts
+        l_v_first_cylinder = l_v // 4
+        us = np.linspace(0, 1, l_u, endpoint=False)
+        vs = (np.arange(- l_v + 3 * l_v_first_cylinder,
+                        l_v_first_cylinder) + 0.5) / l_v
 
         ugrid, vgrid = np.meshgrid(us, vs, indexing='ij')
 
@@ -119,13 +136,18 @@ class PWC_Surface_3(Surface):
         np.einsum("ij,uvj->uvi", symmetry_matrix,
                   third_cylinder, out=third_cylinder)
 
-        res = np.concatenate((first_cylinder[::, -n_v_first_cylinder::],
-                              second_cylinder, third_cylinder[::, :n_v_first_cylinder:]), axis=1)
+        res = np.concatenate((first_cylinder[::, -l_v_first_cylinder::],
+                              second_cylinder, third_cylinder[::, :l_v_first_cylinder:]), axis=1)
 
         self.__first_cylinder = first_cylinder
         self.__P = res
 
     def _get_P(self):
+        """Gets the points of the surface.
+
+        :return: points
+        :rtype: 3D array
+        """
         return self.__P
 
     P = property(_get_P)
@@ -136,14 +158,24 @@ class PWC_Surface_3(Surface):
     first_cylinder = property(_get_first_cylinder)
 
     def compute_first_derivatives(self):
+        """Computes the derivatives of the transformation from the abstract torus to the real one.
+        This transformation is a function psi : u, v -> x, y, z
+        This function initializes the following attributes :
+        - __dpsi
+        - __N
+        - __dS
+        - __n
+
+        See Surface class for more information about these attributes.
+
+        :return: None
+        :rtype: NoneType
         """
-        Computes the derivatives of the transformation from the abstract torus to the real one.
-        """
-        n_u, n_v = self.nbpts
-        n_v_first_cylinder = n_v // 4
-        us = np.linspace(0, 1, n_u, endpoint=False)
-        vs = (np.arange(- n_v + 3 * n_v_first_cylinder,
-                        n_v_first_cylinder) + 0.5) / n_v
+        l_u, l_v = self.nbpts
+        l_v_first_cylinder = l_v // 4
+        us = np.linspace(0, 1, l_u, endpoint=False)
+        vs = (np.arange(- l_v + 3 * l_v_first_cylinder,
+                        l_v_first_cylinder) + 0.5) / l_v
 
         ugrid, vgrid = np.meshgrid(us, vs, indexing='ij')
 
@@ -221,7 +253,7 @@ class PWC_Surface_3(Surface):
                   sym_mat_1T, out=jacobianT_third_cylinder)
 
         full_jacobianT = np.concatenate(
-            (jacobianT[..., -n_v_first_cylinder::], jacobianT_second_cylinder, jacobianT_third_cylinder[..., :n_v_first_cylinder:]), axis=3)
+            (jacobianT[..., -l_v_first_cylinder::], jacobianT_second_cylinder, jacobianT_third_cylinder[..., :l_v_first_cylinder:]), axis=3)
 
         self.__dpsi_first_cylinder = jacobianT
         self.__dpsi = full_jacobianT
@@ -231,6 +263,11 @@ class PWC_Surface_3(Surface):
         self.__n = self.__N / self.__dS
 
     def _get_dpsi(self):
+        """Gets the transposed Jacobian of the transformation.
+
+        :return: transposed Jacobian
+        :rtype: 4D array
+        """
         return self.__dpsi
 
     dpsi = property(_get_dpsi)
@@ -241,72 +278,31 @@ class PWC_Surface_3(Surface):
     dpsi_first_cylinder = property(_get_dpsi_first_cylinder)
 
     def _get_N(self):
+        """Gets the normal inward vectors.
+
+        :return: normal inward vectors
+        :rtype: 3D array
+        """
         return self.__N
 
     N = property(_get_N)
 
     def _get_dS(self):
+        """Gets the surface elements.
+
+        :return: surface elements
+        :rtype: 2D array
+        """
         return self.__dS
 
     dS = property(_get_dS)
 
     def _get_n(self):
+        """Gets the normalized normal inward vectors.
+
+        :return: normalized normal inward vectors
+        :rtype: 3D array
+        """
         return self.__n
 
     n = property(_get_n)
-
-    def expand_for_plot_part(self):
-        """
-        Returns X, Y, Z arrays of one field period, adding redundancy of first column.
-        """
-        shape = self.__P.shape[0] + 1, self.__P.shape[1]
-
-        X, Y, Z = np.empty(shape), np.empty(shape), np.empty(shape)
-        X[:-1:, ::] = self.__P[::, ::, 0]
-        X[-1, ::] = self.__P[0, ::, 0]
-        Y[:-1:, ::] = self.__P[::, ::, 1]
-        Y[-1, ::] = self.__P[0, ::, 1]
-        Z[:-1:, ::] = self.__P[::, ::, 2]
-        Z[-1, ::] = self.__P[0, ::, 2]
-
-        return X, Y, Z
-
-    def expand_for_plot_whole(self):
-        """
-        Returns X, Y, Z arrays of the whole Stellarator,
-        """
-        X, Y, Z = self.expand_for_plot_part()
-
-        for _ in range(self.n_fp - 1):
-            self.__rotation(2*PI / self.n_fp)
-            newX, newY, newZ = self.expand_for_plot_part()
-            X = np.concatenate((X, newX), axis=1)
-            Y = np.concatenate((Y, newY), axis=1)
-            Z = np.concatenate((Z, newZ), axis=1)
-
-        self.__rotation(2*PI / self.n_fp)
-
-        return np.concatenate((X, X[:, 0][:, np.newaxis]), axis=1), np.concatenate((Y, Y[:, 0][:, np.newaxis]), axis=1), np.concatenate((Z, Z[:, 0][:, np.newaxis]), axis=1)
-
-    def plot_whole_surface(self, representation='surface'):
-        mlab.mesh(*self.expand_for_plot_whole(),
-                  representation=representation, colormap='Wistia')
-        mlab.plot3d(np.linspace(0, 10, 100), np.zeros(
-            100), np.zeros(100), color=(1, 0, 0))
-        mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100),
-                    np.zeros(100), color=(0, 1, 0))
-        mlab.plot3d(np.zeros(100), np.zeros(100),
-                    np.linspace(0, 10, 100), color=(0, 0, 1))
-        mlab.show()
-
-    def __rotation(self, angle):
-        """
-        Rotation around the z axis of all the points generated.
-        """
-        rotation_matrix = np.array([
-            [np.cos(angle), -np.sin(angle), 0],
-            [np.sin(angle), np.cos(angle), 0],
-            [0, 0, 1]
-        ], dtype=float_type)
-
-        np.einsum("ij,uvj->uvi", rotation_matrix, self.__P, out=self.__P)

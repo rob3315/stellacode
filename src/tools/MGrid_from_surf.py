@@ -248,7 +248,7 @@ def MGrid_from_surf_dask(rmin, rmax, zmin, zmax, nfp, rad, zee, phi, myOutput, s
     XYZgrid[..., 1] = PZRgrid[..., 2] * np.sin(PZRgrid[..., 0])
     XYZgrid[..., 2] = PZRgrid[..., 1]
 
-    XYZgrid_dask = da.from_array(XYZgrid, chunks=(10, 10, 5, 3))
+    XYZgrid_dask = da.from_array(XYZgrid, chunks=(5, 5, 5, 3))
     print("...generated grid.")
 
     print("Evaluating Biot-Savart...")

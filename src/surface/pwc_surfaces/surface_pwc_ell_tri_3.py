@@ -17,24 +17,24 @@ class Surface_PWC_Ell_Tri_3(PWC_Surface_3):
         Number of field periods.
     R0 : float
         Radius of the Stellarator.
-    n_u : int
+    l_u : int
         Number of poloidal angles per field period. Has to be even, and to be a multiple of n_cyl.
-    n_v : int
+    l_v : int
         Number of toroidal angles.
     param : array
         parameters of the surface. Fourier coefficients and angles.
     """
 
-    def __new__(cls, n_fp, n_u, n_v, param):
-        if n_v % 4 != 0:
-            raise ValueError("n_v has to be a multiple of four")
+    def __new__(cls, n_fp, l_u, l_v, param):
+        if l_v % 4 != 0:
+            raise ValueError("l_v has to be a multiple of four")
         else:
             return super(Surface_PWC_Ell_Tri_3, cls).__new__(cls)
 
-    def __init__(self, n_fp, n_u, n_v, param):
+    def __init__(self, n_fp, l_u, l_v, param):
         self.__n_fp = n_fp
-        self.n_u = n_u
-        self.n_v = n_v
+        self.l_u = l_u
+        self.l_v = l_v
         self.__param = param
 
         self.__a = self.__param[0]
@@ -105,18 +105,18 @@ class Surface_PWC_Ell_Tri_3(PWC_Surface_3):
     beta = property(_get_beta)
 
     def _get_npts(self):
-        return self.n_u * self.n_v
+        return self.l_u * self.l_v
 
     npts = property(_get_npts)
 
     def _get_nbpts(self):
-        return (self.n_u, self.n_v)
+        return (self.l_u, self.l_v)
 
     nbpts = property(_get_nbpts)
 
     def _get_grids(self):
-        u, v = np.linspace(0, 1, self.n_u, endpoint=False), (np.arange(
-            self.n_v) + 0.5) / self.n_v
+        u, v = np.linspace(0, 1, self.l_u, endpoint=False), (np.arange(
+            self.l_v) + 0.5) / self.l_v
         ugrid, vgrid = np.meshgrid(u, v, indexing='ij')
         return ugrid, vgrid
 
@@ -190,11 +190,11 @@ class Surface_PWC_Ell_Tri_3(PWC_Surface_3):
         """
         Compute the perturbations of a surface
         """
-        n_u, n_v = self.nbpts
-        n_v_first_cylinder = n_v // 4
-        us = np.linspace(0, 1, n_u, endpoint=False)
-        vs = (np.arange(- n_v + 3 * n_v_first_cylinder,
-                        n_v_first_cylinder) + 0.5) / n_v
+        l_u, l_v = self.nbpts
+        l_v_first_cylinder = l_v // 4
+        us = np.linspace(0, 1, l_u, endpoint=False)
+        vs = (np.arange(- l_v + 3 * l_v_first_cylinder,
+                        l_v_first_cylinder) + 0.5) / l_v
 
         ugrid, vgrid = np.meshgrid(us, vs, indexing='ij')
 
@@ -405,7 +405,7 @@ class Surface_PWC_Ell_Tri_3(PWC_Surface_3):
                   third_cylinder, out=third_cylinder)
 
         full_perturbation = np.concatenate(
-            (perturbation[::, ::, -n_v_first_cylinder::, ::], second_cylinder, third_cylinder[::, ::, :n_v_first_cylinder:, ::]), axis=2)
+            (perturbation[::, ::, -l_v_first_cylinder::, ::], second_cylinder, third_cylinder[::, ::, :l_v_first_cylinder:, ::]), axis=2)
 
         dperturbation_second_cylinder = np.copy(dperturbation[::, ::, ::-1])
 
@@ -449,7 +449,7 @@ class Surface_PWC_Ell_Tri_3(PWC_Surface_3):
                   sym_mat_1T, out=dperturbation_third_cylinder)
 
         full_dperturbation = np.concatenate(
-            (dperturbation[::, ::, -n_v_first_cylinder::, ::, ::], dperturbation_second_cylinder, dperturbation_third_cylinder[::, ::, :n_v_first_cylinder:, ::, ::]), axis=2)
+            (dperturbation[::, ::, -l_v_first_cylinder::, ::, ::], dperturbation_second_cylinder, dperturbation_third_cylinder[::, ::, :l_v_first_cylinder:, ::, ::]), axis=2)
 
         res = {}
         res['theta'] = full_perturbation

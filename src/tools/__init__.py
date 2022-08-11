@@ -49,6 +49,54 @@ def get_matrix_dPhi(phisize, grids):
     return matrix_dPhi
 
 
+def get_matrix_dPhi_2(phisize, grids):
+    """New representation"""
+    lm, ln = phisize
+    ugrid, vgrid = grids
+    lu, lv = ugrid.shape
+    lc = (lm*(2*ln+1)+ln)
+    matrix_dPhi = np.zeros((lc+2, lu, lv, 2))
+    # we start with du:
+    matrix_dPhi[0, :, :, 0] = np.ones((lu, lv))
+    # dv
+    matrix_dPhi[1, :, :, 1] = np.ones((lu, lv))
+    for coeff in range(lc):
+        m, n = phi_coeff_from_nb(coeff, phisize)
+        # Phi=sin(2pi(mu+nv))
+        # \nabla\perp Phi = (-2 pi n cos(2pi(mu+nv)),2pi m cos(2pi(mu+nv)))
+        matrix_dPhi[coeff+2, :, :, 0] = - np.pi * n * np.cos(
+            2 * np.pi * m * ugrid) * np.cos(np.pi * n * vgrid)
+        matrix_dPhi[coeff+2, :, :, 1] = - 2 * np.pi * m * np.sin(
+            2 * np.pi * m * ugrid) * np.sin(np.pi * n * vgrid)
+    return matrix_dPhi
+
+
+def get_matrix_dPhi_cylinders(phisize, grids, ncyl):
+    lm,  ln = phisize
+    ugrid, vgrid = grids
+    lu, lv = ugrid.shape
+    lc = (lm * (2 * ln + 1) + ln)
+    matrix_dPhi = np.zeros((lc * ncyl + 2, lu, lv, 2))
+    # we start with du:
+    matrix_dPhi[0, :, :, 0] = np.ones((lu, lv))
+    # dv
+    matrix_dPhi[1, :, :, 1] = np.ones((lu, lv))
+    if ncyl != 3:
+        lv_cyl = lv // ncyl  # number of toroidal points per cylinder
+        for i in range(ncyl):
+            im = lc * i + 2
+            # v index corresponding to where the cylinder we are in
+            vm, vM = i * lv_cyl, (i + 1) * lv_cyl
+            vmax = 1 / ncyl  # scaling factor, to have 0 at both junctions
+            for coeff in range(lc):
+                m, n = phi_coeff_from_nb(coeff, phisize)
+                matrix_dPhi[im + coeff, :, vm:vM:, 0] = - np.pi * n * np.cos(
+                    2 * np.pi * m * ugrid[:, :lv_cyl:]) * np.cos(np.pi * n * vgrid[:, :lv_cyl:] / vmax) / vmax
+                matrix_dPhi[im + coeff, :, vm:vM:, 1] = - 2 * np.pi * m * np.sin(
+                    2 * np.pi * m * ugrid[:, :lv_cyl:]) * np.sin(np.pi * n * vgrid[:, :lv_cyl:] / vmax)
+    return matrix_dPhi
+
+
 def compute_j(boldpsi, matrixd_phi, Np):
     # the rotation matrix
     rot = np.array([[np.cos(2*np.pi/Np), -np.sin(2*np.pi/Np), 0],

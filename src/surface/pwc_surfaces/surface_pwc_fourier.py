@@ -21,28 +21,28 @@ class Surface_PWC_Fourier(PWC_Surface):
         True if the Stellarator has Stellarator symmetry.
     R0 : float
         Radius of the Stellarator.
-    n_u : int
+    l_u : int
         Number of poloidal angles per field period. Has to be even, and to be a multiple of n_cyl.
-    n_v : int
+    l_v : int
         Number of toroidal angles.
     param : array
             parameters of the surface. Fourier coefficients and angles.
     """
 
-    def __new__(cls, n_fp, n_cyl, symmetry, n_u, n_v, param):
-        if n_v % 2 == 1:
-            raise ValueError("n_v has to be even")
+    def __new__(cls, n_fp, n_cyl, symmetry, l_u, l_v, param):
+        if l_v % 2 == 1:
+            raise ValueError("l_v has to be even")
         elif n_cyl != 1 and n_cyl % 2 == 1:
             raise ValueError("n_cyl has to be equal to 1 or be even")
-        elif n_v % n_cyl != 0:
-            raise ValueError("n_v has to be a multiple of n_cyl")
+        elif l_v % n_cyl != 0:
+            raise ValueError("l_v has to be a multiple of n_cyl")
         elif symmetry and n_cyl % 4 != 0 and n_cyl != 1:
             raise ValueError(
                 "If symmetry, n_cyl has to be a multiple of 4 or be equal to 1")
         else:
             return super(Surface_PWC_Fourier, cls).__new__(cls)
 
-    def __init__(self, n_fp, n_cyl, symmetry, n_u, n_v, param):
+    def __init__(self, n_fp, n_cyl, symmetry, l_u, l_v, param):
         if n_cyl == 1:
             param[-2] = PI * (0.5 - 1 / n_fp)
             param[-1] = 0
@@ -50,8 +50,8 @@ class Surface_PWC_Fourier(PWC_Surface):
         self.__n_fp = n_fp
         self.__n_cyl = n_cyl
         self.__symmetry = symmetry
-        self.n_u = n_u
-        self.n_v = n_v
+        self.l_u = l_u
+        self.l_v = l_v
         self.__param = param
 
         self.__R0 = param[-3]
@@ -61,13 +61,15 @@ class Surface_PWC_Fourier(PWC_Surface):
 
         # Computing the attributes of the surface
         self.__compute_r()
-
         self.compute_points()
 
         # First order attributes
         self.__compute_r_prime()
-
         self.compute_first_derivatives()
+
+        # Second order attributes
+        self.__compute_r_second()
+        self.compute_second_derivatives()
 
     @classmethod
     def load_file(cls, path_surf, n_fp, n_pol, n_tor):
@@ -128,6 +130,11 @@ class Surface_PWC_Fourier(PWC_Surface):
 
     r_prime = property(_get_r_prime)
 
+    def _get_r_second(self):
+        return self.__r_second
+
+    r_second = property(_get_r_second)
+
     def _get_alpha(self):
         return self.__alpha
 
@@ -139,52 +146,22 @@ class Surface_PWC_Fourier(PWC_Surface):
     beta = property(_get_beta)
 
     def _get_npts(self):
-        return self.n_u * self.n_v
+        return self.l_u * self.l_v
 
     npts = property(_get_npts)
 
     def _get_nbpts(self):
-        return (self.n_u, self.n_v)
+        return (self.l_u, self.l_v)
 
     nbpts = property(_get_nbpts)
 
     def _get_grids(self):
-        u, v = np.linspace(0, 1, self.n_u, endpoint=False), (np.arange(
-            self.n_v) + 0.5) / self.n_v
+        u, v = np.linspace(0, 1, self.l_u, endpoint=False), (np.arange(
+            self.l_v) + 0.5) / self.l_v
         ugrid, vgrid = np.meshgrid(u, v, indexing='ij')
         return ugrid, vgrid
 
     grids = property(_get_grids)
-
-    def _get_principles(self):
-        pass
-
-    principles = property(_get_principles)
-
-    def _get_I(self):
-        pass
-
-    I = property(_get_I)
-
-    def _get_dpsi_uu(self):
-        pass
-
-    dpsi_uu = property(_get_dpsi_uu)
-
-    def _get_dpsi_uv(self):
-        pass
-
-    dpsi_uv = property(_get_dpsi_uv)
-
-    def _get_dpsi_vv(self):
-        pass
-
-    dpsi_vv = property(_get_dpsi_vv)
-
-    def _get_II(self):
-        pass
-
-    II = property(_get_II)
 
     def _get_param(self):
         return self.__param
@@ -197,8 +174,10 @@ class Surface_PWC_Fourier(PWC_Surface):
         self.fourier_coeffs = self.__param[:-3:]
         self.__compute_r()
         self.__compute_r_prime()
+        self.__compute_r_second()
         self.compute_points()
         self.compute_first_derivatives()
+        self.compute_second_derivatives()
 
     param = property(_get_param, _set_param)
 
@@ -225,12 +204,20 @@ class Surface_PWC_Fourier(PWC_Surface):
             return np.sum(coeffs * np.concatenate((- np.arange(1, n) * np.sin(theta * np.arange(1, n)), np.arange(1, n) * np.cos(theta * np.arange(1, n)))))
         self.__r_prime = np.vectorize(r_prime)
 
+    def __compute_r_second(self):
+        def r_second(theta):
+            n = len(self.fourier_coeffs) // 2
+            coeffs = np.concatenate(
+                (self.fourier_coeffs[1:len(self.fourier_coeffs)//2:], self.fourier_coeffs[1+len(self.fourier_coeffs)//2::]))
+            return np.sum(coeffs * np.concatenate((- np.arange(1, n)**2 * np.cos(theta * np.arange(1, n)), - np.arange(1, n)**2 * np.sin(theta * np.arange(1, n)))))
+        self.__r_second = np.vectorize(r_second)
+
     def get_theta_pertubation(self, compute_curvature=True):
         """
         Compute the perturbations of a surface
         """
-        us = np.linspace(0, 1, self.n_u, endpoint=False, dtype=float_type)
-        vs = (np.arange(self.n_v // self.n_cyl, dtype=float_type) + 0.5) / self.n_v
+        us = np.linspace(0, 1, self.l_u, endpoint=False, dtype=float_type)
+        vs = (np.arange(self.l_v // self.n_cyl, dtype=float_type) + 0.5) / self.l_v
         ugrid, vgrid = np.meshgrid(us, vs, indexing='ij')
 
         thetagrid = 2 * PI * ugrid
@@ -269,7 +256,7 @@ class Surface_PWC_Fourier(PWC_Surface):
 
         perturbation[-1, :, :, 0] = 0
         perturbation[-1, :, :, 1] = 0
-        perturbation[-1, :, :, 2] = (1 + np.tan(self.beta)**2) * self.P[::, :self.n_v // self.n_cyl:, 1] + np.sin(
+        perturbation[-1, :, :, 2] = (1 + np.tan(self.beta)**2) * self.P[::, :self.l_v // self.n_cyl:, 1] + np.sin(
             self.beta) / np.cos(self.beta)**2 * np.sin(thetagrid) * self.r(thetagrid)
 
         dperturbation = np.empty(
@@ -349,7 +336,7 @@ class Surface_PWC_Fourier(PWC_Surface):
         dperturbation[-1, :, :, 1, 1] = 0
         # d²z / dphi dbeta
         dperturbation[-1, :, :, 1,
-                      2] = (1 + np.tan(self.beta)**2) * self.dpsi[1, 1, ::, :self.n_v // self.n_cyl:] * self.n_fp / (2 * PI)
+                      2] = (1 + np.tan(self.beta)**2) * self.dpsi[1, 1, ::, :self.l_v // self.n_cyl:] * self.n_fp / (2 * PI)
 
         # d²x / dtheta dbeta
         dperturbation[-1, :, :, 0, 0] = 0
@@ -357,7 +344,7 @@ class Surface_PWC_Fourier(PWC_Surface):
         dperturbation[-1, :, :, 0, 1] = 0
         # d²z / dtheta dbeta
         dperturbation[-1, :, :, 0, 2] = (1 + np.tan(self.beta)**2) * \
-            self.dpsi[0, 1, ::, :self.n_v // self.n_cyl:] / (2 * PI) + np.sin(self.beta) / np.cos(self.beta)**2 * (
+            self.dpsi[0, 1, ::, :self.l_v // self.n_cyl:] / (2 * PI) + np.sin(self.beta) / np.cos(self.beta)**2 * (
                 np.cos(thetagrid) * self.r(thetagrid) + np.sin(thetagrid) * self.r_prime(thetagrid))
 
         # Conversion to u and v
