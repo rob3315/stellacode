@@ -59,17 +59,38 @@ class Surface_PWC_Ell_Tri_3(PWC_Surface_3):
         """
         Creates a Surface_PWC object from a text file.
         """
-        data = []
-        with open(path_surf, 'r') as f:
-            next(f)
-            for line in f:
-                data.append(str.split(line))
+        file_extension = path_surf.split('.')[-1]
 
-        param = np.asarray(data[0], dtype=float_type)
+        if file_extension == "txt":
+            data = []
+            with open(path_surf, 'r') as f:
+                next(f)
+                for line in f:
+                    data.append(str.split(line))
 
-        logging.debug('Fourier coefficients extracted from file')
+            param = np.asarray(data[0], dtype=float_type)
 
-        return cls(n_fp, n_pol, n_tor, param)
+            return cls(n_fp, n_pol, n_tor, param)
+
+        elif file_extension == "json":
+            import json
+            with open(path_surf, 'r') as f:
+                data = json.load(f)
+
+            a = data['surface']['a']
+            kappa = data['surface']['kappa']
+            delta = data['surface']['delta']
+            R0 = data['surface']['R0']
+            alpha = data['surface']['alpha']
+            beta = data['surface']['beta']
+
+            param = np.array([a, kappa, delta, R0, alpha, beta])
+
+            return cls(n_fp, n_pol, n_tor, param)
+
+        else:
+            raise(ValueError,
+                  f"File extension: {file_extension} is not supported.")
 
     def _get_n_fp(self):
         """

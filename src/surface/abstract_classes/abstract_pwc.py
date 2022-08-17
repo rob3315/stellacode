@@ -452,87 +452,92 @@ class PWC_Surface(Surface):
         d2psi1dudv = np.stack((d2xdudv, d2ydudv, d2zdudv), axis=0)
 
         if self.n_cyl == 1:
-            pass
-
-        # Second cylinder
-
-        angle = 2 * PI / (self.n_fp * self.n_cyl)
-
-        sym_mat = np.array([
-            [np.cos(2 * angle), np.sin(2 * angle), 0],
-            [np.sin(2 * angle), - np.cos(2 * angle), 0],
-            [0, 0, 1]
-        ], dtype=float_type)
-
-        d2psi2du2 = np.einsum("ij,juv->iuv", sym_mat, d2psi1du2[..., ::-1])
-        d2psi2dv2 = np.einsum("ij,juv->iuv", sym_mat, d2psi1dv2[..., ::-1])
-        d2psi2dudv = - np.einsum("ij,juv->iuv", sym_mat, d2psi1dudv[..., ::-1])
-
-        # First two cylinders
-
-        d2Psi0du2 = np.concatenate((d2psi1du2, d2psi2du2), axis=2)
-        d2Psi0dv2 = np.concatenate((d2psi1dv2, d2psi2dv2), axis=2)
-        d2Psi0dudv = np.concatenate((d2psi1dudv, d2psi2dudv), axis=2)
-
-        # Full result
-
-        fulld2psidu2 = np.concatenate((d2psi1du2, d2psi2du2), axis=2)
-        fulld2psidv2 = np.concatenate((d2psi1dv2, d2psi2dv2), axis=2)
-        fulld2psidudv = np.concatenate((d2psi1dudv, d2psi2dudv), axis=2)
-
-        # Other cylinders
-
-        if self.symmetry:
-            angle = 4 * PI / (self.n_fp * self.n_cyl)
-
-            for _ in range(self.n_cyl // 2 - 1):
-                sym_mat = np.array([
-                    [np.cos(2 * angle), np.sin(2 * angle), 0],
-                    [np.sin(2 * angle), - np.cos(2 * angle), 0],
-                    [0, 0, 1]
-                ], dtype=float_type)
-
-                np.einsum("ij,juv->iuv", sym_mat,
-                          d2Psi0du2[..., ::-1], out=d2Psi0du2)
-                np.einsum("ij,juv->iuv", sym_mat,
-                          d2Psi0dv2[..., ::-1], out=d2Psi0dv2)
-                np.einsum("ij,juv->iuv", - sym_mat,
-                          d2Psi0dudv[..., ::-1], out=d2Psi0dudv)
-
-                fulld2psidu2 = np.concatenate(
-                    (fulld2psidu2, d2Psi0du2), axis=2)
-                fulld2psidv2 = np.concatenate(
-                    (fulld2psidv2, d2Psi0dv2), axis=2)
-                fulld2psidudv = np.concatenate(
-                    (fulld2psidudv, d2Psi0dudv), axis=2)
-
-                angle += 4 * PI / (self.n_fp * self.n_cyl)
+            self.__dpsi_uu = d2psi1du2
+            self.__dpsi_uv = d2psi1dudv
+            self.__dpsi_vv = d2psi1dv2
 
         else:
-            angle = 4 * PI / (self.n_fp * self.n_cyl)
-            rot_mat = np.array([
-                [np.cos(angle), np.sin(angle), 0],
-                [-np.sin(angle), np.cos(angle), 0],
+            # Second cylinder
+
+            angle = 2 * PI / (self.n_fp * self.n_cyl)
+
+            sym_mat = np.array([
+                [np.cos(2 * angle), np.sin(2 * angle), 0],
+                [np.sin(2 * angle), - np.cos(2 * angle), 0],
                 [0, 0, 1]
             ], dtype=float_type)
 
-            for _ in range(self.n_cyl // 2 - 1):
-                np.einsum("ij,juv->iuv", rot_mat, d2Psi0du2, out=d2Psi0du2)
-                np.einsum("ij,juv->iuv", rot_mat, d2Psi0dv2, out=d2Psi0dv2)
-                np.einsum("ij,juv->iuv", rot_mat, d2Psi0dudv, out=d2Psi0dudv)
+            d2psi2du2 = np.einsum("ij,juv->iuv", sym_mat, d2psi1du2[..., ::-1])
+            d2psi2dv2 = np.einsum("ij,juv->iuv", sym_mat, d2psi1dv2[..., ::-1])
+            d2psi2dudv = - np.einsum("ij,juv->iuv",
+                                     sym_mat, d2psi1dudv[..., ::-1])
 
-                fulld2psidu2 = np.concatenate(
-                    (fulld2psidu2, d2Psi0du2), axis=2)
-                fulld2psidv2 = np.concatenate(
-                    (fulld2psidv2, d2Psi0dv2), axis=2)
-                fulld2psidudv = np.concatenate(
-                    (fulld2psidudv, d2Psi0dudv), axis=2)
+            # First two cylinders
 
-        # Saving second derivatives
+            d2Psi0du2 = np.concatenate((d2psi1du2, d2psi2du2), axis=2)
+            d2Psi0dv2 = np.concatenate((d2psi1dv2, d2psi2dv2), axis=2)
+            d2Psi0dudv = np.concatenate((d2psi1dudv, d2psi2dudv), axis=2)
 
-        self.__dpsi_uu = fulld2psidu2
-        self.__dpsi_uv = fulld2psidudv
-        self.__dpsi_vv = fulld2psidv2
+            # Full result
+
+            fulld2psidu2 = np.concatenate((d2psi1du2, d2psi2du2), axis=2)
+            fulld2psidv2 = np.concatenate((d2psi1dv2, d2psi2dv2), axis=2)
+            fulld2psidudv = np.concatenate((d2psi1dudv, d2psi2dudv), axis=2)
+
+            # Other cylinders
+
+            if self.symmetry:
+                angle = 4 * PI / (self.n_fp * self.n_cyl)
+
+                for _ in range(self.n_cyl // 2 - 1):
+                    sym_mat = np.array([
+                        [np.cos(2 * angle), np.sin(2 * angle), 0],
+                        [np.sin(2 * angle), - np.cos(2 * angle), 0],
+                        [0, 0, 1]
+                    ], dtype=float_type)
+
+                    np.einsum("ij,juv->iuv", sym_mat,
+                              d2Psi0du2[..., ::-1], out=d2Psi0du2)
+                    np.einsum("ij,juv->iuv", sym_mat,
+                              d2Psi0dv2[..., ::-1], out=d2Psi0dv2)
+                    np.einsum("ij,juv->iuv", - sym_mat,
+                              d2Psi0dudv[..., ::-1], out=d2Psi0dudv)
+
+                    fulld2psidu2 = np.concatenate(
+                        (fulld2psidu2, d2Psi0du2), axis=2)
+                    fulld2psidv2 = np.concatenate(
+                        (fulld2psidv2, d2Psi0dv2), axis=2)
+                    fulld2psidudv = np.concatenate(
+                        (fulld2psidudv, d2Psi0dudv), axis=2)
+
+                    angle += 4 * PI / (self.n_fp * self.n_cyl)
+
+            else:
+                angle = 4 * PI / (self.n_fp * self.n_cyl)
+                rot_mat = np.array([
+                    [np.cos(angle), np.sin(angle), 0],
+                    [-np.sin(angle), np.cos(angle), 0],
+                    [0, 0, 1]
+                ], dtype=float_type)
+
+                for _ in range(self.n_cyl // 2 - 1):
+                    np.einsum("ij,juv->iuv", rot_mat, d2Psi0du2, out=d2Psi0du2)
+                    np.einsum("ij,juv->iuv", rot_mat, d2Psi0dv2, out=d2Psi0dv2)
+                    np.einsum("ij,juv->iuv", rot_mat,
+                              d2Psi0dudv, out=d2Psi0dudv)
+
+                    fulld2psidu2 = np.concatenate(
+                        (fulld2psidu2, d2Psi0du2), axis=2)
+                    fulld2psidv2 = np.concatenate(
+                        (fulld2psidv2, d2Psi0dv2), axis=2)
+                    fulld2psidudv = np.concatenate(
+                        (fulld2psidudv, d2Psi0dudv), axis=2)
+
+            # Saving second derivatives
+
+            self.__dpsi_uu = fulld2psidu2
+            self.__dpsi_uv = fulld2psidudv
+            self.__dpsi_vv = fulld2psidv2
 
         dNdu = np.cross(self.__dpsi_uu, self.dpsi[1], 0, 0, 0) + \
             np.cross(self.dpsi[0], self.__dpsi_uv, 0, 0, 0)

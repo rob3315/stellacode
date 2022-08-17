@@ -85,7 +85,7 @@ def get_matrix_dPhi_cylinders(phisize, grids, ncyl):
         lv_cyl = lv // ncyl  # number of toroidal points per cylinder
         for i in range(ncyl):
             im = lc * i + 2
-            # v index corresponding to where the cylinder we are in
+            # v index corresponding to where the cylinder we are in starts and ends
             vm, vM = i * lv_cyl, (i + 1) * lv_cyl
             vmax = 1 / ncyl  # scaling factor, to have 0 at both junctions
             for coeff in range(lc):

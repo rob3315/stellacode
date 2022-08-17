@@ -11,6 +11,7 @@ def surface_from_file(path_surf, n_fp, n_pol, n_tor):
     - wout files from VMEC (ending with .nc)
     - nescin file (starting with nescin.)
     - text files
+    - json files
 
     The following surfaces are supported :
     - Surface_Fourier
@@ -20,7 +21,7 @@ def surface_from_file(path_surf, n_fp, n_pol, n_tor):
     - Surface_PWC_Ell_Tri_3
 
     Regarding the format of the text files, please have a look at the examples
-    located in data/cws
+    located in data/cws. Same for json files.
 
     :param path_surf: path to the file
     :type path_surf: string
@@ -38,11 +39,16 @@ def surface_from_file(path_surf, n_fp, n_pol, n_tor):
     :rtype: Surface
     """
     from os import sep
-    if path_surf[-3::] == ".nc":
+
+    file_extension = path_surf.split('.')[-1]
+
+    if file_extension == "nc":
         return Surface_Fourier.load_file(path_surf, n_fp, n_pol, n_tor)
+
     elif path_surf.rpartition(sep)[-1][:6:] == "nescin":
         return Surface_Fourier.load_file(path_surf, n_fp, n_pol, n_tor)
-    else:
+
+    elif file_extension == "txt":
         with open(path_surf, 'r') as f:
             first_line = next(f).strip()
         if first_line == "fourier":
@@ -55,6 +61,28 @@ def surface_from_file(path_surf, n_fp, n_pol, n_tor):
             return Surface_PWC_Fourier_3.load_file(path_surf, n_fp, n_pol, n_tor)
         elif first_line == "pwc ellipticity triangularity 3":
             return Surface_PWC_Ell_Tri_3.load_file(path_surf, n_fp, n_pol, n_tor)
+
+    elif file_extension == "json":
+        import json
+        with open(path_surf, 'r') as f:
+            data = json.load(f)
+        n_cyl = data['surface']['n_cyl']
+        parametrization = data['surface']['parametrization']
+
+        if parametrization == "fourier":
+            if n_cyl == 3:
+                return Surface_PWC_Fourier_3.load_file(path_surf, n_fp, n_pol, n_tor)
+            else:
+                return Surface_PWC_Fourier.load_file(path_surf, n_fp, n_pol, n_tor)
+        elif parametrization == "ell_tri":
+            if n_cyl == 3:
+                return Surface_PWC_Ell_Tri_3.load_file(path_surf, n_fp, n_pol, n_tor)
+            else:
+                return Surface_PWC_Ell_Tri.load_file(path_surf, n_fp, n_pol, n_tor)
         else:
-            raise ValueError(
-                "The first line of your file does not correspond to any known surfaces.")
+            raise(ValueError,
+                  f"Parametrization: {parametrization} is not supported.")
+
+    else:
+        raise(ValueError,
+              f"File extension: {file_extension} is not supported.")
