@@ -55,8 +55,7 @@ def launch(path_config_file=None, config=None):
         opti_parameters, bounds = None, None
 
     if opti_parameters is None:  # no fixed parameters, no bounds
-
-        opti_parameters = np.full_like(full_grad.init_param, True)
+        opti_parameters = np.full_like(full_grad.init_param, True, dtype=bool)
 
     if bounds is None:  # no boundaries
 
