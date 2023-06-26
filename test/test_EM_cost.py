@@ -26,8 +26,8 @@ class Test_EM_cost(unittest.TestCase):
         for index,lamb in enumerate([0,1.2e-14,2.5e-16,5.1e-19]):
             config['other']['lamb']=str(lamb)
             EM_cost_output=EM_cost(config)
-            for key,value in EM_cost_output.items():
-                print('{} : {:e}'.format(key,value))
+            #for key,value in EM_cost_output.items():
+            #    print('{} : {:e}'.format(key,value))
             np.testing.assert_almost_equal(EM_cost_output['err_max_B'],err_max_B[index])
             np.testing.assert_almost_equal(EM_cost_output['max_j'],max_j[index],decimal=-1)
             np.testing.assert_almost_equal(EM_cost_output['cost_B'],cost_B[index])
