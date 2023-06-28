@@ -1,6 +1,7 @@
 """Various implementation of the main cost"""
 # an example of Regcoil version in python
 from dataclasses import dataclass
+
 from scipy.constants import mu_0
 
 import stellacode.tools as tools

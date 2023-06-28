@@ -1,4 +1,5 @@
 import configparser
+
 from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.costs.EM_cost import EM_cost_dask_3
 from stellacode.surface.surface_from_file import surface_from_file

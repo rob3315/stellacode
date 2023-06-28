@@ -52,4 +52,3 @@ def f_e(c0, c1, x):
     return np.maximum(x - c0, 0) ** 2 / (1 - np.maximum(x - c0, 0) / (c1 - c0))
     # else:
     #     raise ValueError
-

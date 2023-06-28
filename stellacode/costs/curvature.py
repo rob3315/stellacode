@@ -23,8 +23,8 @@ class CurvatureCost(AbstractCost):
     def cost(self, S):
         pmax, pmin = S.principles[0], S.principles[1]
 
-        f_pmax = self.f(pmax)  
-        f_pmin = self.f(pmin) 
+        f_pmax = self.f(pmax)
+        f_pmin = self.f(pmin)
         cost = self.Np * np.einsum("ij,ij->", f_pmax, S.dS / S.npts)
         cost += self.Np * np.einsum("ij,ij->", f_pmin, S.dS / S.npts)
         aux_dic = {}

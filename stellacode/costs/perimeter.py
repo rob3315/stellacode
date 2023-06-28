@@ -1,4 +1,5 @@
 import configparser
+
 from stellacode import np
 from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.costs.auxi import f_e

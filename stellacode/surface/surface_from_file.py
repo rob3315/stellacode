@@ -1,8 +1,8 @@
+from .fourier import FourierSurface
 from .pwc_surfaces.surface_pwc_ell_tri import Surface_PWC_Ell_Tri
 from .pwc_surfaces.surface_pwc_ell_tri_3 import Surface_PWC_Ell_Tri_3
 from .pwc_surfaces.surface_pwc_fourier import Surface_PWC_Fourier
 from .pwc_surfaces.surface_pwc_fourier_3 import Surface_PWC_Fourier_3
-from .fourier import FourierSurface
 
 
 def surface_from_file(path_surf, n_fp, n_pol, n_tor):

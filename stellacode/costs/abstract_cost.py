@@ -1,17 +1,17 @@
 import configparser
 from abc import ABC, abstractmethod
+from pydantic import BaseModel, Extra
 
 
-class AbstractCost(ABC):
+class AbstractCost:#(BaseModel):
     """Interface for any cost
 
     :param S: a surface
     :type S: for now only Surface_Fourier are supported
     """
 
-    @abstractmethod
     def cost(self, S):
-        pass
+        raise NotImplementedError
 
     # @abstractmethod
     @classmethod

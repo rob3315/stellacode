@@ -1,9 +1,10 @@
 import logging
 
+import numpy as np
 import pytest
 
 from stellacode.surface.fourier import *
-import numpy as np
+
 
 @pytest.mark.skip("graphic verif skipping")
 def test_normal_derivative():
@@ -27,20 +28,21 @@ def test_normal_derivative():
     plt.plot(S.n_v[1][33])
     plt.show()
 
+
 @pytest.mark.skip("get_theta_pertubation")
 def test_perimeter_derivative():
     lu, lv = 128, 128
     eps = 1e-8
     logging.basicConfig(level="DEBUG")
     S = FourierSurface.from_file("data/li383/cws.txt", 3, lu, lv)
-    surface_parametrization = S.surface_parametrization
-    ls = len(surface_parametrization[0])  # total number of hamonics
-    # S=Surface_Fourier(surface_parametrization,(lu,lv),3)
+    params = S.params
+    ls = len(params[0])  # total number of hamonics
+    # S=Surface_Fourier(params,(lu,lv),3)
     theta_pertubation = S.get_theta_pertubation()
     dtildetheta = theta_pertubation["dtildetheta"]
     perim = np.einsum("ij->", S.dS) / (lu * lv)
     perturb = 2 * np.random.random(2 * ls) - 1
-    new_param = FourierSurface.change_param(surface_parametrization, eps * perturb)
+    new_param = FourierSurface.change_param(params, eps * perturb)
     new_S = FourierSurface(new_param, (lu, lv), 3)
     new_perim = np.einsum("ij->", new_S.dS) / (lu * lv)
 
@@ -49,22 +51,23 @@ def test_perimeter_derivative():
     np.testing.assert_almost_equal(dperim, dperim_num, decimal=3)
     print(dperim_num, dperim)
 
+
 @pytest.mark.skip("get_theta_pertubation")
 def test_change_of_variable_scalar():
     lu, lv = 128, 128
     eps = 1e-8
     logging.basicConfig(level="DEBUG")
     S = FourierSurface.from_file("data/li383/cws.txt", 3, lu, lv)
-    surface_parametrization = S.surface_parametrization
-    ls = len(surface_parametrization[0])  # total number of hamonics
-    # S=Surface_Fourier(surface_parametrization,(lu,lv),3)
+    params = S.params
+    ls = len(params[0])  # total number of hamonics
+    # S=Surface_Fourier(params,(lu,lv),3)
     theta_pertubation = S.get_theta_pertubation()
     theta = theta_pertubation["theta"]
     dtildetheta = theta_pertubation["dtildetheta"]
     f = np.random.random((lu, lv))
     int_f = np.einsum("ij,ij->", f, S.dS) / (lu * lv)
     perturb = 2 * np.random.random(2 * ls) - 1
-    new_param = FourierSurface.change_param(surface_parametrization, eps * perturb)
+    new_param = FourierSurface.change_param(params, eps * perturb)
     new_S = FourierSurface(new_param, (lu, lv), 3)
     new_int_f = np.einsum("ij,ij->", new_S.dS, f) / (lu * lv)
 
@@ -73,20 +76,21 @@ def test_change_of_variable_scalar():
     np.testing.assert_almost_equal(dint, dint_num, decimal=3)
     print(dint_num, dint)
 
+
 @pytest.mark.skip("get_theta_pertubation")
 def test_dSdtheta():
     lu, lv = 128, 128
     eps = 1e-8
     logging.basicConfig(level="DEBUG")
     S = FourierSurface.from_file("data/li383/cws.txt", 3, lu, lv)
-    surface_parametrization = S.surface_parametrization
-    ls = len(surface_parametrization[0])  # total number of hamonics
-    # S=Surface_Fourier(surface_parametrization,(lu,lv),3)
+    params = S.params
+    ls = len(params[0])  # total number of hamonics
+    # S=Surface_Fourier(params,(lu,lv),3)
 
     theta_pertubation = S.get_theta_pertubation()
     dSdtheta = theta_pertubation["dSdtheta"]
     perturb = 2 * np.random.random(2 * ls) - 1
-    new_param = FourierSurface.change_param(surface_parametrization, eps * perturb)
+    new_param = FourierSurface.change_param(params, eps * perturb)
     new_S = FourierSurface(new_param, (lu, lv), 3)
 
     ddS_num = (new_S.dS - S.dS) / eps
@@ -98,4 +102,4 @@ def test_curvature_derivative():
     lu, lv = 128, 128
     S = FourierSurface.from_file("data/li383/cws.txt", 3, lu, lv)
     S = FourierSurface.from_file("data/li383/cws.txt", 3, lu, lv)
-    # S=Surface_Fourier(surface_parametrization,(lu,lv),3)
+    # S=Surface_Fourier(params,(lu,lv),3)

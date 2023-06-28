@@ -1,9 +1,9 @@
 import configparser
 from time import time
 
-from stellacode.costs.EM_shape_gradient import EMCost
 from stellacode.costs.curvature import CurvatureCost
 from stellacode.costs.distance import DistanceCost
+from stellacode.costs.EM_shape_gradient import EMCost
 from stellacode.costs.perimeter import PerimeterCost
 
 
@@ -22,7 +22,8 @@ class AggregateCost:
         # Initialization of the different costs :
         self.EM = EMCost(config=config)
         self.S = self.EM.S
-        self.init_param = self.S.param
+        self.init_param = self.S.params
+
         self.lst_cost = [self.EM]
         if config["optimization_parameters"]["d_min"] == "True":
             self.dist = DistanceCost(config=config)
@@ -34,8 +35,8 @@ class AggregateCost:
             self.curv = CurvatureCost(config=config)
             self.lst_cost.append(self.curv)
 
-    def cost(self, param):
-        self.S.param = param
+    def cost(self, **kwargs):
+        self.S.update_params(**kwargs)
         tic = time()
         c, EM_cost_dic = self.lst_cost[0].cost(self.S)
         for elt in self.lst_cost[1:]:

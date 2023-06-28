@@ -1,28 +1,29 @@
-from stellacode import np
+import typing as tp
 from os import sep
 
+from jax.typing import ArrayLike
 from scipy.io import netcdf_file
+
+from stellacode import np
+
 from .abstract_surface import AbstractSurface
 
 
 class FourierSurface(AbstractSurface):
-    """A class used to represent an toroidal surface with Fourier coefficients
+    """A class used to represent a toroidal surface with Fourier coefficients
 
-    :param surface_parametrization: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
-    :type surface_parametrization: (int[],int[],float[],float[])
+    :param params: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
+    :type params: (int[],int[],float[],float[])
     :param nbpts: see :func:`.abstract_surface.Abstract_surface`
     :type nbpts: (int,int)
     :param Np: see `.abstract_surface.Abstract_surface`
     :type Np: int
     """
 
-    def __init__(self, surface_parametrization, nbpts, Np):
-        self.Np = Np
-        self.nbpts = nbpts
-        self.npts = nbpts[0] * nbpts[1]
-        self.surface_parametrization = surface_parametrization
-        self.param = np.concatenate((surface_parametrization[2], surface_parametrization[3]))
-        self.compute_surface_attributes()  # computation of the surface attributes
+    mf: ArrayLike
+    nf: ArrayLike
+    Np: int
+    nbpts: tp.Tuple[int, int]
 
     @classmethod
     def from_file(cls, path_surf, n_fp, n_pol, n_tor):
@@ -62,36 +63,15 @@ class FourierSurface(AbstractSurface):
             adata = np.array(data, dtype="float64")
             m, n, Rmn, Zmn = adata[:, 0], adata[:, 1], adata[:, 2], adata[:, 3]
 
-        surface_parametrization = (m, n, Rmn, Zmn)
+        params = {"Rmn": Rmn, "Zmn": Zmn}
 
-        return cls(surface_parametrization, (n_pol, n_tor), n_fp)
-
-    def _get_param(self):
-        return self.__param
-
-    def _set_param(self, param):
-        self.__param = param
-        m, n = self.surface_parametrization[0], self.surface_parametrization[1]
-        Rmn, Zmn = param[: len(m)], param[len(m) :]
-        self.surface_parametrization = (m, n, Rmn, Zmn)
-        self.compute_surface_attributes()
-
-    param = property(_get_param, _set_param)
-
-    def change_param(param, dcoeff):
-        """from a surface parameters and an array of modification,
-        return the right surface parameters"""
-        (m, n, Rmn, Zmn) = param
-        dR = dcoeff[: len(m)]
-        dZ = dcoeff[len(m) :]
-        return (m, n, Rmn + dR, Zmn + dZ)
+        return cls(params=params, mf=m, nf=n, nbpts=(n_pol, n_tor), Np=n_fp)
 
     def get_xyz(self, uv):
-        m, n, Rmn, Zmn = self.surface_parametrization
         u, v = uv
-        tmp = u * m + v * n
-        R = np.tensordot(Rmn, np.cos(2 * np.pi * tmp), 1)
-        Z = np.tensordot(Zmn, np.sin(2 * np.pi * tmp), 1)
+        tmp = u * self.mf + v * self.nf
+        R = np.tensordot(self.params["Rmn"], np.cos(2 * np.pi * tmp), 1)
+        Z = np.tensordot(self.params["Zmn"], np.sin(2 * np.pi * tmp), 1)
         phi = 2 * np.pi * v / self.Np
         return np.array([R * np.cos(phi), R * np.sin(phi), Z])
 
