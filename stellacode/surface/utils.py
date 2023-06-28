@@ -1,11 +1,6 @@
 """
 Imports for the surface module.
 """
-from .pwc_surfaces.surface_pwc_ell_tri import Surface_PWC_Ell_Tri
-from .pwc_surfaces.surface_pwc_ell_tri_3 import Surface_PWC_Ell_Tri_3
-from .pwc_surfaces.surface_pwc_fourier import Surface_PWC_Fourier
-from .pwc_surfaces.surface_pwc_fourier_3 import Surface_PWC_Fourier_3
-from .surface_Fourier import Surface_Fourier
 from .surface_from_file import surface_from_file
 
 

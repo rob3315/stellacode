@@ -1,18 +1,10 @@
 import configparser
-import logging
-
-from opt_einsum import contract
-from scipy.constants import mu_0
-
-import stellacode.tools as tools
-import stellacode.tools.bnorm as bnorm
-from stellacode import np
-from stellacode.costs.abstract_shape_gradient import Abstract_shape_gradient
+from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.costs.EM_cost import EM_cost_dask_3
-from stellacode.surface.surface_from_file import Surface_Fourier, surface_from_file
+from stellacode.surface.surface_from_file import surface_from_file
 
 
-class EM_shape_gradient(Abstract_shape_gradient):
+class EMCost(AbstractCost):
     """Main cost coming from the inverse problem"""
 
     def __init__(self, path_config_file=None, config=None):

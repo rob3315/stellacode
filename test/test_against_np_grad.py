@@ -5,7 +5,7 @@ import jax.numpy as np
 import numpy as onp
 from jax import grad
 
-from stellacode.costs.full_shape_gradient import Full_shape_gradient
+from stellacode.costs.aggregate_cost import AggregateCost
 
 
 def test_full_grad_against_original_np_grad():
@@ -14,7 +14,7 @@ def test_full_grad_against_original_np_grad():
     config = configparser.ConfigParser()
     config.read("config_file/config_small.ini")
 
-    full_grad = Full_shape_gradient(config=config)
+    full_grad = AggregateCost(config=config)
     fun = lambda par: full_grad.cost(par)
 
     gradf = grad(fun)

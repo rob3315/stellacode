@@ -2,13 +2,13 @@ from abc import abstractmethod
 
 from stellacode import np
 
-from .abstract_surface import Surface
+from ..abstract_surface import AbstractSurface
 
 float_type = np.float64
 PI = np.pi
 
 
-class PWC_Surface(Surface):
+class PWC_Surface(AbstractSurface):
     """A class used to represent an abstract piecewise cylindrical toroidal surface.
     A PWC surface can be described by :
     - a cross-section, r : theta -> r(theta)

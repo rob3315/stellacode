@@ -3,13 +3,13 @@ import logging
 
 import stellacode.tools as tools
 from stellacode import np
-from stellacode.costs.abstract_shape_gradient import Abstract_shape_gradient
+from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.costs.auxi import f_non_linear
-from stellacode.surface.surface_Fourier import Surface_Fourier
+from stellacode.surface.fourier import FourierSurface
 from stellacode.surface.surface_from_file import surface_from_file
 
 
-class Distance_shape_gradient(Abstract_shape_gradient):
+class DistanceCost(AbstractCost):
     """Non linear penalization of the distance to the plasma (lower bound)"""
 
     def __init__(self, path_config_file=None, config=None):

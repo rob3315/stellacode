@@ -1,12 +1,10 @@
 import configparser
-import logging
-
 from stellacode import np
-from stellacode.costs.abstract_shape_gradient import Abstract_shape_gradient
+from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.costs.auxi import f_e
 
 
-class Perimeter_shape_gradient(Abstract_shape_gradient):
+class PerimeterCost(AbstractCost):
     """Non linear penalization on the perimeter (upper bound)"""
 
     def __init__(self, path_config_file=None, config=None):

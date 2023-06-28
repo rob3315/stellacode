@@ -1,6 +1,6 @@
 import numpy as np
 
-from stellacode.surface.surface_Fourier import *
+from stellacode.surface.fourier import *
 
 
 def surface_curvature_num(X, Y, Z):
@@ -64,8 +64,8 @@ def surface_curvature_num(X, Y, Z):
 
 def test_graphic_curvature():
     lu, lv = 128, 128
-    S = Surface_Fourier.load_file("data/li383/cws.txt", 3, lu, lv)
-    S = Surface_Fourier.load_file("data/li383/cws.txt", 3, lu, lv)
+    S = FourierSurface.from_file("data/li383/cws.txt", 3, lu, lv)
+    S = FourierSurface.from_file("data/li383/cws.txt", 3, lu, lv)
 
     tmp = surface_curvature_num(S.P[:, :, 0], S.P[:, :, 1], S.P[:, :, 2])
     # Plot numerical vs analytical curvature

@@ -47,9 +47,9 @@ def f_e(c0, c1, x):
     :type x: float
     :rtype: float
     """
+
     # if 0 <= x and x <= c1:
     return np.maximum(x - c0, 0) ** 2 / (1 - np.maximum(x - c0, 0) / (c1 - c0))
     # else:
-    #     logging.info('maximal value overeached')
-    #     return np.inf
-    # raise Exception('infinite cost')
+    #     raise ValueError
+

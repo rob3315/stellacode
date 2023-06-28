@@ -73,7 +73,7 @@ class Surface_PWC_Fourier(PWC_Surface):
         self.compute_second_derivatives()
 
     @classmethod
-    def load_file(cls, path_surf, n_fp, n_pol, n_tor):
+    def from_file(cls, path_surf, n_fp, n_pol, n_tor):
         """
         Creates a Surface_PWC object from a text file.
         """

@@ -2,8 +2,8 @@ import configparser
 from abc import ABC, abstractmethod
 
 
-class Abstract_shape_gradient(ABC):
-    """An Abstract_shape_gradient is the interface for any cost
+class AbstractCost(ABC):
+    """Interface for any cost
 
     :param S: a surface
     :type S: for now only Surface_Fourier are supported

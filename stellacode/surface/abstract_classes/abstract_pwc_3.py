@@ -2,13 +2,13 @@ from abc import abstractmethod
 
 from stellacode import np
 
-from .abstract_surface import Surface
+from ..abstract_surface import AbstractSurface
 
 float_type = np.float64
 PI = np.pi
 
 
-class PWC_Surface_3(Surface):
+class PWC_Surface_3(AbstractSurface):
     """
     A class used to represent an abstract piecewise cylindrical toroidal surface with three cylinders per field period.
     Most of the methods implemented here are very similar to those of the PWC_Surface class.

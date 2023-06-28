@@ -5,10 +5,10 @@ import pickle
 
 import stellacode.costs.EM_shape_gradient as EM
 from stellacode import np
-from stellacode.costs.curvature_shape_gradient import Curvature_shape_gradient
-from stellacode.costs.distance_shape_gradient import Distance_shape_gradient
-from stellacode.costs.perimeter_shape_gradient import Perimeter_shape_gradient
-from stellacode.surface.surface_Fourier import Surface_Fourier
+from stellacode.costs.curvature import CurvatureCost
+from stellacode.costs.distance import DistanceCost
+from stellacode.costs.perimeter import PerimeterCost
+from stellacode.surface.fourier import FourierSurface
 
 
 class Simu_result:
@@ -40,9 +40,9 @@ class Simu_result:
         (m, n, Rmn, Zmn) = self.EM.S_parametrization
         self.m, self.n = m, n
         self.init_param = np.concatenate((Rmn, Zmn))
-        self.dist = Distance_shape_gradient(config=config)
-        self.perim = Perimeter_shape_gradient(config=config)
-        self.curv = Curvature_shape_gradient(config=config)
+        self.dist = DistanceCost(config=config)
+        self.perim = PerimeterCost(config=config)
+        self.curv = CurvatureCost(config=config)
         self.successful = True
 
     def get_data_dic(self, surf_param=None):
@@ -69,7 +69,7 @@ class Simu_result:
         R = surf_param[: len(self.m)]
         Z = surf_param[len(self.m) :]
         paramS = (self.m, self.n, R, Z)
-        S = Surface_Fourier(paramS, (self.ntheta_coil, self.nzeta_coil), self.Np)
+        S = FourierSurface(paramS, (self.ntheta_coil, self.nzeta_coil), self.Np)
         EM_cost, EM_dic = self.EM.cost(S)
         dic["cost B"] = "{:.3e}".format(EM_dic["cost_B"])
         dic["max B"] = "{:.3e}".format(EM_dic["err_max_B"])
@@ -100,7 +100,7 @@ class Simu_result:
         R = self.init_param[: len(self.m)]
         Z = self.init_param[len(self.m) :]
         paramS = (self.m, self.n, R, Z)
-        S = Surface_Fourier(paramS, (self.ntheta_coil, self.nzeta_coil), self.Np)
+        S = FourierSurface(paramS, (self.ntheta_coil, self.nzeta_coil), self.Np)
         EM_cost, EM_dic = self.EM.cost(S)
         dic["cost B"] = "{:.2e}".format(EM_dic["cost_B"])
         dic["max B"] = "{:.2e}".format(EM_dic["err_max_B"])

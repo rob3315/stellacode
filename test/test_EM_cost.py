@@ -5,7 +5,7 @@ import numpy as onp
 
 jax.config.update("jax_enable_x64", True)
 
-from stellacode.costs.EM_shape_gradient import EM_shape_gradient
+from stellacode.costs.EM_shape_gradient import EMCost
 
 
 def test_no_dimension_error():
@@ -13,7 +13,7 @@ def test_no_dimension_error():
     path_config_file = "config_file/config_test_dim.ini"
     config = configparser.ConfigParser()
     config.read(path_config_file)
-    EM_shape_gradient(path_config_file)
+    EMCost(path_config_file)
 
 
 def test_compare_to_regcoil():
@@ -29,7 +29,7 @@ def test_compare_to_regcoil():
     config["other"]["dask"] = "False"
     for index, lamb in enumerate([0, 1.2e-14, 2.5e-16, 5.1e-19]):
         config["other"]["lamb"] = str(lamb)
-        em_cost = EM_shape_gradient(config=config)
+        em_cost = EMCost(config=config)
         EM_cost, EM_cost_output = em_cost.cost(em_cost.S)
 
         onp.testing.assert_almost_equal(EM_cost_output["err_max_B"], err_max_B[index])

@@ -1,14 +1,11 @@
 """Various implementation of the main cost"""
 # an example of Regcoil version in python
 from dataclasses import dataclass
-
-import dask.array as da
 from scipy.constants import mu_0
 
 import stellacode.tools as tools
 import stellacode.tools.bnorm as bnorm
 from stellacode import np
-from stellacode.surface.surface_from_file import surface_from_file
 
 
 @dataclass

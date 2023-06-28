@@ -1,7 +1,9 @@
 from abc import ABCMeta, abstractmethod
+from stellacode import np
+import jax
 
 
-class Surface(metaclass=ABCMeta):
+class AbstractSurface(metaclass=ABCMeta):
     """A class used to represent an abstract toroidal surface.
 
     This class can be used to define other child classes.
@@ -12,9 +14,14 @@ class Surface(metaclass=ABCMeta):
     They allow for visualization tools.
     """
 
+    @abstractmethod
+    def get_xyz(self, uv):
+        """return the point parametrized by uv in cartesian coordinate"""
+        pass
+
     @classmethod
     @abstractmethod
-    def load_file(cls, pathfile):
+    def from_file(cls, pathfile):
         """Instantiate object from a text file.
 
         :param pathfile: path to file that describes the surface
@@ -25,24 +32,104 @@ class Surface(metaclass=ABCMeta):
         """
         pass
 
+    def get_uvgrid(self, lu, lv, concat: bool = False):
+        # u, v = np.linspace(
+        #     0, 1, lu, endpoint=False), (np.arange(lv) + 0.5) / lv
+        u, v = np.linspace(0, 1, lu, endpoint=False), np.linspace(0, 1, lv, endpoint=False)
+        ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
+        if concat:
+            return np.stack((ugrid, vgrid), axis=0)
+        else:
+            return ugrid, vgrid
 
-    @abstractmethod
-    def get_theta_pertubation(self, compute_curvature):
-        """Compute the perturbations of a surface.
-        The returned dict must contain the following keys :
-        ...
+    def get_xyz_on_grid(self, grid):
+        grid_ = np.reshape(grid, (2, -1))
+        _, lu, lv = grid.shape
+        surf = jax.vmap(self.get_xyz, in_axes=1, out_axes=-1)
+        surf_res = surf(grid_)
+        lu, lv = self.nbpts
+        xyz = np.transpose(np.reshape(surf_res, (3, lu, lv)), (1, 2, 0))
+        return xyz
 
-        """
-        pass
+    def get_jac_xyz_on_grid(self, grid):
+        grid_ = np.reshape(grid, (2, -1))
+        _, lu, lv = grid.shape
 
-    @abstractmethod
-    def expand_for_plot_part(self):
-        """Returns 3 arrays X, Y and Z which can be used to plot the surface.
+        jac_surf = jax.jacobian(self.get_xyz, argnums=0)
+        jac_surf_vmap = jax.vmap(jac_surf, in_axes=1, out_axes=-1)
+        jac_surf_res = jac_surf_vmap(grid_)
+        jac_xyz = np.reshape(np.transpose(jac_surf_res, (1, 0, 2)), (2, 3, lu, lv))
+        return jac_xyz
 
-        :return: tuple of 3 arrays
-        :rtype: tuple(array, array, array)
-        """
-        pass
+    def get_hess_xyz_on_grid(self, grid):
+        grid_ = np.reshape(grid, (2, -1))
+        _, lu, lv = grid.shape
+
+        hess_surf = jax.hessian(self.get_xyz, argnums=0, holomorphic=False)
+        hess_surf_vmap = jax.vmap(hess_surf, in_axes=1, out_axes=-1)
+        hess_surf_res = hess_surf_vmap(grid_)
+        return np.reshape(hess_surf_res, (3, 2, 2, lu, lv))
+
+    def compute_surface_attributes(self, deg=2):
+        """compute surface elements used in the shape optimization up
+        to degree deg
+        deg is 0,1 or 2"""
+
+        self.get_uvgrid(*self.nbpts)
+        self.grids = self.get_uvgrid(*self.nbpts)
+
+        uv_grid = np.stack(self.grids, axis=0)
+        self.P = self.get_xyz_on_grid(uv_grid)
+
+        # We also compute surface element dS and derivatives dS_u and dS_v:
+        if deg >= 1:
+            self.dpsi = self.get_jac_xyz_on_grid(uv_grid)
+
+            N = np.cross(self.dpsi[0], self.dpsi[1], 0, 0, 0)
+            self.N = N
+            self.dS = np.linalg.norm(N, axis=0)
+            self.n = N / self.dS  # normal inward unit vector
+
+        if deg >= 2:
+            hess = self.get_hess_xyz_on_grid(uv_grid)
+
+            self.dpsi_uu = hess[:, 0, 0, ...]
+            self.dpsi_uv = hess[:, 1, 1, ...]
+            self.dpsi_vv = hess[:, 0, 1, ...]
+
+            dNdu = np.cross(self.dpsi_uu, self.dpsi[1], 0, 0, 0) + np.cross(self.dpsi[0], self.dpsi_uv, 0, 0, 0)
+            dNdv = np.cross(self.dpsi_uv, self.dpsi[1], 0, 0, 0) + np.cross(self.dpsi[0], self.dpsi_vv, 0, 0, 0)
+            self.dS_u = np.sum(dNdu * N, axis=0) / self.dS
+            self.dS_v = np.sum(dNdv * N, axis=0) / self.dS
+            self.n_u = dNdu / self.dS - self.dS_u * N / (self.dS**2)
+            self.n_v = dNdv / self.dS - self.dS_v * N / (self.dS**2)
+            # curvature computation
+            # curvature computations :
+            # First fundamental form of the surface (E,F,G)
+            E = np.einsum("lij,lij->ij", self.dpsi[0], self.dpsi[0])
+            F = np.einsum("lij,lij->ij", self.dpsi[0], self.dpsi[1])
+            G = np.einsum("lij,lij->ij", self.dpsi[1], self.dpsi[1])
+            self.__I = (E, F, G)
+            # m=np.cross(self.dpsi[0],self.dpsi[1],axisa=0, axisb=0)
+            # p=np.sqrt(np.einsum('ijl,ijl->ij', m, m))
+            # n=m/p[:,:,np.newaxis]
+            # Second fundamental of the surface (L,M,N)
+            L = np.einsum("lij,lij->ij", self.dpsi_uu, self.n)  # e
+            M = np.einsum("lij,lij->ij", self.dpsi_uv, self.n)  # f
+            N = np.einsum("lij,lij->ij", self.dpsi_vv, self.n)  # g
+            self.II = (L, M, N)
+            # K = det(second fundamental) / det(first fundamental)
+            # Gaussian Curvature
+            K = (L * N - M**2) / (E * G - F**2)
+            self.K = K
+            # trace of (second fundamental)(first fundamental^-1)
+            # Mean Curvature
+            H = ((E * N + G * L - 2 * F * M) / ((E * G - F**2))) / 2
+            self.H = H
+            Pmax = H + np.sqrt(H**2 - K)
+            Pmin = H - np.sqrt(H**2 - K)
+            self.principles = [Pmax, Pmin]
+
 
     def get_B_generated(self, j, positions):
         """Returns the B field generated by a current distribution at given positions.

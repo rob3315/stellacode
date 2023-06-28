@@ -1,9 +1,8 @@
 import configparser
 import sys
-import time
 import logging
 import pickle
-from stellacode.costs.full_shape_gradient import Full_shape_gradient
+from stellacode.costs.aggregate_cost import AggregateCost
 import scipy.optimize
 import numpy as np
 import jax.numpy as np
@@ -44,7 +43,7 @@ def launch(path_config_file=None, config=None):
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    full_grad = Full_shape_gradient(config=config)
+    full_grad = AggregateCost(config=config)
     # optimizer options
     freq_save = int(config['optimization_parameters']['freq_save'])
     max_iter = int(config['optimization_parameters']['max_iter'])
