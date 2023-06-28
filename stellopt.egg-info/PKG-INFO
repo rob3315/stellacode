@@ -1,0 +1,28 @@
+Metadata-Version: 2.1
+Name: stellopt
+Version: 1.1.0
+Summary: Stellarator coils optimization.
+Author-email: Rémi Robin <remi.robin@inria.fr>
+Project-URL: Documentation, https://rrobin.pages.math.cnrs.fr/stellacode/sources/tutorials/quickstart.html
+Project-URL: Source, https://plmlab.math.cnrs.fr/rrobin/stellacode
+Keywords: stellarator,coils
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Provides-Extra: test
+Provides-Extra: doc
+License-File: LICENSE
+
+[![pipeline status](https://plmlab.math.cnrs.fr/rrobin/stellacode/badges/master/pipeline.svg)](https://plmlab.math.cnrs.fr/rrobin/stellacode/commits/master)
+
+Stellacode
+---
+
+Stellacode is a python package for coil winding surface shape optimization.
+
+TODO :  add link to article
+
+The full documentation with installation guide and tutorials is available [here](https://rrobin.pages.math.cnrs.fr/stellacode).
+
+Copyright 2021-present [Rémi Robin](https://rrobin.pages.math.cnrs.fr/) and [Stellacage](https://www.ljll.math.upmc.fr/~sigalotti/cage/stellacage.html),
+
+Released under the [MPL 2 license](https://mozilla.org/MPL/2.0).

@@ -1,0 +1,14 @@
+------ Plasma information from VMEC ----
+np     iota_edge       phip_edge       curpol
+     3  0.000000000000E+00  0.000000000000E+00  1.182361694595E+02
+
+------ Current Surface: Coil-Plasma separation =   2.000000000000E-01 -----
+Number of fourier modes in table
+        1201
+Table of fourier coefficients
+m,n,crc2,czs2,crs2,czc2
+      0     0  4.0  0.0  0.0  0.0
+      0    -1  0.0  0.0  0.000000000000E+00  0.000000000000E+00
+      1     1  0.0  0.0  0.0  0.0
+      1     0  3.0  3.0  0.0  0.0 
+      1    -1  0.0  0.0  0.0  0.0

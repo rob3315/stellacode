@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[metadata]
+name = "stellacode"
+
+[project]
+name = "stellacode"
+version = "1.1.0"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Rémi Robin", email = "remi.robin@inria.fr"},
+]
+description = "Stellarator coils optimization."
+readme = "Readme.md"
+requires-python = ">=3.7"
+keywords = ["stellarator", "coils"]
+dependencies = [
+    "dask",
+    "matplotlib",
+    "mayavi",
+    "numpy",
+    "opt-einsum",
+    "scipy",
+    "jax",
+    "jaxlib"
+]
+
+[tool.setuptools]
+py-modules = ["stellacode"]
+
+[project.optional-dependencies]
+test = [
+    "pytest", "flake8", "mypy", "isort", "black"
+]
+doc = ["sphinx-autoapi", 
+        "nbsphinx",
+        "nbsphinx-link",
+        "pandoc"]
+
+[project.urls]
+Documentation = "https://rrobin.pages.math.cnrs.fr/stellacode/sources/tutorials/quickstart.html"
+Source = "https://plmlab.math.cnrs.fr/rrobin/stellacode"
+
+[tool.black]
+line-length = 120
+
+[tool.isort]
+reverse_relative = true
+
+[project.scripts]
