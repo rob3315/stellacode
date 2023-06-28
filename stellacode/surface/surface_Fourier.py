@@ -3,7 +3,7 @@ import logging
 from stellacode import np
 
 from .abstract_classes.abstract_surface import Surface
-
+import jax
 
 class Surface_Fourier(Surface):
     """A class used to represent an toroidal surface with Fourier coefficients
@@ -18,12 +18,12 @@ class Surface_Fourier(Surface):
 
     def __init__(self, surface_parametrization, nbpts, Np):
         self.Np = Np
-        self.__nbpts = nbpts
-        self.__npts = nbpts[0] * nbpts[1]
+        self.nbpts = nbpts
+        self.npts = nbpts[0] * nbpts[1]
         self.surface_parametrization = surface_parametrization
-        self.__param = np.concatenate((surface_parametrization[2], surface_parametrization[3]))
+        self.param = np.concatenate((surface_parametrization[2], surface_parametrization[3]))
         self.compute_surface_attributes()  # computation of the surface attributes
-        logging.debug("creation of a Toroidal surface successfull")
+
 
     @classmethod
     def load_file(cls, path_surf, n_fp, n_pol, n_tor):
@@ -77,92 +77,6 @@ class Surface_Fourier(Surface):
         logging.debug("file extraction successfull")
         return cls(surface_parametrization, (n_pol, n_tor), n_fp)
 
-    def _get_n_fp(self):
-        return self.Np
-
-    n_fp = property(_get_n_fp)
-
-    def _get_npts(self):
-        return self.__npts
-
-    npts = property(_get_npts)
-
-    def _get_nbpts(self):
-        return self.__nbpts
-
-    nbpts = property(_get_nbpts)
-
-    def _get_grids(self):
-        return self.__grids
-
-    grids = property(_get_grids)
-
-    def _get_P(self):
-        return self.__P
-
-    P = property(_get_P)
-
-    def _get_psi(self):
-        (m, n, Rmn, Zmn) = self.surface_parametrization
-
-        def psi(u, v):
-            angle = m * u + n * v
-            cos = np.cos(2 * np.pi * angle)
-            sin = np.sin(2 * np.pi * angle)
-            r = np.sum(Rmn * cos)
-            z = np.sum(Zmn * sin)
-            x = r * np.cos(v * 2 * np.pi / self.n_fp)
-            y = r * np.sin(v * 2 * np.pi / self.n_fp)
-            return x, y, z
-
-        return psi
-
-    psi = property(_get_psi)
-
-    def _get_dpsi(self):
-        return self.__dpsi
-
-    dpsi = property(_get_dpsi)
-
-    def _get_dS(self):
-        return self.__dS
-
-    dS = property(_get_dS)
-
-    def _get_n(self):
-        return self.__n
-
-    n = property(_get_n)
-
-    def _get_principles(self):
-        return self.__principles
-
-    principles = property(_get_principles)
-
-    def _get_I(self):
-        return self.__I
-
-    I = property(_get_I)
-
-    def _get_dpsi_uu(self):
-        return self.__dpsi_uu
-
-    dpsi_uu = property(_get_dpsi_uu)
-
-    def _get_dpsi_uv(self):
-        return self.__dpsi_uv
-
-    dpsi_uv = property(_get_dpsi_uv)
-
-    def _get_dpsi_vv(self):
-        return self.__dpsi_vv
-
-    dpsi_vv = property(_get_dpsi_vv)
-
-    def _get_II(self):
-        return self.__II
-
-    II = property(_get_II)
 
     def _get_param(self):
         return self.__param
@@ -195,213 +109,49 @@ class Surface_Fourier(Surface):
         u, v = np.linspace(0, 1, lu, endpoint=False), np.linspace(0, 1, lv, endpoint=False)
         ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
 
-        # first derivative
-        if deg >= 1:
-            dpsi = np.zeros((2, 3, lu, lv))
-        # second derivative
-        if deg >= 2:
-            dpsi_uu = np.zeros((3, lu, lv))
-            dpsi_uv = np.zeros((3, lu, lv))
-            dpsi_vv = np.zeros((3, lu, lv))
-            dRdu = np.zeros((lu, lv))
-            dRdv = np.zeros((lu, lv))
 
-        phi = 2 * np.pi * vgrid / self.Np  # we draw only one segment of the whole torus
-        # what we do (but faster):
-        #        for i in range(len(u)):
-        #            for j in range(len(v)):
-        #                for k in range(len(n)):
-        #                    R[i,j]+=Rmn[k]*np.cos(2*np.pi*(m[k]*u[i]-n[k]*v[j]))
-        #                    Z[i,j]+=Zmn[k]*np.sin(2*np.pi*(m[k]*u[i]+n[k]*v[j]))
-        # for sa in np.array_split(np.arange(len(m)), max(int(len(u)*len(v)*len(m)/Toroidal_surface.sat),1)): # to avoid memory saturation
-        tmp = np.tensordot(m, ugrid, 0) + np.tensordot(n, vgrid, 0)  # m*u+n*v#
-        # sum_n,m(Rmn*np.cos(2*pi*(m*u+n*v))
-        R = np.tensordot(Rmn, np.cos(2 * np.pi * tmp), 1)
-        # sum_n,m(Zmn*np.sin(2*pi*(m*u+n*v))
-        Z = np.tensordot(Zmn, np.sin(2 * np.pi * tmp), 1)
-        # # first derivative
-        # if deg >= 1:
-        #     # dR/du *cos(phi)=dX/du
-        #     dpsi[0, 0, :, :] += np.tensordot(m*Rmn, -
-        #                                      2*np.pi*np.sin(2*np.pi*tmp), 1)*np.cos(phi)
-        #     # dR/du *sin(phi)=dY/du
-        #     dpsi[0, 1, :, :] += np.tensordot(m*Rmn, -
-        #                                      2*np.pi*np.sin(2*np.pi*tmp), 1)*np.sin(phi)
-        #     # dZ/du
-        #     dpsi[0, 2, :, :] += np.tensordot(m *
-        #                                      Zmn, 2*np.pi*np.cos(2*np.pi*tmp), 1)
-        #     # dR/dv *cos(phi)
-        #     dpsi[1, 0, :, :] += np.tensordot(n*Rmn, -
-        #                                      2*np.pi*np.sin(2*np.pi*tmp), 1)*np.cos(phi)
-        #     # dR/dv *sin(phi)
-        #     dpsi[1, 1, :, :] += np.tensordot(n*Rmn, -
-        #                                      2*np.pi*np.sin(2*np.pi*tmp), 1)*np.sin(phi)
-        #     # dZ/dv
-        #     dpsi[1, 2, :, :] += np.tensordot(n *
-        #                                      Zmn, 2*np.pi*np.cos(2*np.pi*tmp), 1)
-        # if deg >= 2:
-        #     # second derivative
-        #     # d^2R/du^2 *cos(phi)=dX/du
-        #     dpsi_uu[0, :, :] += np.tensordot(m**2*Rmn, -
-        #                                      (2*np.pi)**2*np.cos(2*np.pi*tmp), 1)*np.cos(phi)
-        #     # d^2R/du^2 *sin(phi)=dY/du
-        #     dpsi_uu[1, :, :] += np.tensordot(m**2*Rmn, -
-        #                                      (2*np.pi)**2*np.cos(2*np.pi*tmp), 1)*np.sin(phi)
-        #     # d^2Z/du^2
-        #     dpsi_uu[2, :, :] += np.tensordot(m**2 *
-        #                                      Zmn, -(2*np.pi)**2*np.sin(2*np.pi*tmp), 1)
-        #     # d^2R/dudv *cos(phi)
-        #     dpsi_uv[0, :, :] += np.tensordot(m*n*Rmn, -(2*np.pi)
-        #                                      ** 2*np.cos(2*np.pi*tmp), 1)*np.cos(phi)
-        #     # d^2R/dudv *sin(phi)
-        #     dpsi_uv[1, :, :] += np.tensordot(m*n*Rmn, -(2*np.pi)
-        #                                      ** 2*np.cos(2*np.pi*tmp), 1)*np.sin(phi)
-        #     # d^2Z/dudv
-        #     dpsi_uv[2, :, :] += np.tensordot(m*n *
-        #                                      Zmn, -(2*np.pi)**2*np.sin(2*np.pi*tmp), 1)
-        #     # d^2R/dv^2 *cos(phi)=dX/du
-        #     dpsi_vv[0, :, :] += np.tensordot(n**2*Rmn, -
-        #                                      (2*np.pi)**2*np.cos(2*np.pi*tmp), 1)*np.cos(phi)
-        #     # d^2R/dv^2 *sin(phi)=dY/du
-        #     dpsi_vv[1, :, :] += np.tensordot(n**2*Rmn, -
-        #                                      (2*np.pi)**2*np.cos(2*np.pi*tmp), 1)*np.sin(phi)
-        #     # d^2Z/dv^2
-        #     dpsi_vv[2, :, :] += np.tensordot(n**2 *
-        #                                      Zmn, -(2*np.pi)**2*np.sin(2*np.pi*tmp), 1)
-        #     # other stuff
-        #     dRdu += np.tensordot(m*Rmn, -2*np.pi*np.sin(2*np.pi*tmp), 1)
-        #     dRdv += np.tensordot(n*Rmn, -2*np.pi*np.sin(2*np.pi*tmp), 1)
+        def fourier_surface(m, n, Rmn, Zmn, uv):
+            u, v = uv
+            tmp = u * m + v * n
+            R = np.tensordot(Rmn, np.cos(2 * np.pi * tmp), 1)
+            Z = np.tensordot(Zmn, np.sin(2 * np.pi * tmp), 1)
+            phi = 2 * np.pi * v / self.Np
+            return np.array([R * np.cos(phi), R * np.sin(phi), Z])
 
-        if deg >= 1:
-            # dR/du *cos(phi)=dX/du
-            dpsi = dpsi.at[0, 0, :, :].set(
-                dpsi[0, 0, :, :] + np.tensordot(m * Rmn, -2 * np.pi * np.sin(2 * np.pi * tmp), 1) * np.cos(phi)
-            )
-            # dR/du *sin(phi)=dY/du
-            # dpsi[0, 1, :, :] += np.tensordot(m*Rmn, -
-            #                                  2*np.pi*np.sin(2*np.pi*tmp), 1)*np.sin(phi)
-            dpsi = dpsi.at[0, 1, :, :].set(
-                dpsi[0, 1, :, :] + np.tensordot(m * Rmn, -2 * np.pi * np.sin(2 * np.pi * tmp), 1) * np.sin(phi)
-            )
-            # dZ/du
-            dpsi = dpsi.at[0, 2, :, :].set(
-                dpsi[0, 2, :, :] + np.tensordot(m * Zmn, 2 * np.pi * np.cos(2 * np.pi * tmp), 1)
-            )
-            # dR/dv *cos(phi)
-            dpsi = dpsi.at[1, 0, :, :].set(
-                dpsi[1, 0, :, :] + np.tensordot(n * Rmn, -2 * np.pi * np.sin(2 * np.pi * tmp), 1) * np.cos(phi)
-            )
-            # dR/dv *sin(phi)
-            dpsi = dpsi.at[1, 1, :, :].set(
-                dpsi[1, 1, :, :] + np.tensordot(n * Rmn, -2 * np.pi * np.sin(2 * np.pi * tmp), 1) * np.sin(phi)
-            )
-            # dZ/dv
-            dpsi = dpsi.at[1, 2, :, :].set(
-                dpsi[1, 2, :, :] + np.tensordot(n * Zmn, 2 * np.pi * np.cos(2 * np.pi * tmp), 1)
-            )
-        if deg >= 2:
-            # second derivative
-            # d^2R/du^2 *cos(phi)=dX/du
-            dpsi_uu = dpsi_uu.at[0, :, :].set(
-                dpsi_uu[0, :, :]
-                + np.tensordot(m**2 * Rmn, -((2 * np.pi) ** 2) * np.cos(2 * np.pi * tmp), 1) * np.cos(phi)
-            )
-            # d^2R/du^2 *sin(phi)=dY/du
-            dpsi_uu = dpsi_uu.at[1, :, :].set(
-                dpsi_uu[1, :, :]
-                + np.tensordot(m**2 * Rmn, -((2 * np.pi) ** 2) * np.cos(2 * np.pi * tmp), 1) * np.sin(phi)
-            )
-            # d^2Z/du^2
-            dpsi_uu = dpsi_uu.at[2, :, :].set(
-                dpsi_uu[2, :, :] + np.tensordot(m**2 * Zmn, -((2 * np.pi) ** 2) * np.sin(2 * np.pi * tmp), 1)
-            )
-            # d^2R/dudv *cos(phi)
-            dpsi_uv = dpsi_uv.at[0, :, :].set(
-                dpsi_uv[0, :, :]
-                + np.tensordot(m * n * Rmn, -((2 * np.pi) ** 2) * np.cos(2 * np.pi * tmp), 1) * np.cos(phi)
-            )
-            # d^2R/dudv *sin(phi)
-            dpsi_uv = dpsi_uv.at[1, :, :].set(
-                dpsi_uv[1, :, :]
-                + np.tensordot(m * n * Rmn, -((2 * np.pi) ** 2) * np.cos(2 * np.pi * tmp), 1) * np.sin(phi)
-            )
-            # d^2Z/dudv
-            dpsi_uv = dpsi_uv.at[2, :, :].set(
-                dpsi_uv[2, :, :] + np.tensordot(m * n * Zmn, -((2 * np.pi) ** 2) * np.sin(2 * np.pi * tmp), 1)
-            )
-            # d^2R/dv^2 *cos(phi)=dX/du
-            dpsi_vv = dpsi_vv.at[0, :, :].set(
-                dpsi_vv[0, :, :]
-                + np.tensordot(n**2 * Rmn, -((2 * np.pi) ** 2) * np.cos(2 * np.pi * tmp), 1) * np.cos(phi)
-            )
-            # d^2R/dv^2 *sin(phi)=dY/du
-            dpsi_vv = dpsi_vv.at[1, :, :].set(
-                dpsi_vv[1, :, :]
-                + np.tensordot(n**2 * Rmn, -((2 * np.pi) ** 2) * np.cos(2 * np.pi * tmp), 1) * np.sin(phi)
-            )
-            # d^2Z/dv^2
-            dpsi_vv = dpsi_vv.at[2, :, :].set(
-                dpsi_vv[2, :, :] + np.tensordot(n**2 * Zmn, -((2 * np.pi) ** 2) * np.sin(2 * np.pi * tmp), 1)
-            )
-            # other stuff
-            dRdu += np.tensordot(m * Rmn, -2 * np.pi * np.sin(2 * np.pi * tmp), 1)
-            dRdv += np.tensordot(n * Rmn, -2 * np.pi * np.sin(2 * np.pi * tmp), 1)
 
-        # we save the result
-        self.__grids = (ugrid, vgrid)
-        self.R = R
-        self.Z = Z
-        # we generate X and Y
-        self.X = R * np.cos(phi)
-        self.Y = R * np.sin(phi)
-        self.__P = np.einsum("kij->ijk", np.array([self.X, self.Y, self.Z]))
+        uvgrid = np.stack((np.reshape(ugrid, -1), np.reshape(vgrid, -1)), axis=0)
 
-        # def fourier_surface(m, n, Rmn, Zmn, u, v):
-        #     tmp = u*m+v*n
-        #     R = np.tensordot(Rmn, np.cos(2 * np.pi * tmp), 1)
-        #     Z = np.tensordot(Zmn, np.sin(2 * np.pi * tmp), 1)
-        #     return np.array([R * np.cos(phi), R * np.sin(phi), Z])
+        surf = jax.vmap(fourier_surface, in_axes=(None, None, None, None, 1), out_axes=-1)
+        surf_res = surf(m, n, Rmn, Zmn, uvgrid)
+        self.P = np.transpose(np.reshape(surf_res, (3, lu, lv)), (1, 2, 0))
 
-        # xyz = fourier_surface(m, n, Rmn, Zmn, ugrid[1], vgrid[1])
+        jac_surf = jax.jacobian(fourier_surface, argnums=4)
 
-        if deg >= 1:
-            dpsi = dpsi.at[1, 0, :, :].set(dpsi[1, 0, :, :] - R * 2 * np.pi / self.Np * np.sin(phi))  # R dcos(phi)/dv
-            dpsi = dpsi.at[1, 1, :, :].set(dpsi[1, 1, :, :] + R * 2 * np.pi / self.Np * np.cos(phi))  # R dsin(phi)/dv
-            # we save the result
-            self.__dpsi = dpsi
-        if deg >= 2:
-            dpsi_uv = dpsi_uv.at[0, :, :].set(
-                dpsi_uv[0, :, :] + -dRdu * 2 * np.pi / self.Np * np.sin(phi)
-            )  # R dcos(phi)/dv
-            dpsi_uv = dpsi_uv.at[1, :, :].set(
-                dpsi_uv[1, :, :] + dRdu * 2 * np.pi / self.Np * np.cos(phi)
-            )  # R dsin(phi)/dv
-            dpsi_vv = dpsi_vv.at[0, :, :].set(
-                dpsi_vv[0, :, :] - R * (2 * np.pi / self.Np) ** 2 * np.cos(phi)
-            )  # R d^2cos(phi)/dv^2
-            dpsi_vv = dpsi_vv.at[1, :, :].set(
-                dpsi_vv[1, :, :] - R * (2 * np.pi / self.Np) ** 2 * np.sin(phi)
-            )  # R d^2sin(phi)/dv^2
-            dpsi_vv = dpsi_vv.at[0, :, :].set(
-                dpsi_vv[0, :, :] + -2 * dRdv * 2 * np.pi / self.Np * np.sin(phi)
-            )  # R dcos(phi)/dv
-            dpsi_vv = dpsi_vv.at[1, :, :].set(
-                dpsi_vv[1, :, :] + 2 * dRdv * 2 * np.pi / self.Np * np.cos(phi)
-            )  # R dsin(phi)/dv
-            # we save the result
-            self.__dpsi_uu = dpsi_uu
-            self.__dpsi_uv = dpsi_uv
-            self.__dpsi_vv = dpsi_vv
+        jac_surf_vmap = jax.vmap(jac_surf, in_axes=(None, None, None, None, 1), out_axes=-1)
+
+        jac_surf_res = jac_surf_vmap(m, n, Rmn, Zmn, uvgrid)
+        self.dpsi = np.reshape(np.transpose(jac_surf_res, (1, 0, 2)), (2, 3, lu, lv))
+
+        hess_surf = jax.hessian(fourier_surface, argnums=4, holomorphic=False)
+
+        hess_surf_vmap = jax.vmap(hess_surf, in_axes=(None, None, None, None, 1), out_axes=-1)
+        hess_surf_res = hess_surf_vmap(m, n, Rmn, Zmn, uvgrid)
+
+        self.dpsi_uu = np.reshape(hess_surf_res[:, 0, 0, :], (3, lu, lv))
+        self.dpsi_uv = np.reshape(hess_surf_res[:, 1, 1, :], (3, lu, lv))
+        self.dpsi_vv = np.reshape(hess_surf_res[:, 0, 1, :], (3, lu, lv))
+
+        self.grids = (ugrid, vgrid)
 
         # We also compute surface element dS and derivatives dS_u and dS_v:
         if deg >= 1:
-            N = np.cross(dpsi[0], dpsi[1], 0, 0, 0)
+            N = np.cross(self.dpsi[0], self.dpsi[1], 0, 0, 0)
             self.N = N
-            self.__dS = np.linalg.norm(N, axis=0)
-            self.__n = N / self.__dS  # normal inward unit vector
+            self.dS = np.linalg.norm(N, axis=0)
+            self.n = N / self.dS  # normal inward unit vector
         if deg >= 2:
-            dNdu = np.cross(dpsi_uu, dpsi[1], 0, 0, 0) + np.cross(dpsi[0], dpsi_uv, 0, 0, 0)
-            dNdv = np.cross(dpsi_uv, dpsi[1], 0, 0, 0) + np.cross(dpsi[0], dpsi_vv, 0, 0, 0)
+            dNdu = np.cross(self.dpsi_uu, self.dpsi[1], 0, 0, 0) + np.cross(self.dpsi[0], self.dpsi_uv, 0, 0, 0)
+            dNdv = np.cross(self.dpsi_uv, self.dpsi[1], 0, 0, 0) + np.cross(self.dpsi[0], self.dpsi_vv, 0, 0, 0)
             self.dS_u = np.sum(dNdu * N, axis=0) / self.dS
             self.dS_v = np.sum(dNdv * N, axis=0) / self.dS
             self.n_u = dNdu / self.dS - self.dS_u * N / (self.dS**2)
@@ -409,18 +159,18 @@ class Surface_Fourier(Surface):
             # curvature computation
             # curvature computations :
             # First fundamental form of the surface (E,F,G)
-            E = np.einsum("lij,lij->ij", dpsi[0], dpsi[0])
-            F = np.einsum("lij,lij->ij", dpsi[0], dpsi[1])
-            G = np.einsum("lij,lij->ij", dpsi[1], dpsi[1])
+            E = np.einsum("lij,lij->ij", self.dpsi[0], self.dpsi[0])
+            F = np.einsum("lij,lij->ij", self.dpsi[0], self.dpsi[1])
+            G = np.einsum("lij,lij->ij", self.dpsi[1], self.dpsi[1])
             self.__I = (E, F, G)
-            # m=np.cross(dpsi[0],dpsi[1],axisa=0, axisb=0)
+            # m=np.cross(self.dpsi[0],self.dpsi[1],axisa=0, axisb=0)
             # p=np.sqrt(np.einsum('ijl,ijl->ij', m, m))
             # n=m/p[:,:,np.newaxis]
             # Second fundamental of the surface (L,M,N)
-            L = np.einsum("lij,lij->ij", dpsi_uu, self.n)  # e
-            M = np.einsum("lij,lij->ij", dpsi_uv, self.n)  # f
-            N = np.einsum("lij,lij->ij", dpsi_vv, self.n)  # g
-            self.__II = (L, M, N)
+            L = np.einsum("lij,lij->ij", self.dpsi_uu, self.n)  # e
+            M = np.einsum("lij,lij->ij", self.dpsi_uv, self.n)  # f
+            N = np.einsum("lij,lij->ij", self.dpsi_vv, self.n)  # g
+            self.II = (L, M, N)
             # K = det(second fundamental) / det(first fundamental)
             # Gaussian Curvature
             K = (L * N - M**2) / (E * G - F**2)
@@ -431,8 +181,8 @@ class Surface_Fourier(Surface):
             self.H = H
             Pmax = H + np.sqrt(H**2 - K)
             Pmin = H - np.sqrt(H**2 - K)
-            principles = [Pmax, Pmin]
-            self.__principles = principles
+            self.principles = [Pmax, Pmin]
+
 
     def plot_surface(self):
         """Plot the surface"""
@@ -449,8 +199,8 @@ class Surface_Fourier(Surface):
 
         """return a dictionary with the shape derivative of several elements"""
         (m, n, Rmn, Zmn) = self.surface_parametrization
-        (lu, lv) = self.__nbpts
-        ugrid, vgrid = self.__grids
+        (lu, lv) = self.nbpts
+        ugrid, vgrid = self.grids
         Np = self.Np
         ls = len(m)  # half of the number of degree of freedom for the surface
         # convention is first R then Z

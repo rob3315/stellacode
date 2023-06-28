@@ -1,11 +1,9 @@
 import logging
-import unittest
 
-import numpy as np
 import pytest
 
 from stellacode.surface.surface_Fourier import *
-
+import numpy as np
 
 @pytest.mark.skip("graphic verif skipping")
 def test_normal_derivative():

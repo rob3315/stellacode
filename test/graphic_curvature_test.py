@@ -1,6 +1,3 @@
-import logging
-import unittest
-
 import numpy as np
 
 from stellacode.surface.surface_Fourier import *
@@ -70,7 +67,7 @@ def test_graphic_curvature():
     S = Surface_Fourier.load_file("data/li383/cws.txt", 3, lu, lv)
     S = Surface_Fourier.load_file("data/li383/cws.txt", 3, lu, lv)
 
-    tmp = surface_curvature_num(S.X, S.Y, S.Z)
+    tmp = surface_curvature_num(S.P[:, :, 0], S.P[:, :, 1], S.P[:, :, 2])
     # Plot numerical vs analytical curvature
     if False:
         import matplotlib.pyplot as plt
