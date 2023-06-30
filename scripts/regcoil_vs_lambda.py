@@ -1,8 +1,11 @@
+import configparser
+
+import jax
+import pandas as pd
+
 from stellacode.costs.EM_cost import EMCost
 from stellacode.surface.utils import get_cws
-import pandas as pd
-import configparser
-import jax
+
 jax.config.update("jax_enable_x64", True)
 def to_float(dict_ ):return {k: float(v) for k, v in dict_.items()}
 
@@ -32,6 +35,7 @@ config.read(path_config)
 res = regcoil_vs_lambda(config, lambdas)
 print(res.T.min())
 import matplotlib.pyplot as plt
+
 fig, ax = plt.subplots(figsize=(15, 10))
 res.T.plot("max_j", "rmse_B_norm", ax=ax)
 ax.set_xlabel(r"max J [A]")
@@ -43,4 +47,3 @@ plt.savefig("lambd.png")
 
 
 import pdb;pdb.set_trace()
-

@@ -1,54 +1,52 @@
+from jax.typing import ArrayLike
+
 from stellacode import np
 
 from .abstract_surface import AbstractSurface
-from jax.typing import ArrayLike
 
 
 class CylindricalSurface(AbstractSurface):
     Np: int
-    alpha: float = 0.0
-    beta: float = 1.0
-    radius_scale: float = 1.0
+    axis_angle = 0.0
+    radius = 1.0
+    scale_length = 1.0
+    distance = 3
+    make_joints: bool = True
 
     def get_xyz(self, uv):
-        fourier_coeffs = self.params["fourier_coeffs"]
-        fourier_orders = len(fourier_coeffs) // 2
-        fourier_num = np.arange(fourier_orders)
-        th = 2 * np.pi * uv[0]
-        phi = 2 * np.pi / self.Np * uv[1]
+        u_ = 2 * np.pi * uv[0]  # poloidal variable
+        v_ = (uv[1] - 0.5) * 2  # length variable
 
-        radius = np.tensordot(
-            fourier_coeffs,
-            np.concatenate((np.cos(th * fourier_num), np.sin(th * fourier_num))),
+        _length = (
+            self.scale_length
+            * 2
+            * (self.distance - self.radius)
+            * np.sin(np.pi / self.Np)
         )
 
-        x_pos = (
-            np.cos(phi)
-            / np.sin(phi + self.alpha)
-            * (self.radius_scale * np.sin(self.alpha) + np.cos(th) * radius)
-        )
+        axis_a = self.axis_angle
+        axis_orth = np.array([np.sin(axis_a), -np.cos(axis_a), 0.0])
 
-        y_pos = np.tan(phi) * x_pos
-
-        z_pos = np.tan(self.beta) * y_pos + np.sin(th) * radius / np.cos(self.beta)
-        return np.array((x_pos, y_pos, z_pos))
-
-
-class CylindricalSurface2(AbstractSurface):
-    Np: int
-
-    def get_xyz(self, uv):
-        u, v = uv
-        alpha = 0.0
-        radius = 1.0
-
-        cyl_axis = np.array([np.cos(alpha) * u, np.sin(alpha) * u, 0.0])
-
-        axis_orth = np.array([np.cos(alpha), np.sin(alpha), 0.0])
         z_dir = np.array([0.0, 0.0, 1.0])
 
-        circle = radius * (
-            axis_orth * np.cos(2 * np.pi * v) + z_dir * np.sin(2 * np.pi * v)
+        fourier_coeffs = self.params["fourier_coeffs"]
+        angle = u_ * (np.arange(fourier_coeffs.shape[0]) + 1)
+
+        _radius = (
+            np.einsum("ab,ab",
+                fourier_coeffs, np.stack((np.cos(angle), np.sin(angle)), axis=1),
+            )
+            + 1
+        ) * self.radius
+
+        circle = _radius * (axis_orth * np.cos(u_) + z_dir * np.sin(u_))
+
+        if self.make_joints:
+            p_dist = self.distance + np.cos(u_) * _radius
+            _length = _length * p_dist / (self.distance - self.radius)
+
+        cyl_axis = np.array(
+            [np.cos(axis_a) * v_ * _length, np.sin(axis_a) * v_ * _length, 0.0]
         )
 
-        return cyl_axis + circle
+        return cyl_axis + circle + self.distance * axis_orth

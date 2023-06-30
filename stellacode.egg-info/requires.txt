@@ -6,6 +6,7 @@ opt-einsum
 scipy
 jax
 jaxlib
+pydantic
 
 [doc]
 sphinx-autoapi
