@@ -1,172 +1,218 @@
-"""Various implementation of the main cost"""
-# an example of Regcoil version in python
-from dataclasses import dataclass
+from typing import Optional
 
-from scipy.constants import mu_0
+from jax import Array
+from jax.typing import ArrayLike
 
 import stellacode.tools as tools
 import stellacode.tools.bnorm as bnorm
-from stellacode import np
+from stellacode import mu_0_fac, np
+from stellacode.costs.abstract_cost import AbstractCost
+from stellacode.surface.abstract_surface import AbstractSurface
+from stellacode.surface.utils import get_cws_grid, get_plasma_surface
 
 
-@dataclass
-class EM_cost_dask_3:
-    # Regularization parameter :
+class EMCost(AbstractCost):
+    """Main cost coming from the inverse problem
+
+    Args:
+        * Regularization parameter
+        * Number of field periods
+        * Number of poloidal points on the cws
+        * Number of toroidal points on the cws
+        * Amount of current flowig poloidally
+        * Amount of current flowig toroidally (usually 0)
+    """
+
     lamb: float
-    # Number of field periods :
     Np: int
-    # Number of poloidal points on the cws :
-    ntheta_coil: int
-    # Number of toroidal points on the cws :
-    nzeta_coil: int
-    # Amount of current flowig poloidally :
-    net_poloidal_current_Amperes: float
-    # Amount of current flowig toroidally (usually 0) :
-    net_toroidal_current_Amperes: float
-    # De-normalization factor, found in the nescin file created when running STELLOPT BNORM :
-
-    chunk_theta_plasma: int
-    chunk_zeta_plasma: int
-    phisize: tuple
-    bnorm: np.array
-    rot_tensor: np.array
-    # matrixd_phi: np.array
+    net_currents: Optional[ArrayLike]
+    Sp: AbstractSurface
+    bnorm: ArrayLike
+    rot_tensor: ArrayLike
+    matrixd_phi: ArrayLike
+    use_mu_0_factor: bool = True
 
     @classmethod
-    def from_config(cls, config, Sp):
+    def from_config(cls, config, use_mu_0_factor=True):
         mpol_coil = int(config["geometry"]["mpol_coil"])
-        # Number of toroidal modes for the scalar current potential :
         ntor_coil = int(config["geometry"]["ntor_coil"])
         curpol = float(config["other"]["curpol"])
-        BT = -curpol * bnorm.get_bnorm(str(config["other"]["path_bnorm"]), Sp)
         Np = int(config["geometry"]["Np"])
-        # Tensor to compute the rotations
         rot_tensor = tools.get_rot_tensor(Np)
         phisize = (mpol_coil, ntor_coil)
+        Np = int(config["geometry"]["Np"])
+        Sp = get_plasma_surface(config)
+        bnorm_ = -curpol * bnorm.get_bnorm(str(config["other"]["path_bnorm"]), Sp)
+        net_currents = np.array(
+            [
+                float(config["other"]["net_poloidal_current_Amperes"]) / Np,
+                float(config["other"]["net_toroidal_current_Amperes"]),
+            ]
+        )
+        if not use_mu_0_factor:
+            bnorm_ /= mu_0_fac
+            net_currents /= mu_0_fac
 
         return cls(
-            # Regularization parameter :
             lamb=float(config["other"]["lamb"]),
-            # Number of field periods :
-            Np=int(config["geometry"]["Np"]),
-            # Number of poloidal points on the cws :
-            ntheta_coil=int(config["geometry"]["ntheta_coil"]),
-            # Number of toroidal points on the cws :
-            nzeta_coil=int(config["geometry"]["nzeta_coil"]),
-            # Amount of current flowig poloidally :
-            net_poloidal_current_Amperes=float(config["other"]["net_poloidal_current_Amperes"]) / Np,
-            # Amount of current flowig toroidally (usually 0) :
-            net_toroidal_current_Amperes=float(config["other"]["net_toroidal_current_Amperes"]),
-            chunk_theta_plasma=int(config["dask_parameters"]["chunk_theta_plasma"]),
-            chunk_zeta_plasma=int(config["dask_parameters"]["chunk_zeta_plasma"]),
-            phisize=phisize,
-            bnorm=BT,
+            Np=Np,
+            net_currents=net_currents,
+            bnorm=bnorm_,
+            Sp=Sp,
             rot_tensor=rot_tensor,
+            matrixd_phi=tools.get_matrix_dPhi(phisize, get_cws_grid(config)),
+            use_mu_0_factor=use_mu_0_factor,
         )
 
-    def get_cost(self, S, Sp, solve_cst_current: bool = True):
-        BT = self.bnorm
-        matrixd_phi = tools.get_matrix_dPhi(self.phisize, S.grids)
+    def cost(self, S):
+        BS = self.get_BS_norm(S)
+        j_S, Qj = self.get_current(BS=BS, S=S, lamb=self.lamb)
+        return self.get_results(BS=BS, j_S=j_S, S=S, Qj=Qj, lamb=self.lamb)
 
-        dpsi = S.dpsi
-        normalp = Sp.n
-        S_dS = S.dS
-        eijk = tools.eijk
-        Qj = tools.compute_Qj(matrixd_phi, dpsi, S_dS)
+    def get_BS_norm(self, S):
+        Sp = self.Sp
+        r_plasma = Sp.P
 
-        def compute_B(XYZgrid):
-            T = (
-                XYZgrid[np.newaxis, np.newaxis, np.newaxis, ...]
-                - np.einsum("opq,ijq->oijp", self.rot_tensor, S.P)[..., np.newaxis, np.newaxis, :]
-            )
+        # rotate and duplicate coil
+        # TODO: should be exported to the surface class
+        r_coil = np.reshape(
+            np.einsum("opq,ijq->oijp", self.rot_tensor, S.P), (-1, S.nbpts[1], 3)
+        )
+        surface_current = np.concatenate(
+            [self.matrixd_phi] * self.rot_tensor.shape[0], 1
+        )
+        jac_r_plasma = np.reshape(
+            np.einsum("sba,taij->sijbt", self.rot_tensor, S.dpsi),
+            (-1, S.nbpts[1], 3, 2),
+        )
 
-            K = T / (np.linalg.norm(T, axis=-1) ** 3)[..., np.newaxis]
+        BS = biot_et_savart(r_plasma, r_coil, surface_current, jac_r_plasma) / S.npts
 
-            B = (
-                mu_0
-                / (4 * np.pi)
-                * np.einsum(
-                    "sijpqa,tijh,sbc,hcij,dab,dpq->tpq",
-                    K,
-                    matrixd_phi,
-                    self.rot_tensor,
-                    dpsi,
-                    eijk,
-                    normalp,
-                )
-                / (self.ntheta_coil * self.nzeta_coil)
-            )
-            return B
+        BS = np.einsum("tpqd,dpq->tpq", BS, Sp.n)
+        if self.use_mu_0_factor:
+            BS *= mu_0_fac
+        return BS
 
-        LS = compute_B(Sp.P)
+    def get_current(self, BS, S, lamb: float = 0.0):
+        Sp = self.Sp
 
         # Now we have to compute the best current components.
         # This is a technical part, one should read the paper :
         # "Optimal shape of stellarators for magnetic confinement fusion"
         # in order to understand what's going on.
-        if solve_cst_current:
-            LS_R = LS[2:]
+        Qj = tools.compute_Qj(self.matrixd_phi, S.dpsi, S.dS)
+
+        if self.net_currents is not None:
+            BS_R = BS[2:]
             Qj_inv_R = np.linalg.inv(Qj[2:, 2:])
-            B_tilde = BT - np.einsum(
-                "tpq,t",
-                LS[:2],
-                [self.net_poloidal_current_Amperes, self.net_toroidal_current_Amperes],
-            )
+            bnorm_ = self.bnorm - np.einsum("tpq,t", BS[:2], self.net_currents)
         else:
-            LS_R = LS
+            BS_R = BS
             Qj_inv_R = np.linalg.inv(Qj)
-            B_tilde = BT
+            bnorm_ = self.bnorm
 
-        LS_dagger_R = np.einsum("ut,tij,ij->uij", Qj_inv_R, LS_R, Sp.dS / Sp.npts)
+        BS_dagger = np.einsum("ut,tij,ij->uij", Qj_inv_R, BS_R, Sp.dS / Sp.npts)
 
-        # def solve_lambdas(self, LS_R, LS_dagger_R, B_tilde, Qj_inv_R, Qj, matrixd_phi, S, Sp,LS, BT):
-        inside_M_lambda_R = self.lamb * np.eye(LS_R.shape[0]) + np.einsum("tpq,upq->tu", LS_dagger_R, LS_R)
-        M_lambda_R = np.linalg.inv(inside_M_lambda_R)
-        LS_dagger_B_tilde = np.einsum("hpq,pq->h", LS_dagger_R, B_tilde)
+        RHS = np.einsum("hpq,pq->h", BS_dagger, bnorm_)
 
-        if solve_cst_current:
-            RHS = LS_dagger_B_tilde - self.lamb * Qj_inv_R @ (
-                Qj[2:, :2]
-                @ np.array(
-                    [
-                        self.net_poloidal_current_Amperes,
-                        self.net_toroidal_current_Amperes,
-                    ]
-                )
-            )
+        if self.net_currents is not None:
+            RHS_lamb = Qj_inv_R @ Qj[2:, :2] @ self.net_currents
         else:
-            RHS = LS_dagger_B_tilde
+            RHS_lamb = None
+
+        j_S = self.solve_lambda(
+            BS_R=BS_R,
+            BS_dagger=BS_dagger,
+            RHS=RHS,
+            RHS_lamb=RHS_lamb,
+            lamb=lamb,
+        )
+
+        return j_S, Qj
+
+    def get_results(self, BS, j_S, S, Qj, lamb: float = 0.0):
+        if self.use_mu_0_factor:
+            fac = 1
+        else:
+            fac = mu_0_fac
+        lamb /= fac**2
+
+        j_3D = self.get_j_3D(j_S, S)
+        metrics = {}
+        bnorm_pred = np.einsum("hpq,h", BS, j_S)
+        B_err = bnorm_pred - self.bnorm
+        metrics["err_max_B"] = np.max(np.abs(B_err))
+        metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2)) * fac
+        cost_B = self.Np * np.sum(B_err**2 * self.Sp.dS) / self.Sp.npts
+
+        metrics["cost_B"] = cost_B * fac**2
+        metrics["rmse_B_norm"] = np.sqrt(
+            cost_B / (self.Np * np.sum(self.bnorm**2 * self.Sp.dS) / self.Sp.npts)
+        )
+        metrics["mae_B_norm"] = np.sum(np.abs(B_err) * self.Sp.dS) / np.sum(
+            np.abs(self.bnorm) * self.Sp.dS
+        )
+
+        metrics["cost_J"] = self.Np * np.einsum("i,ij,j->", j_S, Qj, j_S) * fac**2
+        metrics["cost"] = cost_B + lamb * metrics["cost_J"]
+
+        if not self.use_mu_0_factor:
+            metrics["err_max_B"] *= fac
+            metrics["max_j"] *= fac
+            metrics["cost_B"] *= fac
+
+        return metrics["cost"], metrics
+
+    def solve_lambda(self, BS_R, BS_dagger, RHS, RHS_lamb=None, lamb: float = 0.0):
+        if not self.use_mu_0_factor:
+            lamb /= mu_0_fac**2
+        inside_M_lambda_R = lamb * np.eye(BS_R.shape[0]) + np.einsum(
+            "tpq,upq->tu", BS_dagger, BS_R
+        )
+        M_lambda_R = np.linalg.inv(inside_M_lambda_R)
+
+        if self.net_currents is not None:
+            RHS = RHS - lamb * RHS_lamb
 
         j_S_R = M_lambda_R @ RHS
 
-        if solve_cst_current:
-            j_S = np.concatenate(
-                (
-                    np.array(
-                        [
-                            self.net_poloidal_current_Amperes,
-                            self.net_toroidal_current_Amperes,
-                        ]
-                    ),
-                    j_S_R,
-                )
-            )
+        if self.net_currents is not None:
+            j_S = np.concatenate((self.net_currents, j_S_R))
         else:
             j_S = j_S_R
+        return j_S
 
+    def get_j_3D(self, j_S, S):
         # j_S is a vector containing the components of the best scalar current potential.
         # The real surface current is given by :
-        j_3D = np.einsum("oijk,kdij,ij,o->ijd", matrixd_phi, S.dpsi, 1 / S.dS, j_S, optimize=True)
+        return np.einsum(
+            "oijk,kdij,ij,o->ijd",
+            self.matrixd_phi,
+            S.dpsi,
+            1 / S.dS,
+            j_S,
+            optimize=True,
+        )
 
-        # Save the results in a dictionnary :
-        EM_cost_output = {}
-        B_err = np.einsum("hpq,h", LS, j_S) - BT
-        EM_cost_output["err_max_B"] = np.max(np.abs(B_err))
-        EM_cost_output["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
-        EM_cost_output["cost_B"] = self.Np * np.einsum("pq,pq,pq->", B_err, B_err, Sp.dS / Sp.npts)
-        EM_cost_output["cost_J"] = self.Np * np.einsum("i,ij,j->", j_S, Qj, j_S)
-        EM_cost_output["cost"] = EM_cost_output["cost_B"] + self.lamb * EM_cost_output["cost_J"]
-        EM_cost_output["j_3D"] = j_3D
-        EM_cost_output["j_S"] = j_S
 
-        return EM_cost_output
+def biot_et_savart(
+    r_plasma: ArrayLike,
+    r_coil: ArrayLike,
+    surface_current: ArrayLike,
+    jac_r_plasma: ArrayLike,
+) -> Array:
+    """
+    Args:
+     * r_plasma: dims = up x vp x 3
+     * r_coil: dims = uc x vc x 3
+     * surface_current: dims = uc x vc x 3 or current_basis x uc x vc x 3
+     * jac_r_plasma: dims = uc x vc x 3 x 2
+    """
+
+    T = r_plasma[None, None, ...] - r_coil[:, :, None, None]
+    K = T / (np.linalg.norm(T, axis=-1) ** 3)[..., np.newaxis]
+
+    sc_jac = np.einsum("tijh,ijah->ijat", surface_current, jac_r_plasma)
+    B = np.einsum("ijpqa,ijbt, dab->tpqd", K, sc_jac, tools.eijk)
+
+    return B

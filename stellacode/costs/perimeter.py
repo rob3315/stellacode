@@ -1,5 +1,3 @@
-import configparser
-
 from stellacode import np
 from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.costs.auxi import f_e
@@ -8,14 +6,17 @@ from stellacode.costs.auxi import f_e
 class PerimeterCost(AbstractCost):
     """Non linear penalization on the perimeter (upper bound)"""
 
-    def __init__(self, path_config_file=None, config=None):
-        if config is None:
-            config = configparser.ConfigParser()
-            config.read(path_config_file)
-        self.config = config
-        self.Np = int(config["geometry"]["Np"])
-        self.c0 = float(config["optimization_parameters"]["perim_c0"])
-        self.c1 = float(config["optimization_parameters"]["perim_c1"])
+    Np: int
+    c0: float
+    c1: float
+
+    @classmethod
+    def from_config(cls, config):
+        return cls(
+            Np=int(config["geometry"]["Np"]),
+            c0=float(config["optimization_parameters"]["perim_c0"]),
+            c1=float(config["optimization_parameters"]["perim_c1"]),
+        )
 
     def cost(self, S):
         perimeter = self.Np * np.sum(S.dS) / S.npts

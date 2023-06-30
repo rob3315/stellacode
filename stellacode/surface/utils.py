@@ -1,7 +1,34 @@
 """
 Imports for the surface module.
 """
+from stellacode.surface.abstract_surface import AbstractSurface
+
 from .surface_from_file import surface_from_file
+
+
+def get_cws(config):
+    n_fp = int(config["geometry"]["Np"])
+    n_pol_coil = int(config["geometry"]["ntheta_coil"])
+    n_tor_coil = int(config["geometry"]["nzeta_coil"])
+    path_cws = str(config["geometry"]["path_cws"])
+    cws = surface_from_file(path_cws, n_fp, n_pol_coil, n_tor_coil)
+    return cws
+
+
+def get_cws_grid(config):
+    n_pol_coil = int(config["geometry"]["ntheta_coil"])
+    n_tor_coil = int(config["geometry"]["nzeta_coil"])
+
+    return AbstractSurface.get_uvgrid(n_pol_coil, n_tor_coil)
+
+
+def get_plasma_surface(config):
+    n_fp = int(config["geometry"]["Np"])
+    n_pol_plasma = int(config["geometry"]["ntheta_plasma"])
+    n_tor_plasma = int(config["geometry"]["nzeta_plasma"])
+    path_plasma = str(config["geometry"]["path_plasma"])
+    plasma = surface_from_file(path_plasma, n_fp, n_pol_plasma, n_tor_plasma)
+    return plasma
 
 
 def get_cws_and_plasma(path_config_file=None, config=None):

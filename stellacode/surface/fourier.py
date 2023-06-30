@@ -23,7 +23,6 @@ class FourierSurface(AbstractSurface):
     mf: ArrayLike
     nf: ArrayLike
     Np: int
-    nbpts: tp.Tuple[int, int]
 
     @classmethod
     def from_file(cls, path_surf, n_fp, n_pol, n_tor):
@@ -37,10 +36,10 @@ class FourierSurface(AbstractSurface):
 
         if path_surf[-3::] == ".nc":
             f = netcdf_file(path_surf, "r", mmap=False)
-            m = f.variables["xm"][()]
-            n = -f.variables["xn"][()] / n_fp
-            Rmn = f.variables["rmnc"][()][-1]
-            Zmn = f.variables["zmns"][()][-1]
+            m = np.array(f.variables["xm"][()])
+            n = -np.array(f.variables["xn"][()] / n_fp)
+            Rmn = np.array(f.variables["rmnc"][()][-1])
+            Zmn = np.array(f.variables["zmns"][()][-1])
             f.close()
 
         elif path_surf.rpartition(sep)[-1][:6:] == "nescin":

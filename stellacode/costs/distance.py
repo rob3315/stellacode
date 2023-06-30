@@ -1,5 +1,6 @@
-import configparser
-import logging
+import typing as tp
+
+from jax.typing import ArrayLike
 
 import stellacode.tools as tools
 from stellacode import np
@@ -7,35 +8,36 @@ from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.costs.auxi import f_non_linear
 from stellacode.surface.fourier import FourierSurface
 from stellacode.surface.surface_from_file import surface_from_file
+from stellacode.surface.utils import get_plasma_surface
 
 
 class DistanceCost(AbstractCost):
     """Non linear penalization of the distance to the plasma (lower bound)"""
 
-    def __init__(self, path_config_file=None, config=None):
-        if config is None:
-            config = configparser.ConfigParser()
-            config.read(path_config_file)
-        self.config = config
-        # Preparation of the plasma and geometric properties
-        self.Np = int(config["geometry"]["Np"])
-        ntheta_plasma = int(config["geometry"]["ntheta_plasma"])
-        nzeta_plasma = int(config["geometry"]["nzeta_plasma"])
-        # 'code/li383/plasma_surf.txt'
-        path_plasma = str(config["geometry"]["path_plasma"])
-        self.Sp = surface_from_file(path_plasma, n_fp=self.Np, n_pol=ntheta_plasma, n_tor=nzeta_plasma)
-        self.rot_tensor = tools.get_rot_tensor(self.Np)
-        # distance cost parameters
-        self.d_min_hard = float(config["optimization_parameters"]["d_min_hard"])
-        self.d_min_soft = float(config["optimization_parameters"]["d_min_soft"])
-        self.d_min_penalization = float(config["optimization_parameters"]["d_min_penalization"])
+    Np: int
+    Sp: tp.Any
+    rot_tensor: ArrayLike
+    d_min_hard: float
+    d_min_soft: float
+    d_min_penalization: float
 
-        self.vf = np.vectorize(lambda x: f_non_linear(self.d_min_hard, self.d_min_soft, self.d_min_penalization, x))
+    @classmethod
+    def from_config(cls, config):
+        Np = int(config["geometry"]["Np"])
+        return cls(
+            Np=Np,
+            Sp=get_plasma_surface(config),
+            rot_tensor=tools.get_rot_tensor(Np),
+            d_min_hard=float(config["optimization_parameters"]["d_min_hard"]),
+            d_min_soft=float(config["optimization_parameters"]["d_min_soft"]),
+            d_min_penalization=float(config["optimization_parameters"]["d_min_penalization"]),
+        )
 
     def cost(self, S):
+        vf = np.vectorize(lambda x: f_non_linear(self.d_min_hard, self.d_min_soft, self.d_min_penalization, x))
         T = tools.get_tensor_distance(S, self.Sp, self.rot_tensor)
         dist = np.linalg.norm(T, axis=-1)
         dist_min = np.amin(dist, axis=(0, 3, 4))
-        cost = self.Np * np.einsum("ij,ij->", self.vf(dist_min), S.dS / S.npts)
+        cost = self.Np * np.einsum("ij,ij->", vf(dist_min), S.dS / S.npts)
 
         return cost, {"min_distance": np.min(dist_min)}

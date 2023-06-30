@@ -3,7 +3,8 @@ import logging
 import os
 import pickle
 
-import stellacode.costs.EM_shape_gradient as EM
+import wsp.stellacode.stellacode.costs.EM_cost as EM
+
 from stellacode import np
 from stellacode.costs.curvature import CurvatureCost
 from stellacode.costs.distance import DistanceCost

@@ -15,6 +15,7 @@ class AbstractSurface(BaseModel):
     """
 
     params: tp.Dict[str, ArrayLike]
+    nbpts: tp.Tuple[int, int]
 
     class Config:
         arbitrary_types_allowed = True
@@ -34,7 +35,8 @@ class AbstractSurface(BaseModel):
             self.params[k] = v
         self.compute_surface_attributes(deg=2)
 
-    def get_uvgrid(self, lu, lv, concat: bool = False):
+    @staticmethod
+    def get_uvgrid(lu, lv, concat: bool = False):
         # u, v = np.linspace(
         #     0, 1, lu, endpoint=False), (np.arange(lv) + 0.5) / lv
         u, v = np.linspace(0, 1, lu, endpoint=False), np.linspace(0, 1, lv, endpoint=False)
@@ -95,35 +97,35 @@ class AbstractSurface(BaseModel):
         if deg >= 2:
             hess = self.get_hess_xyz_on_grid(uv_grid)
 
-            self.dpsi_uu = hess[:, 0, 0, ...]
-            self.dpsi_uv = hess[:, 1, 1, ...]
-            self.dpsi_vv = hess[:, 0, 1, ...]
+            dpsi_uu = hess[:, 0, 0, ...]
+            dpsi_uv = hess[:, 1, 1, ...]
+            dpsi_vv = hess[:, 0, 1, ...]
 
-            dNdu = np.cross(self.dpsi_uu, self.dpsi[1], 0, 0, 0) + np.cross(self.dpsi[0], self.dpsi_uv, 0, 0, 0)
-            dNdv = np.cross(self.dpsi_uv, self.dpsi[1], 0, 0, 0) + np.cross(self.dpsi[0], self.dpsi_vv, 0, 0, 0)
-            self.dS_u = np.sum(dNdu * N, axis=0) / self.dS
-            self.dS_v = np.sum(dNdv * N, axis=0) / self.dS
-            self.n_u = dNdu / self.dS - self.dS_u * N / (self.dS**2)
-            self.n_v = dNdv / self.dS - self.dS_v * N / (self.dS**2)
+            dNdu = np.cross(dpsi_uu, self.dpsi[1], 0, 0, 0) + np.cross(self.dpsi[0], dpsi_uv, 0, 0, 0)
+            dNdv = np.cross(dpsi_uv, self.dpsi[1], 0, 0, 0) + np.cross(self.dpsi[0], dpsi_vv, 0, 0, 0)
+            dS_u = np.sum(dNdu * N, axis=0) / self.dS
+            dS_v = np.sum(dNdv * N, axis=0) / self.dS
+            self.n_u = dNdu / self.dS - dS_u * N / (self.dS**2)
+            self.n_v = dNdv / self.dS - dS_v * N / (self.dS**2)
             # curvature computation
             # curvature computations :
             # First fundamental form of the surface (E,F,G)
             E = np.einsum("lij,lij->ij", self.dpsi[0], self.dpsi[0])
             F = np.einsum("lij,lij->ij", self.dpsi[0], self.dpsi[1])
             G = np.einsum("lij,lij->ij", self.dpsi[1], self.dpsi[1])
-            self.__I = (E, F, G)
-            # m=np.cross(self.dpsi[0],self.dpsi[1],axisa=0, axisb=0)
-            # p=np.sqrt(np.einsum('ijl,ijl->ij', m, m))
-            # n=m/p[:,:,np.newaxis]
+            self.I = (E, F, G)
+
             # Second fundamental of the surface (L,M,N)
-            L = np.einsum("lij,lij->ij", self.dpsi_uu, self.n)  # e
-            M = np.einsum("lij,lij->ij", self.dpsi_uv, self.n)  # f
-            N = np.einsum("lij,lij->ij", self.dpsi_vv, self.n)  # g
+            L = np.einsum("lij,lij->ij", dpsi_uu, self.n)  # e
+            M = np.einsum("lij,lij->ij", dpsi_uv, self.n)  # f
+            N = np.einsum("lij,lij->ij", dpsi_vv, self.n)  # g
             self.II = (L, M, N)
+
             # K = det(second fundamental) / det(first fundamental)
             # Gaussian Curvature
             K = (L * N - M**2) / (E * G - F**2)
             self.K = K
+
             # trace of (second fundamental)(first fundamental^-1)
             # Mean Curvature
             H = ((E * N + G * L - 2 * F * M) / ((E * G - F**2))) / 2
