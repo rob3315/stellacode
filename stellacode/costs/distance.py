@@ -6,9 +6,7 @@ import stellacode.tools as tools
 from stellacode import np
 from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.costs.auxi import f_non_linear
-from stellacode.surface.fourier import FourierSurface
-from stellacode.surface.surface_from_file import surface_from_file
-from stellacode.surface.utils import get_plasma_surface
+from stellacode.surface.imports import get_plasma_surface
 
 
 class DistanceCost(AbstractCost):

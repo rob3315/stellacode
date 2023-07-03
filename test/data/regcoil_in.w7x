@@ -1,0 +1,26 @@
+! For documentation of these input parameters and their default values, see the README.
+
+&regcoil_nml
+  nlambda = 5
+  lambda_min = 1e-30
+  lambda_max = 1
+
+  ntheta_plasma = 5
+  ntheta_coil   = 6
+  nzeta_plasma  = 7
+  nzeta_coil    = 4
+  mpol_potential = 2
+  ntor_potential = 3
+
+  geometry_option_plasma = 2
+
+  wout_filename = './wout_d23p4_tm.nc'
+
+  geometry_option_coil=3
+  nescin_filename = './nescin.w7x_winding_surface_from_Drevlak'
+
+  net_poloidal_current_Amperes = 1.4
+  net_toroidal_current_Amperes = 0.3
+
+  symmetry_option = 3
+/

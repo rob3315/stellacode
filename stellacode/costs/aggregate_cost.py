@@ -5,7 +5,7 @@ from stellacode.costs.curvature import CurvatureCost
 from stellacode.costs.distance import DistanceCost
 from stellacode.costs.EM_cost import EMCost
 from stellacode.costs.perimeter import PerimeterCost
-from stellacode.surface.utils import get_cws
+from stellacode.surface.imports import get_cws
 
 
 class AggregateCost:

@@ -8,8 +8,8 @@ import stellacode.tools.bnorm as bnorm
 from stellacode import mu_0_fac, np
 from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.surface.abstract_surface import AbstractSurface
-from stellacode.surface.utils import get_cws_grid, get_plasma_surface
-
+from stellacode.surface.imports import get_cws_grid, get_plasma_surface
+import pandas as pd
 
 class EMCost(AbstractCost):
     """Main cost coming from the inverse problem
@@ -30,7 +30,7 @@ class EMCost(AbstractCost):
     bnorm: ArrayLike
     rot_tensor: ArrayLike
     matrixd_phi: ArrayLike
-    use_mu_0_factor: bool = True
+    use_mu_0_factor: bool = False
 
     @classmethod
     def from_config(cls, config, use_mu_0_factor=True):
@@ -193,6 +193,21 @@ class EMCost(AbstractCost):
             j_S,
             optimize=True,
         )
+
+    def cost_multiple_lambdas(self, S, lambdas):
+        BS = self.get_BS_norm(S)
+        results = {}
+        for lamb in lambdas:
+            j_S, Qj = self.get_current(BS=BS, S=S, lamb=lamb)
+            results[float(lamb)] = to_float(
+                self.get_results(BS=BS, j_S=j_S, S=S, Qj=Qj, lamb=lamb)[1]
+            )
+
+        return pd.DataFrame(results).T
+
+
+def to_float(dict_):
+    return {k: float(v) for k, v in dict_.items()}
 
 
 def biot_et_savart(

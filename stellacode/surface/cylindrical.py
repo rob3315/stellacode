@@ -50,3 +50,12 @@ class CylindricalSurface(AbstractSurface):
         )
 
         return cyl_axis + circle + self.distance * axis_orth
+
+
+
+    # def cartesian_to_toroidal(
+    #     self, xyz, tore_radius: Optional[float] = None, height: float = 0.
+    # ):
+    #     if tore_radius is None:
+    #         tore_radius = self.radius
+    #     return cartesian_to_toroidal(xyz=xyz, tore_radius=tore_radius, height=height)

@@ -1,8 +1,4 @@
 from .fourier import FourierSurface
-from .pwc_surfaces.surface_pwc_ell_tri import Surface_PWC_Ell_Tri
-from .pwc_surfaces.surface_pwc_ell_tri_3 import Surface_PWC_Ell_Tri_3
-from .pwc_surfaces.surface_pwc_fourier import Surface_PWC_Fourier
-from .pwc_surfaces.surface_pwc_fourier_3 import Surface_PWC_Fourier_3
 
 
 def surface_from_file(path_surf, n_fp, n_pol, n_tor):
@@ -53,37 +49,8 @@ def surface_from_file(path_surf, n_fp, n_pol, n_tor):
             first_line = next(f).strip()
         if first_line == "fourier":
             return FourierSurface.from_file(path_surf, n_fp, n_pol, n_tor)
-        elif first_line == "pwc fourier":
-            return Surface_PWC_Fourier.from_file(path_surf, n_fp, n_pol, n_tor)
-        elif first_line == "pwc ellipticity triangularity":
-            return Surface_PWC_Ell_Tri.from_file(path_surf, n_fp, n_pol, n_tor)
-        elif first_line == "pwc fourier 3":
-            return Surface_PWC_Fourier_3.from_file(path_surf, n_fp, n_pol, n_tor)
-        elif first_line == "pwc ellipticity triangularity 3":
-            return Surface_PWC_Ell_Tri_3.from_file(path_surf, n_fp, n_pol, n_tor)
         else:
             raise NotImplementedError
 
-    elif file_extension == "json":
-        import json
-
-        with open(path_surf, "r") as f:
-            data = json.load(f)
-        n_cyl = data["surface"]["n_cyl"]
-        parametrization = data["surface"]["parametrization"]
-
-        if parametrization == "fourier":
-            if n_cyl == 3:
-                return Surface_PWC_Fourier_3.from_file(path_surf, n_fp, n_pol, n_tor)
-            else:
-                return Surface_PWC_Fourier.from_file(path_surf, n_fp, n_pol, n_tor)
-        elif parametrization == "ell_tri":
-            if n_cyl == 3:
-                return Surface_PWC_Ell_Tri_3.from_file(path_surf, n_fp, n_pol, n_tor)
-            else:
-                return Surface_PWC_Ell_Tri.from_file(path_surf, n_fp, n_pol, n_tor)
-        else:
-            raise NotImplementedError(f"Parametrization: {parametrization} is not supported.")
-
     else:
-        raise NotImplementedError(f"Parametrization: {parametrization} is not supported.")
+        raise NotImplementedError(f"Parametrization: is not supported.")

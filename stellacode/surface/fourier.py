@@ -1,12 +1,12 @@
-import typing as tp
 from os import sep
 
 from jax.typing import ArrayLike
 from scipy.io import netcdf_file
-
 from stellacode import np
 
+
 from .abstract_surface import AbstractSurface
+from .utils import cartesian_to_toroidal
 
 
 class FourierSurface(AbstractSurface):
@@ -45,13 +45,20 @@ class FourierSurface(AbstractSurface):
         elif path_surf.rpartition(sep)[-1][:6:] == "nescin":
             with open(path_surf, "r") as f:
                 line = f.readline()
-                while "crc" not in line:
+                while "------ Current Surface:" not in line:
                     line = f.readline()
+                line = f.readline()
+                num_modes = int(f.readline())
+
+                f.readline()
+                f.readline()
+  
                 data = []
-                for line in f:
-                    data.append(str.split(line))
+                for _ in range(num_modes):
+                    data.append(str.split(f.readline()))
                 adata = np.array(data, dtype="float64")
                 m, n, Rmn, Zmn = adata[:, 0], adata[:, 1], adata[:, 2], adata[:, 3]
+
         else:
             data = []
             with open(path_surf, "r") as f:
@@ -67,34 +74,22 @@ class FourierSurface(AbstractSurface):
         return cls(params=params, mf=m, nf=n, nbpts=(n_pol, n_tor), Np=n_fp)
 
     def get_xyz(self, uv):
-        u, v = uv
-        tmp = u * self.mf + v * self.nf
-        R = np.tensordot(self.params["Rmn"], np.cos(2 * np.pi * tmp), 1)
-        Z = np.tensordot(self.params["Zmn"], np.sin(2 * np.pi * tmp), 1)
-        phi = 2 * np.pi * v / self.Np
+        angle = 2 * np.pi * (uv[0] * self.mf + uv[1] * self.nf)
+        R = np.tensordot(self.params["Rmn"], np.cos(angle), 1)
+        Z = np.tensordot(self.params["Zmn"], np.sin(angle), 1)
+        phi = 2 * np.pi * uv[1] / self.Np
         return np.array([R * np.cos(phi), R * np.sin(phi), Z])
 
+    def get_major_radius(self):
+        assert self.mf[0] == 0 and self.nf[0] == 0
+        return self.params["Rmn"][0]
 
-def expand_for_plot(S):
-    """from a toroidal_surface surface return X,Y,Z
-    and add redundancy of first row"""
-    shape = (S.X.shape[0] + 1, S.X.shape[1])
-    lst = []
-    for elt in [S.X, S.Y, S.Z]:
-        new_elt = np.zeros(shape)
-        new_elt[:-1, :] = elt
-        new_elt[-1, :] = elt[0, :]
-        lst.append(new_elt.copy())
-    return lst
+    def cartesian_to_toroidal(self):
+        return cartesian_to_toroidal(
+            xyz=self.P,
+            tore_radius=self.get_major_radius(),
+            height=self.params["Zmn"][0],
+        )
 
-
-def plot_function_on_surface(S, f):
-    """Plot f the surface given by S.X,S.Y,S.Z"""
-    from mayavi import mlab
-
-    X, Y, Z = expand_for_plot(S)
-    fc2 = np.concatenate((f, f[0:1, :]), axis=0)
-    s = mlab.mesh(X, Y, Z, representation="surface", scalars=fc2)
-    mlab.colorbar(s, nb_labels=4, label_fmt="%.1E", orientation="vertical")
-    mlab.show()
-    return s
+    def get_axisymmetric_envelope(self):
+        return np.max(self.cartesian_to_toroidal()[:, :, 0], axis=1)
