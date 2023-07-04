@@ -7,10 +7,10 @@ from .abstract_surface import AbstractSurface
 
 class CylindricalSurface(AbstractSurface):
     Np: int
-    axis_angle = 0.0
-    radius = 1.0
-    scale_length = 1.0
-    distance = 3
+    axis_angle = 0.0  # rotates the surface by the given angle
+    radius = 1.0  # radius of the cylinders
+    scale_length = 1.0  # The cylinder is scaled by the scale_length factor
+    distance = 3  # distance between the center of the cylinder and the coordinate center
     make_joints: bool = True
 
     def get_xyz(self, uv):
@@ -33,8 +33,10 @@ class CylindricalSurface(AbstractSurface):
         angle = u_ * (np.arange(fourier_coeffs.shape[0]) + 1)
 
         _radius = (
-            np.einsum("ab,ab",
-                fourier_coeffs, np.stack((np.cos(angle), np.sin(angle)), axis=1),
+            np.einsum(
+                "ab,ab",
+                fourier_coeffs,
+                np.stack((np.cos(angle), np.sin(angle)), axis=1),
             )
             + 1
         ) * self.radius
@@ -50,8 +52,6 @@ class CylindricalSurface(AbstractSurface):
         )
 
         return cyl_axis + circle + self.distance * axis_orth
-
-
 
     # def cartesian_to_toroidal(
     #     self, xyz, tore_radius: Optional[float] = None, height: float = 0.
