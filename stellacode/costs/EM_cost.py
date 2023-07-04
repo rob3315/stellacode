@@ -11,6 +11,7 @@ from stellacode.surface.abstract_surface import AbstractSurface
 from stellacode.surface.imports import get_cws_grid, get_plasma_surface
 import pandas as pd
 
+
 class EMCost(AbstractCost):
     """Main cost coming from the inverse problem
 
@@ -51,7 +52,7 @@ class EMCost(AbstractCost):
         )
         if not use_mu_0_factor:
             bnorm_ /= mu_0_fac
-            net_currents /= mu_0_fac
+            # net_currents /= mu_0_fac
 
         return cls(
             lamb=float(config["other"]["lamb"]),
@@ -141,25 +142,14 @@ class EMCost(AbstractCost):
         metrics = {}
         bnorm_pred = np.einsum("hpq,h", BS, j_S)
         B_err = bnorm_pred - self.bnorm
-        metrics["err_max_B"] = np.max(np.abs(B_err))
+        metrics["err_max_B"] = np.max(np.abs(B_err)) * fac
         metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2)) * fac
-        cost_B = self.Np * np.sum(B_err**2 * self.Sp.dS) / self.Sp.npts
-
-        metrics["cost_B"] = cost_B * fac**2
-        metrics["rmse_B_norm"] = np.sqrt(
-            cost_B / (self.Np * np.sum(self.bnorm**2 * self.Sp.dS) / self.Sp.npts)
-        )
-        metrics["mae_B_norm"] = np.sum(np.abs(B_err) * self.Sp.dS) / np.sum(
-            np.abs(self.bnorm) * self.Sp.dS
+        metrics["cost_B"] = (
+            self.Np * np.sum(B_err**2 * self.Sp.dS) / self.Sp.npts * fac**2
         )
 
-        metrics["cost_J"] = self.Np * np.einsum("i,ij,j->", j_S, Qj, j_S) * fac**2
-        metrics["cost"] = cost_B + lamb * metrics["cost_J"]
-
-        if not self.use_mu_0_factor:
-            metrics["err_max_B"] *= fac
-            metrics["max_j"] *= fac
-            metrics["cost_B"] *= fac
+        metrics["cost_J"] = self.Np * np.einsum("i,ij,j->", j_S, Qj, j_S)
+        metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
         return metrics["cost"], metrics
 
