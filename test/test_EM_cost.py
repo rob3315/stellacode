@@ -7,6 +7,7 @@ from stellacode import np
 from scipy.io import netcdf_file
 from stellacode.costs.EM_cost import EMCost
 from stellacode.surface.imports import get_cws
+import pytest
 
 
 def test_no_dimension_error():
@@ -17,7 +18,8 @@ def test_no_dimension_error():
     EMCost.from_config_file(path_config_file)
 
 
-def test_compare_to_regcoil():
+@pytest.mark.parametrize("use_mu_0_factor", [False, True])
+def test_compare_to_regcoil(use_mu_0_factor):
     path_config_file = "test/data/li383/config.ini"
     config = configparser.ConfigParser()
     config.read(path_config_file)
@@ -26,7 +28,7 @@ def test_compare_to_regcoil():
     file_ = netcdf_file(filename, "r", mmap=False)
 
     cws = get_cws(config)
-    em_cost = EMCost.from_config(config=config)
+    em_cost = EMCost.from_config(config=config, use_mu_0_factor=use_mu_0_factor)
     lambdas = np.array([1.2e-14, 1.0e00])
     metrics = em_cost.cost_multiple_lambdas(cws, lambdas)
 
