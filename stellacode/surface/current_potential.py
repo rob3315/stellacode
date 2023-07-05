@@ -13,12 +13,12 @@ def phi_coeff_from_nb(k, phisize):
         kk = k - ln
         return (1 + kk // (2 * ln + 1), kk % (2 * ln + 1) - ln)
 
+
 class CurrentPotential(BaseModel):
     num_pol: int
     num_tor: int
 
     def get_matrix_from_grid(self, grids):
-
         # lm, ln = phisize
         ugrid, vgrid = grids
         lu, lv = ugrid.shape
@@ -39,4 +39,3 @@ class CurrentPotential(BaseModel):
                 2 * np.pi * m * np.cos(2 * np.pi * (m * ugrid + n * vgrid))
             )
         return matrix_dPhi
-    

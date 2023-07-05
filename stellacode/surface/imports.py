@@ -26,6 +26,7 @@ def get_cws_grid(config):
 
     return AbstractSurface.get_uvgrid(n_pol_coil, n_tor_coil)
 
+
 from .current_potential import CurrentPotential
 
 
@@ -33,6 +34,7 @@ def get_current_potential(config):
     mpol_coil = int(config["geometry"]["mpol_coil"])
     ntor_coil = int(config["geometry"]["ntor_coil"])
     return CurrentPotential(num_pol=mpol_coil, num_tor=ntor_coil)
+
 
 def get_plasma_surface(config):
     n_fp = int(config["geometry"]["Np"])

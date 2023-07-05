@@ -7,7 +7,7 @@ from scipy.io import netcdf_file
 from stellacode import np
 
 from .abstract_surface import AbstractSurface
-from .utils import cartesian_to_toroidal, cartesian_to_cylindrical
+from .utils import cartesian_to_cylindrical, cartesian_to_toroidal
 
 
 class FourierSurface(AbstractSurface):
@@ -76,9 +76,7 @@ class FourierSurface(AbstractSurface):
             adata = np.array(data, dtype="float64")
             m, n, Rmn, Zmn = adata[:, 0], adata[:, 1], adata[:, 2], adata[:, 3]
 
-        return cls(
-            Rmn=Rmn, Zmn=Zmn, mf=m, nf=n, nbpts=(n_pol, n_tor), num_tor_symmetry=n_fp
-        )
+        return cls(Rmn=Rmn, Zmn=Zmn, mf=m, nf=n, nbpts=(n_pol, n_tor), num_tor_symmetry=n_fp)
 
     def get_xyz(self, uv):
         angle = 2 * np.pi * (uv[0] * self.mf + uv[1] * self.nf)
@@ -126,4 +124,3 @@ class FourierSurface(AbstractSurface):
 
         env = self.get_axisymmetric_envelope()
         ax.plot(env[:, 1], env[:, 0], c="k")
-

@@ -1,7 +1,8 @@
-from stellacode.surface.utils import fourier_transform
-from stellacode import np
 import numpy as onp
 import pytest
+
+from stellacode import np
+from stellacode.surface.utils import fourier_transform
 
 
 @pytest.mark.skip("Not working")

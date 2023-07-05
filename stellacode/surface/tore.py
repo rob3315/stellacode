@@ -13,11 +13,7 @@ class ToroidalSurface(AbstractSurface):
     minor_radius = 1.0
     fourier_coeffs: ArrayLike = np.zeros((1, 2))
 
-    trainable_params: tp.List[str] = [
-        "major_radius",
-        "minor_radius",
-        "fourier_coeffs"
-    ]
+    trainable_params: tp.List[str] = ["major_radius", "minor_radius", "fourier_coeffs"]
 
     def get_xyz(self, uv):
         u_ = 2 * np.pi * uv[0]  # poloidal angle
@@ -31,4 +27,4 @@ class ToroidalSurface(AbstractSurface):
         return np.array([x, y, z])
 
     def cartesian_to_toroidal(self):
-        return cartesian_to_toroidal(xyz=self.P, tore_radius=self.major_radius, height=0.)
+        return cartesian_to_toroidal(xyz=self.P, tore_radius=self.major_radius, height=0.0)

@@ -9,11 +9,8 @@ from scipy.io import netcdf_file
 from stellacode import np
 from stellacode.costs.em_cost import EMCost
 from stellacode.surface.cylindrical import CylindricalSurface
-from stellacode.surface.imports import (
-    get_current_potential,
-    get_cws,
-    get_plasma_surface,
-)
+from stellacode.surface.imports import (get_current_potential, get_cws,
+                                        get_plasma_surface)
 from stellacode.surface.rotated_surface import RotatedSurface
 from stellacode.surface.tore import ToroidalSurface
 
@@ -117,10 +114,7 @@ def test_regcoil_with_pwc():
     s1, s2, s3, _ = curent_potential_op.shape
     assert s2 == s3 * 9
 
-    assert np.all(
-        curent_potential_op[:, : s2 // 3]
-        == curent_potential_op[:, s2 // 3 : 2 * s2 // 3]
-    )
+    assert np.all(curent_potential_op[:, : s2 // 3] == curent_potential_op[:, s2 // 3 : 2 * s2 // 3])
     cp_op = curent_potential_op.reshape((3, s1 // 3, 9, s2 // 9, s3, -1))
     assert np.all(cp_op[1:3, :, 0] == 0)
     assert np.all(cp_op[0, :, 1:3] == 0)

@@ -42,8 +42,7 @@ class RotatedSurface(CoilSurface):
         curent_potential_op = self.current.get_matrix_from_grid(self.surface.grids)
 
         inner_blocks = collections.deque(
-            [curent_potential_op]
-            + [np.zeros_like(curent_potential_op)] * (self.rotate_diff_current - 1)
+            [curent_potential_op] + [np.zeros_like(curent_potential_op)] * (self.rotate_diff_current - 1)
         )
         blocks = []
         for i in range(len(inner_blocks)):
@@ -92,9 +91,7 @@ class RotatedSurface(CoilSurface):
             )
 
         if deg >= 2:
-            self.principles = [
-                np.concatenate([p] * num_rot) for p in self.surface.principles
-            ]
+            self.principles = [np.concatenate([p] * num_rot) for p in self.surface.principles]
         self.npts = self.surface.npts
         self.nbpts = self.surface.nbpts
 
@@ -108,16 +105,12 @@ class RotatedSurface(CoilSurface):
         major_radius = surface.get_major_radius()
         minor_radius = surface.get_minor_radius()
         fit_surf = self.copy()
-        fit_surf.update_params(
-            radius=minor_radius + major_radius / 3,
-            distance=major_radius)
+        fit_surf.update_params(radius=minor_radius + major_radius / 3, distance=major_radius)
 
         fit_surf.compute_surface_attributes(deg=0)
         min_dist = fit_surf.get_min_distance(surface.P)
 
-        fit_surf.update_params(
-            radius=minor_radius + major_radius / 3 - min_dist,
-            distance=major_radius)
+        fit_surf.update_params(radius=minor_radius + major_radius / 3 - min_dist, distance=major_radius)
         fit_surf.compute_surface_attributes()
 
         return fit_surf
