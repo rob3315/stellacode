@@ -5,6 +5,7 @@ from jax.typing import ArrayLike
 from stellacode import np
 
 from .abstract_surface import AbstractSurface
+from .utils import fourier_transform
 
 
 class CylindricalSurface(AbstractSurface):
@@ -40,16 +41,8 @@ class CylindricalSurface(AbstractSurface):
 
         z_dir = np.array([0.0, 0.0, 1.0])
 
-        angle = u_ * (np.arange(self.fourier_coeffs.shape[0]) + 1)
+        _radius = (fourier_transform(self.fourier_coeffs, u_) + 1) * self.radius
 
-        _radius = (
-            np.einsum(
-                "ab,ab",
-                self.fourier_coeffs,
-                np.stack((np.cos(angle), np.sin(angle)), axis=1),
-            )
-            + 1
-        ) * self.radius
 
         circle = _radius * (axis_orth * np.cos(u_) + z_dir * np.sin(u_))
 

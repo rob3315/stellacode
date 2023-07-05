@@ -9,7 +9,11 @@ from scipy.io import netcdf_file
 from stellacode import np
 from stellacode.costs.em_cost import EMCost
 from stellacode.surface.cylindrical import CylindricalSurface
-from stellacode.surface.imports import get_current_potential, get_cws
+from stellacode.surface.imports import (
+    get_current_potential,
+    get_cws,
+    get_plasma_surface,
+)
 from stellacode.surface.rotated_surface import RotatedSurface
 from stellacode.surface.tore import ToroidalSurface
 
@@ -40,9 +44,6 @@ def test_compare_to_regcoil(use_mu_0_factor):
     assert np.max(np.abs(metrics.cost_B.values - chi2_b) / chi2_b) < 5e-5
     chi_j = file_.variables["chi2_K"][()][1:].astype(float)
     assert np.max(np.abs(metrics.cost_J.values - chi_j) / chi_j) < 5e-6
-
-
-
 
 
 def test_regcoil_with_axisymmetric():
@@ -141,3 +142,15 @@ def test_regcoil_with_pwc():
     lambdas = np.array([1.2e-24, 1.2e-18, 1.2e-14, 1.0e00])
     metrics = em_cost.cost_multiple_lambdas(new_surface, lambdas)
     assert metrics.cost_B.min() < 5e-5
+
+
+import matplotlib.pyplot as plt
+
+
+def test_plot_plasma():
+    path_config_file = "test/data/li383/config.ini"
+    config = configparser.ConfigParser()
+    config.read(path_config_file)
+    surf = get_plasma_surface(config)
+
+    surf.plot_cross_sections()

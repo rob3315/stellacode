@@ -7,7 +7,7 @@ from scipy.io import netcdf_file
 from stellacode import np
 
 from .abstract_surface import AbstractSurface
-from .utils import cartesian_to_toroidal
+from .utils import cartesian_to_toroidal, cartesian_to_cylindrical
 
 
 class FourierSurface(AbstractSurface):
@@ -94,6 +94,9 @@ class FourierSurface(AbstractSurface):
     def get_minor_radius(self):
         return np.max(self.cartesian_to_toroidal()[:, :, 0])
 
+    def cartesian_to_cylindrical(self):
+        return cartesian_to_cylindrical(xyz=self.P)
+
     def cartesian_to_toroidal(self):
         return cartesian_to_toroidal(
             xyz=self.P,
@@ -102,4 +105,25 @@ class FourierSurface(AbstractSurface):
         )
 
     def get_axisymmetric_envelope(self):
-        return np.max(self.cartesian_to_toroidal()[:, :, 0], axis=1)
+        rtphi = self.cartesian_to_toroidal()
+
+        max_val = []
+        for theta_i in range(rtphi.shape[0]):
+            maxr_i = np.argmax(rtphi[theta_i, :, 0])
+            max_val.append(rtphi[theta_i, maxr_i, :2])
+
+        return np.stack(max_val)
+
+    def plot_cross_sections(self, num: int = 10):
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+        rtphi = self.cartesian_to_toroidal()
+        num_phi_s = rtphi.shape[1]
+        for i in range(0, num_phi_s, num_phi_s // num):
+            ax.plot(rtphi[:, i, 1], rtphi[:, i, 0])
+        ax.plot(rtphi[:, i, 1], rtphi[:, i, 0], c="k")
+
+        env = self.get_axisymmetric_envelope()
+        ax.plot(env[:, 1], env[:, 0], c="k")
+
