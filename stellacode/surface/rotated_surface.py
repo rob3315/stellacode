@@ -22,6 +22,11 @@ class RotatedSurface(CoilSurface):
     num_tor_symmetry: int = 1
     rotate_diff_current: int = 1
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # self.npts = self.nbpts[0] * self.nbpts[1]
+        self.compute_surface_attributes()  # computation of the surface attributes
+
     def get_num_rotations(self):
         return self.num_tor_symmetry * self.rotate_diff_current
 
@@ -106,22 +111,10 @@ class RotatedSurface(CoilSurface):
         fit_surf.update_params(
             radius=minor_radius + major_radius / 3,
             distance=major_radius)
-        # fit_surf.surface = fit_surf.surface.copy(
-        #     update=dict(
-        #         radius=minor_radius + major_radius / 3,
-        #         distance=major_radius,
-        #     )
-        # )
 
         fit_surf.compute_surface_attributes(deg=0)
         min_dist = fit_surf.get_min_distance(surface.P)
 
-        # fit_surf.surface = fit_surf.surface.copy(
-        #     update=dict(
-        #         radius=minor_radius + major_radius / 3 - min_dist,
-        #         distance=major_radius,
-        #     )
-        # )
         fit_surf.update_params(
             radius=minor_radius + major_radius / 3 - min_dist,
             distance=major_radius)
