@@ -1,5 +1,6 @@
 from stellacode import np
 
+
 def cartesian_to_toroidal(xyz, tore_radius: float, height: float = 0.):
     xyz_ = xyz - height
 

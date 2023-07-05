@@ -12,7 +12,7 @@ from stellacode.surface.imports import get_plasma_surface
 class DistanceCost(AbstractCost):
     """Non linear penalization of the distance to the plasma (lower bound)"""
 
-    Np: int
+    num_tor_symmetry: int
     Sp: tp.Any
     rot_tensor: ArrayLike
     d_min_hard: float
@@ -21,11 +21,11 @@ class DistanceCost(AbstractCost):
 
     @classmethod
     def from_config(cls, config):
-        Np = int(config["geometry"]["Np"])
+        num_tor_symmetry = int(config["geometry"]["Np"])
         return cls(
-            Np=Np,
+            num_tor_symmetry=num_tor_symmetry,
             Sp=get_plasma_surface(config),
-            rot_tensor=tools.get_rot_tensor(Np),
+            rot_tensor=tools.get_rot_tensor(num_tor_symmetry),
             d_min_hard=float(config["optimization_parameters"]["d_min_hard"]),
             d_min_soft=float(config["optimization_parameters"]["d_min_soft"]),
             d_min_penalization=float(config["optimization_parameters"]["d_min_penalization"]),
@@ -36,6 +36,6 @@ class DistanceCost(AbstractCost):
         T = tools.get_tensor_distance(S, self.Sp, self.rot_tensor)
         dist = np.linalg.norm(T, axis=-1)
         dist_min = np.amin(dist, axis=(0, 3, 4))
-        cost = self.Np * np.einsum("ij,ij->", vf(dist_min), S.dS / S.npts)
+        cost = np.einsum("ij,ij->", vf(dist_min), S.dS / S.npts)
 
         return cost, {"min_distance": np.min(dist_min)}

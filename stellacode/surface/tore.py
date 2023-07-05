@@ -1,16 +1,21 @@
+import typing as tp
+
 from jax.typing import ArrayLike
 
 from stellacode import np
-import typing as tp
 
 from .abstract_surface import AbstractSurface
 from .utils import cartesian_to_toroidal
 
 
 class ToroidalSurface(AbstractSurface):
-    Np: int
     major_radius = 5.0
     minor_radius = 1.0
+
+    trainable_params: tp.List[str] = [
+        "major_radius",
+        "minor_radius",
+    ]
 
     def get_xyz(self, uv):
         u_ = 2 * np.pi * uv[0]  # poloidal angle

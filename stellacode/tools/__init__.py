@@ -156,7 +156,7 @@ def compute_Qj(matrixd_phi, dpsi, dS):
     """take only the segment whitout rotation of j"""
     lu, lv = dS.shape
     Qj = np.einsum(
-        "oija,adij,kdij,pijk,ij->op",
+        "oija,ijda,ijdk,pijk,ij->op",
         matrixd_phi,
         dpsi,
         dpsi,

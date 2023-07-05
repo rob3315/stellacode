@@ -1,3 +1,5 @@
+import typing as tp
+
 from jax.typing import ArrayLike
 
 from stellacode import np
@@ -6,12 +8,21 @@ from .abstract_surface import AbstractSurface
 
 
 class CylindricalSurface(AbstractSurface):
-    Np: int
-    axis_angle = 0.0  # rotates the surface by the given angle
-    radius = 1.0  # radius of the cylinders
-    scale_length = 1.0  # The cylinder is scaled by the scale_length factor
-    distance = 3  # distance between the center of the cylinder and the coordinate center
+    fourier_coeffs: ArrayLike = np.zeros((1, 2))
+    axis_angle: float = 0.0  # rotates the surface by the given angle
+    radius: float = 1.0  # radius of the cylinders
+    scale_length: float = 1.0  # The cylinder is scaled by the scale_length factor
+    distance: float = (
+        3  # distance between the center of the cylinder and the coordinate center
+    )
     make_joints: bool = True
+    trainable_params: tp.List[str] = [
+        "fourier_coeffs",
+        "axis_angle",
+        "radius",
+        "scale_length",
+        "distance",
+    ]
 
     def get_xyz(self, uv):
         u_ = 2 * np.pi * uv[0]  # poloidal variable
@@ -21,7 +32,7 @@ class CylindricalSurface(AbstractSurface):
             self.scale_length
             * 2
             * (self.distance - self.radius)
-            * np.sin(np.pi / self.Np)
+            * np.sin(np.pi / self.num_tor_symmetry)
         )
 
         axis_a = self.axis_angle
@@ -29,13 +40,12 @@ class CylindricalSurface(AbstractSurface):
 
         z_dir = np.array([0.0, 0.0, 1.0])
 
-        fourier_coeffs = self.params["fourier_coeffs"]
-        angle = u_ * (np.arange(fourier_coeffs.shape[0]) + 1)
+        angle = u_ * (np.arange(self.fourier_coeffs.shape[0]) + 1)
 
         _radius = (
             np.einsum(
                 "ab,ab",
-                fourier_coeffs,
+                self.fourier_coeffs,
                 np.stack((np.cos(angle), np.sin(angle)), axis=1),
             )
             + 1
@@ -53,9 +63,28 @@ class CylindricalSurface(AbstractSurface):
 
         return cyl_axis + circle + self.distance * axis_orth
 
-    # def cartesian_to_toroidal(
-    #     self, xyz, tore_radius: Optional[float] = None, height: float = 0.
-    # ):
-    #     if tore_radius is None:
-    #         tore_radius = self.radius
-    #     return cartesian_to_toroidal(xyz=xyz, tore_radius=tore_radius, height=height)
+    def fit_to_surface(self, surface):
+        # Tries to find approximately the smallest surface enclosing the given surface
+        # assuming the given surface has get_major_radius and get_minor_radius methods
+
+        major_radius = surface.get_major_radius()
+        minor_radius = surface.get_minor_radius()
+
+        wrap_surf = self.copy(
+            update=dict(
+                radius=minor_radius + major_radius / 3,
+                distance=major_radius,
+            )
+        )
+        wrap_surf.compute_surface_attributes(deg=0)
+        min_dist = wrap_surf.get_min_distance(surface.P)
+
+        new_surf = wrap_surf.copy(
+            update=dict(
+                radius=minor_radius + major_radius / 3 - min_dist,
+                distance=major_radius,
+            )
+        )
+        new_surf.compute_surface_attributes()
+
+        return new_surf

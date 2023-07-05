@@ -33,7 +33,7 @@ class Simu_result:
         except:
             raise Exception("unable to deal with the folder {}, TODO handle this exception".format(path))
 
-        self.Np = int(config["geometry"]["Np"])
+        self.num_tor_symmetry = int(config["geometry"]["Np"])
         self.ntheta_coil = int(config["geometry"]["ntheta_coil"])
         self.nzeta_coil = int(config["geometry"]["nzeta_coil"])
         self.lamb = float(self.config["other"]["lamb"])
@@ -70,7 +70,7 @@ class Simu_result:
         R = surf_param[: len(self.m)]
         Z = surf_param[len(self.m) :]
         paramS = (self.m, self.n, R, Z)
-        S = FourierSurface(paramS, (self.ntheta_coil, self.nzeta_coil), self.Np)
+        S = FourierSurface(paramS, (self.ntheta_coil, self.nzeta_coil), self.num_tor_symmetry)
         EM_cost, EM_dic = self.EM.cost(S)
         dic["cost B"] = "{:.3e}".format(EM_dic["cost_B"])
         dic["max B"] = "{:.3e}".format(EM_dic["err_max_B"])
@@ -101,7 +101,7 @@ class Simu_result:
         R = self.init_param[: len(self.m)]
         Z = self.init_param[len(self.m) :]
         paramS = (self.m, self.n, R, Z)
-        S = FourierSurface(paramS, (self.ntheta_coil, self.nzeta_coil), self.Np)
+        S = FourierSurface(paramS, (self.ntheta_coil, self.nzeta_coil), self.num_tor_symmetry)
         EM_cost, EM_dic = self.EM.cost(S)
         dic["cost B"] = "{:.2e}".format(EM_dic["cost_B"])
         dic["max B"] = "{:.2e}".format(EM_dic["err_max_B"])

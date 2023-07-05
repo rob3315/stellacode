@@ -1,5 +1,6 @@
 from typing import Optional
 
+import pandas as pd
 from jax import Array
 from jax.typing import ArrayLike
 
@@ -9,7 +10,6 @@ from stellacode import mu_0_fac, np
 from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.surface.abstract_surface import AbstractSurface
 from stellacode.surface.imports import get_cws_grid, get_plasma_surface
-import pandas as pd
 
 
 class EMCost(AbstractCost):
@@ -25,7 +25,7 @@ class EMCost(AbstractCost):
     """
 
     lamb: float
-    Np: int
+    num_tor_symmetry: int
     net_currents: Optional[ArrayLike]
     Sp: AbstractSurface
     bnorm: ArrayLike
@@ -38,15 +38,14 @@ class EMCost(AbstractCost):
         mpol_coil = int(config["geometry"]["mpol_coil"])
         ntor_coil = int(config["geometry"]["ntor_coil"])
         curpol = float(config["other"]["curpol"])
-        Np = int(config["geometry"]["Np"])
-        rot_tensor = tools.get_rot_tensor(Np)
+        num_tor_symmetry = int(config["geometry"]["Np"])
+        rot_tensor = tools.get_rot_tensor(num_tor_symmetry)
         phisize = (mpol_coil, ntor_coil)
-        Np = int(config["geometry"]["Np"])
         Sp = get_plasma_surface(config)
         bnorm_ = -curpol * bnorm.get_bnorm(str(config["other"]["path_bnorm"]), Sp)
         net_currents = np.array(
             [
-                float(config["other"]["net_poloidal_current_Amperes"]) / Np,
+                float(config["other"]["net_poloidal_current_Amperes"]) / num_tor_symmetry,
                 float(config["other"]["net_toroidal_current_Amperes"]),
             ]
         )
@@ -56,7 +55,7 @@ class EMCost(AbstractCost):
 
         return cls(
             lamb=float(config["other"]["lamb"]),
-            Np=Np,
+            num_tor_symmetry=num_tor_symmetry,
             net_currents=net_currents,
             bnorm=bnorm_,
             Sp=Sp,
@@ -76,18 +75,21 @@ class EMCost(AbstractCost):
 
         # rotate and duplicate coil
         # TODO: should be exported to the surface class
-        r_coil = np.reshape(
-            np.einsum("opq,ijq->oijp", self.rot_tensor, S.P), (-1, S.nbpts[1], 3)
-        )
-        surface_current = np.concatenate(
-            [self.matrixd_phi] * self.rot_tensor.shape[0], 1
-        )
-        jac_r_plasma = np.reshape(
-            np.einsum("sba,taij->sijbt", self.rot_tensor, S.dpsi),
-            (-1, S.nbpts[1], 3, 2),
-        )
+        # r_coil = np.reshape(
+        #     np.einsum("opq,ijq->oijp", self.rot_tensor, S.P), (-1, S.nbpts[1], 3)
+        # )
+        # surface_current = np.concatenate(
+        #     [self.matrixd_phi] * self.rot_tensor.shape[0], 1
+        # )
+        self.matrixd_phi = S.get_curent_potential_op()
+        # jac_r_plasma = np.reshape(
+        #     np.einsum("sba,taij->sijbt", self.rot_tensor, S.dpsi),
+        #     (-1, S.nbpts[1], 3, 2),
+        # )
+        r_coil = S.P
+        jac_r_plasma = S.dpsi
 
-        BS = biot_et_savart(r_plasma, r_coil, surface_current, jac_r_plasma) / S.npts
+        BS = biot_et_savart(r_plasma, r_coil, self.matrixd_phi, jac_r_plasma) / S.npts
 
         BS = np.einsum("tpqd,dpq->tpq", BS, Sp.n)
         if self.use_mu_0_factor:
@@ -101,6 +103,8 @@ class EMCost(AbstractCost):
         # This is a technical part, one should read the paper :
         # "Optimal shape of stellarators for magnetic confinement fusion"
         # in order to understand what's going on.
+
+        # need to rotate dpsi
         Qj = tools.compute_Qj(self.matrixd_phi, S.dpsi, S.dS)
 
         if self.net_currents is not None:
@@ -145,10 +149,10 @@ class EMCost(AbstractCost):
         metrics["err_max_B"] = np.max(np.abs(B_err)) * fac
         metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2)) * fac
         metrics["cost_B"] = (
-            self.Np * np.sum(B_err**2 * self.Sp.dS) / self.Sp.npts * fac**2
+            self.num_tor_symmetry * np.sum(B_err**2 * self.Sp.dS) / self.Sp.npts * fac**2
         )
 
-        metrics["cost_J"] = self.Np * np.einsum("i,ij,j->", j_S, Qj, j_S)
+        metrics["cost_J"] = self.num_tor_symmetry * np.einsum("i,ij,j->", j_S, Qj, j_S)
         metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
         return metrics["cost"], metrics
@@ -170,13 +174,14 @@ class EMCost(AbstractCost):
             j_S = np.concatenate((self.net_currents, j_S_R))
         else:
             j_S = j_S_R
+
         return j_S
 
     def get_j_3D(self, j_S, S):
         # j_S is a vector containing the components of the best scalar current potential.
         # The real surface current is given by :
         return np.einsum(
-            "oijk,kdij,ij,o->ijd",
+            "oijk,ijdk,ij,o->ijd",
             self.matrixd_phi,
             S.dpsi,
             1 / S.dS,

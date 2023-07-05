@@ -1,9 +1,10 @@
+import typing as tp
 from os import sep
 
 from jax.typing import ArrayLike
 from scipy.io import netcdf_file
-from stellacode import np
 
+from stellacode import np
 
 from .abstract_surface import AbstractSurface
 from .utils import cartesian_to_toroidal
@@ -22,7 +23,13 @@ class FourierSurface(AbstractSurface):
 
     mf: ArrayLike
     nf: ArrayLike
-    Np: int
+    Rmn: ArrayLike
+    Zmn: ArrayLike
+
+    trainable_params: tp.List[str] = [
+        "Rmn",
+        "Zmn",
+    ]
 
     @classmethod
     def from_file(cls, path_surf, n_fp, n_pol, n_tor):
@@ -52,7 +59,7 @@ class FourierSurface(AbstractSurface):
 
                 f.readline()
                 f.readline()
-  
+
                 data = []
                 for _ in range(num_modes):
                     data.append(str.split(f.readline()))
@@ -69,26 +76,29 @@ class FourierSurface(AbstractSurface):
             adata = np.array(data, dtype="float64")
             m, n, Rmn, Zmn = adata[:, 0], adata[:, 1], adata[:, 2], adata[:, 3]
 
-        params = {"Rmn": Rmn, "Zmn": Zmn}
-
-        return cls(params=params, mf=m, nf=n, nbpts=(n_pol, n_tor), Np=n_fp)
+        return cls(
+            Rmn=Rmn, Zmn=Zmn, mf=m, nf=n, nbpts=(n_pol, n_tor), num_tor_symmetry=n_fp
+        )
 
     def get_xyz(self, uv):
         angle = 2 * np.pi * (uv[0] * self.mf + uv[1] * self.nf)
-        R = np.tensordot(self.params["Rmn"], np.cos(angle), 1)
-        Z = np.tensordot(self.params["Zmn"], np.sin(angle), 1)
-        phi = 2 * np.pi * uv[1] / self.Np
+        R = np.tensordot(self.Rmn, np.cos(angle), 1)
+        Z = np.tensordot(self.Zmn, np.sin(angle), 1)
+        phi = 2 * np.pi * uv[1] / self.num_tor_symmetry
         return np.array([R * np.cos(phi), R * np.sin(phi), Z])
 
     def get_major_radius(self):
         assert self.mf[0] == 0 and self.nf[0] == 0
-        return self.params["Rmn"][0]
+        return self.Rmn[0]
+
+    def get_minor_radius(self):
+        return np.max(self.cartesian_to_toroidal()[:, :, 0])
 
     def cartesian_to_toroidal(self):
         return cartesian_to_toroidal(
             xyz=self.P,
             tore_radius=self.get_major_radius(),
-            height=self.params["Zmn"][0],
+            height=self.Zmn[0],
         )
 
     def get_axisymmetric_envelope(self):

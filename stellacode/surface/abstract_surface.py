@@ -4,7 +4,9 @@ import jax
 from jax.typing import ArrayLike
 from pydantic import BaseModel, Extra
 
+import stellacode.tools as tools
 from stellacode import np
+from stellacode.tools.utils import get_min_dist
 
 
 class AbstractSurface(BaseModel):
@@ -14,8 +16,9 @@ class AbstractSurface(BaseModel):
     * visualize surfaces
     """
 
-    params: tp.Dict[str, ArrayLike]
     nbpts: tp.Tuple[int, int]
+    num_tor_symmetry: int = 1
+    trainable_params: tp.List[str] = []
 
     class Config:
         arbitrary_types_allowed = True
@@ -30,11 +33,14 @@ class AbstractSurface(BaseModel):
         """return the point parametrized by uv in cartesian coordinate"""
         raise NotImplementedError
 
+    def get_trainable_params(self):
+        return {k: getattr(self, k) for k in self.trainable_params}
+
     def update_params(self, **kwargs):
         for k, v in kwargs.items():
-            self.params[k] = v
+            setattr(self, k, v)
         self.compute_surface_attributes(deg=2)
-
+    
     @staticmethod
     def get_uvgrid(lu, lv, concat: bool = False):
         # u, v = np.linspace(
@@ -85,7 +91,6 @@ class AbstractSurface(BaseModel):
         self.grids = self.get_uvgrid(*self.nbpts)
 
         uv_grid = np.stack(self.grids, axis=0)
-        self.get_xyz([0.1, 0.0])
 
         self.P = self.get_xyz_on_grid(uv_grid)
 
@@ -142,6 +147,9 @@ class AbstractSurface(BaseModel):
             Pmin = H - np.sqrt(H**2 - K)
             self.principles = [Pmax, Pmin]
 
+    def get_min_distance(self, xyz):
+        return get_min_dist(self.P, xyz)
+
     def expand_for_plot_part(self):
         """Returns X, Y, Z arrays of one field period, adding redundancy of first column."""
         import numpy as np
@@ -155,8 +163,8 @@ class AbstractSurface(BaseModel):
 
         points = self.expand_for_plot_part()
 
-        for i in range(1, self.Np):
-            angle = 2 * i * np.pi / self.Np
+        for i in range(1, self.num_tor_symmetry):
+            angle = 2 * i * np.pi / self.num_tor_symmetry
             rotation_matrix = np.array(
                 [
                     [np.cos(angle), -np.sin(angle), 0],
@@ -203,5 +211,3 @@ class AbstractSurface(BaseModel):
         )
         if scalar is not None:
             mlab.colorbar(surf, nb_labels=4, label_fmt="%.1E", orientation="vertical")
-
-        mlab.show()

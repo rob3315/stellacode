@@ -1,4 +1,5 @@
 from scipy.spatial.distance import cdist
+
 from stellacode import np
 
 

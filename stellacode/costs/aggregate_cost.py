@@ -3,7 +3,7 @@ from time import time
 
 from stellacode.costs.curvature import CurvatureCost
 from stellacode.costs.distance import DistanceCost
-from stellacode.costs.EM_cost import EMCost
+from stellacode.costs.em_cost import EMCost
 from stellacode.costs.perimeter import PerimeterCost
 from stellacode.surface.imports import get_cws
 
@@ -20,7 +20,7 @@ class AggregateCost:
         # Initialization of the different costs :
         self.EM = EMCost.from_config(config)
         self.S = get_cws(config)
-        self.init_param = self.S.params
+        self.init_param = self.S.get_trainable_params()
 
         self.lst_cost = [self.EM]
         if config["optimization_parameters"]["d_min"] == "True":

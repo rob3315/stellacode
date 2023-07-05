@@ -1,8 +1,9 @@
 """
 Imports for the surface module.
 """
-from stellacode.surface.abstract_surface import AbstractSurface
 from stellacode import np
+from stellacode.surface.abstract_surface import AbstractSurface
+
 from .surface_from_file import surface_from_file
 
 
@@ -12,6 +13,10 @@ def get_cws(config):
     n_tor_coil = int(config["geometry"]["nzeta_coil"])
     path_cws = str(config["geometry"]["path_cws"])
     cws = surface_from_file(path_cws, n_fp, n_pol_coil, n_tor_coil)
+    from .rotated_surface import RotatedSurface
+
+    cws = RotatedSurface(surface=cws, current=get_current_potential(config), num_tor_symmetry=n_fp)
+    cws.compute_surface_attributes()
     return cws
 
 
@@ -21,6 +26,13 @@ def get_cws_grid(config):
 
     return AbstractSurface.get_uvgrid(n_pol_coil, n_tor_coil)
 
+from .current_potential import CurrentPotential
+
+
+def get_current_potential(config):
+    mpol_coil = int(config["geometry"]["mpol_coil"])
+    ntor_coil = int(config["geometry"]["ntor_coil"])
+    return CurrentPotential(num_pol=mpol_coil, num_tor=ntor_coil)
 
 def get_plasma_surface(config):
     n_fp = int(config["geometry"]["Np"])
