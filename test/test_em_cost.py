@@ -96,6 +96,8 @@ def test_regcoil_with_pwc():
 
     em_cost = EMCost.from_config(config=config, use_mu_0_factor=False)
 
+    surf = get_plasma_surface(config)
+
     fourier_coeffs = np.zeros((5, 2))
     n_pol_coil = int(config["geometry"]["ntheta_coil"])
     n_tor_coil = int(config["geometry"]["nzeta_coil"])
@@ -122,19 +124,23 @@ def test_regcoil_with_pwc():
     assert np.all(cp_op[0, :, 1:3] == 0)
 
     S.compute_surface_attributes()
-    S.get_min_distance(em_cost.Sp.P)
+    S.get_min_distance(surf.P)
 
     # fit the rotated surface to the plasma surface
-    new_surface = fit_to_surface(S, em_cost.Sp)
+    new_surface = fit_to_surface(S, surf)
     new_surface.surface = new_surface.surface.copy(
         update=dict(
             radius=new_surface.surface.radius + 0.1,
         )
     )
     new_surface.compute_surface_attributes()
-    assert (new_surface.get_min_distance(em_cost.Sp.P) - 0.1) < 1e-2
+    assert (new_surface.get_min_distance(surf.P) - 0.1) < 1e-2
 
     # compute regcoil metrics
+
+    # need to update matrix_dphi with new surface params
+    em_cost.matrixd_phi = new_surface.get_curent_potential_op()
+
     lambdas = np.array([1.2e-24, 1.2e-18, 1.2e-14, 1.0e00])
     metrics = em_cost.cost_multiple_lambdas(new_surface, lambdas)
     assert metrics.cost_B.min() < 5e-5
