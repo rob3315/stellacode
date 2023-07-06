@@ -7,41 +7,33 @@ from stellacode.costs.em_cost import EMCost
 from stellacode.costs.perimeter import PerimeterCost
 from stellacode.surface.imports import get_cws
 
+from .abstract_cost import AbstractCost
 
-class AggregateCost:
+
+class AggregateCost(AbstractCost):
     """Put together all the costs"""
 
-    # def from_config(self, config):
-    def __init__(self, path_config_file=None, config=None):
-        if config is None:
-            config = configparser.ConfigParser()
-            config.read(path_config_file)
+    costs: list
 
-        # Initialization of the different costs :
-        self.EM = EMCost.from_config(config)
-        self.S = get_cws(config)
-        self.init_param = self.S.get_trainable_params()
-
-        self.lst_cost = [self.EM]
+    @classmethod
+    def from_config(cls, config):
+        costs = [EMCost.from_config(config)]
         if config["optimization_parameters"]["d_min"] == "True":
-            self.dist = DistanceCost.from_config(config)
-            self.lst_cost.append(self.dist)
+            costs.append(DistanceCost.from_config(config))
         if config["optimization_parameters"]["perim"] == "True":
-            self.perim = PerimeterCost.from_config(config)
-            self.lst_cost.append(self.perim)
+            costs.append(PerimeterCost.from_config(config))
         if config["optimization_parameters"]["curvature"] == "True":
-            self.curv = CurvatureCost.from_config(config)
-            self.lst_cost.append(self.curv)
+            costs.append(CurvatureCost.from_config(config))
+        return cls(costs=costs)
 
-    def cost(self, **kwargs):
-        tic = time()
-        self.S.update_params(**kwargs)
-        print("Surface", time() - tic)
+    def cost(self, S):
         cost = 0.0
-        for elt in self.lst_cost:
+        metrics_d = {}
+        for elt in self.costs:
             tic = time()
-            new_cost, _ = elt.cost(self.S)
+            new_cost, metrics = elt.cost(S)
+            metrics_d = {**metrics_d, **metrics}
             cost += new_cost
             print(elt.__class__.__name__, time() - tic)
 
-        return cost
+        return cost, metrics_d
