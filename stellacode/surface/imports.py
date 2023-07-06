@@ -15,8 +15,12 @@ def get_cws(config):
     cws = surface_from_file(path_cws, n_fp, n_pol_coil, n_tor_coil)
     from .rotated_surface import RotatedSurface
 
-    cws = RotatedSurface(surface=cws, current=get_current_potential(config), num_tor_symmetry=n_fp)
-    cws.compute_surface_attributes()
+    cws = RotatedSurface(
+        surface=cws,
+        current=get_current_potential(config),
+        num_tor_symmetry=n_fp,
+        nbpts=(n_pol_coil, n_tor_coil),
+    )
     return cws
 
 

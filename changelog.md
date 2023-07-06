@@ -9,6 +9,9 @@
 ### New features
 * use black, isort, mypy, pytest
 * test gradients against numpy implmementation
+* cylindrical surface
+* toroidal surface
+* optimizer class
 
 ### Changes
 

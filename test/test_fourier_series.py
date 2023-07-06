@@ -4,19 +4,14 @@ import numpy as onp
 
 from stellacode import np
 from stellacode.surface.imports import get_plasma_surface
-from stellacode.surface.utils import (
-    fourier_coefficients,
-    fourier_transform,
-    fit_to_surface,
-)
+from stellacode.surface.utils import (fit_to_surface, fourier_coefficients,
+                                      fourier_transform)
 
 
 def test_fourier_series():
     coefs = onp.random.rand(5, 2)
 
-    res = fourier_coefficients(
-        0, 2 * np.pi, 5, lambda val: fourier_transform(coefs, val)
-    )[1]
+    res = fourier_coefficients(0, 2 * np.pi, 5, lambda val: fourier_transform(coefs, val))[1]
 
     assert np.max(np.abs(res - coefs)) < 1e-15
 

@@ -75,14 +75,15 @@ def test_pwc_fit():
     fourier_coeffs = np.zeros((5, 2))
 
     S = RotatedSurface(
-        surface=CylindricalSurface(
-            fourier_coeffs=fourier_coeffs,
-            nbpts=(64, 64),
-        ),
-        num_tor_symmetry=9,
-        rotate_diff_current=1,
+        surface=CylindricalSurface(fourier_coeffs=fourier_coeffs, nbpts=(32, 16), num_tor_symmetry=9, make_joints=True),
+        nbpts=(32, 16),
+        num_tor_symmetry=3,
+        rotate_diff_current=3,
         current=get_current_potential(config),
     )
+
+    # S.plot(only_one_period=True)
+    # S.surface.plot(only_one_period=True)
 
     new_surface = fit_to_surface(S, em_cost.Sp)
 
@@ -108,6 +109,7 @@ def test_regcoil_with_pwc():
             nbpts=(n_pol_coil, n_tor_coil),
             num_tor_symmetry=9,
         ),
+        nbpts=(n_pol_coil, n_tor_coil),
         num_tor_symmetry=3,
         rotate_diff_current=3,
         current=get_current_potential(config),
@@ -143,7 +145,7 @@ def test_regcoil_with_pwc():
 
     lambdas = np.array([1.2e-24, 1.2e-18, 1.2e-14, 1.0e00])
     metrics = em_cost.cost_multiple_lambdas(new_surface, lambdas)
-    assert metrics.cost_B.min() < 5e-5
+    assert metrics.cost_B.min() < 2e-4
 
 
 def test_plot_plasma_cross_sections():

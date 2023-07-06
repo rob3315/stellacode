@@ -9,7 +9,7 @@ import stellacode.tools.bnorm as bnorm
 from stellacode import mu_0_fac, np
 from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.surface.abstract_surface import AbstractSurface
-from stellacode.surface.imports import get_plasma_surface, get_cws
+from stellacode.surface.imports import get_cws, get_plasma_surface
 
 
 class EMCost(AbstractCost):
@@ -42,8 +42,7 @@ class EMCost(AbstractCost):
         bnorm_ = -curpol * bnorm.get_bnorm(str(config["other"]["path_bnorm"]), Sp)
         net_currents = np.array(
             [
-                float(config["other"]["net_poloidal_current_Amperes"])
-                / num_tor_symmetry,
+                float(config["other"]["net_poloidal_current_Amperes"]) / num_tor_symmetry,
                 float(config["other"]["net_toroidal_current_Amperes"]),
             ]
         )
@@ -135,12 +134,7 @@ class EMCost(AbstractCost):
         B_err = bnorm_pred - self.bnorm
         metrics["err_max_B"] = np.max(np.abs(B_err)) * fac
         metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2)) * fac
-        metrics["cost_B"] = (
-            self.num_tor_symmetry
-            * np.sum(B_err**2 * self.Sp.dS)
-            / self.Sp.npts
-            * fac**2
-        )
+        metrics["cost_B"] = self.num_tor_symmetry * np.sum(B_err**2 * self.Sp.dS) / self.Sp.npts * fac**2
 
         metrics["cost_J"] = self.num_tor_symmetry * np.einsum("i,ij,j->", j_S, Qj, j_S)
         metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
@@ -150,9 +144,7 @@ class EMCost(AbstractCost):
     def solve_lambda(self, BS_R, BS_dagger, RHS, RHS_lamb=None, lamb: float = 0.0):
         if not self.use_mu_0_factor:
             lamb /= mu_0_fac**2
-        inside_M_lambda_R = lamb * np.eye(BS_R.shape[0]) + np.einsum(
-            "tpq,upq->tu", BS_dagger, BS_R
-        )
+        inside_M_lambda_R = lamb * np.eye(BS_R.shape[0]) + np.einsum("tpq,upq->tu", BS_dagger, BS_R)
         M_lambda_R = np.linalg.inv(inside_M_lambda_R)
 
         if self.net_currents is not None:
@@ -184,9 +176,7 @@ class EMCost(AbstractCost):
         results = {}
         for lamb in lambdas:
             j_S, Qj = self.get_current(BS=BS, S=S, lamb=lamb)
-            results[float(lamb)] = to_float(
-                self.get_results(BS=BS, j_S=j_S, S=S, Qj=Qj, lamb=lamb)[1]
-            )
+            results[float(lamb)] = to_float(self.get_results(BS=BS, j_S=j_S, S=S, Qj=Qj, lamb=lamb)[1])
 
         return pd.DataFrame(results).T
 

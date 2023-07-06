@@ -1,7 +1,7 @@
+import numpy as onp
 from pydantic import BaseModel, Extra
 
 from stellacode import np
-import numpy as onp
 
 
 def phi_coeff_from_nb(k, phisize):
@@ -33,11 +33,7 @@ class CurrentPotential(BaseModel):
             m, n = phi_coeff_from_nb(coeff, (self.num_pol, self.num_tor))
             # Phi=sin(2pi(mu+nv))
             # \nabla\perp Phi = (-2 pi n cos(2pi(mu+nv)),2pi m cos(2pi(mu+nv)))
-            matrix_dPhi[coeff + 2, :, :, 0] = (
-                -2 * onp.pi * n * onp.cos(2 * onp.pi * (m * ugrid + n * vgrid))
-            )
-            matrix_dPhi[coeff + 2, :, :, 1] = (
-                2 * onp.pi * m * onp.cos(2 * onp.pi * (m * ugrid + n * vgrid))
-            )
+            matrix_dPhi[coeff + 2, :, :, 0] = -2 * onp.pi * n * onp.cos(2 * onp.pi * (m * ugrid + n * vgrid))
+            matrix_dPhi[coeff + 2, :, :, 1] = 2 * onp.pi * m * onp.cos(2 * onp.pi * (m * ugrid + n * vgrid))
 
         return matrix_dPhi

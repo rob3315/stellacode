@@ -24,6 +24,7 @@ class RotatedSurface(CoilSurface):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        assert self.num_tor_symmetry * self.rotate_diff_current == self.surface.num_tor_symmetry
         # self.npts = self.nbpts[0] * self.nbpts[1]
         self.compute_surface_attributes()  # computation of the surface attributes
 
