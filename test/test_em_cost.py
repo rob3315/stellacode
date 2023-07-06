@@ -54,7 +54,7 @@ def test_regcoil_with_axisymmetric():
     minor_radius = em_cost.Sp.get_minor_radius()
 
     S = ToroidalSurface(
-        Np=3,
+        num_tor_symmetry=3,
         major_radius=major_radius,
         minor_radius=minor_radius + 0.2,
         params={},
