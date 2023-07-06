@@ -1,5 +1,5 @@
-from .tore import ToroidalSurface
+from .current_potential import CurrentPotential
 from .cylindrical import CylindricalSurface
 from .fourier import FourierSurface
-from .current_potential import CurrentPotential
 from .rotated_surface import RotatedSurface
+from .tore import ToroidalSurface

@@ -23,9 +23,5 @@ def test_full_grad_against_original_np_grad():
     gradf = grad(fun)
     grad_res = gradf(full_grad.init_param)
     grad_res_np = np.load("data/full_shape_grad.npy")
-    onp.testing.assert_array_almost_equal(
-        grad_res["Rmn"], grad_res_np[: grad_res["Rmn"].shape[0]]
-    )
-    onp.testing.assert_array_almost_equal(
-        grad_res["Zmn"], grad_res_np[grad_res["Zmn"].shape[0] :]
-    )
+    onp.testing.assert_array_almost_equal(grad_res["Rmn"], grad_res_np[: grad_res["Rmn"].shape[0]])
+    onp.testing.assert_array_almost_equal(grad_res["Zmn"], grad_res_np[grad_res["Zmn"].shape[0] :])

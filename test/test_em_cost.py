@@ -9,13 +9,11 @@ from scipy.io import netcdf_file
 from stellacode import np
 from stellacode.costs.em_cost import EMCost
 from stellacode.surface.cylindrical import CylindricalSurface
-from stellacode.surface.imports import (
-    get_current_potential,
-    get_cws,
-    get_plasma_surface,
-)
+from stellacode.surface.imports import (get_current_potential, get_cws,
+                                        get_plasma_surface)
 from stellacode.surface.rotated_surface import RotatedSurface
 from stellacode.surface.tore import ToroidalSurface
+from stellacode.surface.utils import fit_to_surface
 
 
 def test_no_dimension_error():
@@ -85,7 +83,8 @@ def test_pwc_fit():
         rotate_diff_current=1,
         current=get_current_potential(config),
     )
-    new_surface = S.fit_to_surface(em_cost.Sp)
+
+    new_surface = fit_to_surface(S, em_cost.Sp)
 
     assert new_surface.get_min_distance(em_cost.Sp.P) < 3e-2
 
@@ -117,10 +116,7 @@ def test_regcoil_with_pwc():
     s1, s2, s3, _ = curent_potential_op.shape
     assert s2 == s3 * 9
 
-    assert np.all(
-        curent_potential_op[:, : s2 // 3]
-        == curent_potential_op[:, s2 // 3 : 2 * s2 // 3]
-    )
+    assert np.all(curent_potential_op[:, : s2 // 3] == curent_potential_op[:, s2 // 3 : 2 * s2 // 3])
     cp_op = curent_potential_op.reshape((3, s1 // 3, 9, s2 // 9, s3, -1))
     assert np.all(cp_op[1:3, :, 0] == 0)
     assert np.all(cp_op[0, :, 1:3] == 0)
@@ -129,7 +125,7 @@ def test_regcoil_with_pwc():
     S.get_min_distance(em_cost.Sp.P)
 
     # fit the rotated surface to the plasma surface
-    new_surface = S.fit_to_surface(em_cost.Sp)
+    new_surface = fit_to_surface(S, em_cost.Sp)
     new_surface.surface = new_surface.surface.copy(
         update=dict(
             radius=new_surface.surface.radius + 0.1,
@@ -144,10 +140,7 @@ def test_regcoil_with_pwc():
     assert metrics.cost_B.min() < 5e-5
 
 
-import matplotlib.pyplot as plt
-
-
-def test_plot_plasma():
+def test_plot_plasma_cross_sections():
     path_config_file = "test/data/li383/config.ini"
     config = configparser.ConfigParser()
     config.read(path_config_file)

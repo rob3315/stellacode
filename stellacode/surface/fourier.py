@@ -1,13 +1,19 @@
 import typing as tp
 from os import sep
 
+import numpy as onp
 from jax.typing import ArrayLike
+from scipy.interpolate import CubicSpline, interp1d
 from scipy.io import netcdf_file
+from scipy.spatial import ConvexHull
 
 from stellacode import np
+from stellacode.surface.utils import fourier_coefficients
 
 from .abstract_surface import AbstractSurface
-from .utils import cartesian_to_toroidal, cartesian_to_cylindrical
+from .tore import ToroidalSurface
+from .utils import (cartesian_to_cylindrical, cartesian_to_toroidal,
+                    from_polar, to_polar)
 
 
 class FourierSurface(AbstractSurface):
@@ -76,9 +82,7 @@ class FourierSurface(AbstractSurface):
             adata = np.array(data, dtype="float64")
             m, n, Rmn, Zmn = adata[:, 0], adata[:, 1], adata[:, 2], adata[:, 3]
 
-        return cls(
-            Rmn=Rmn, Zmn=Zmn, mf=m, nf=n, nbpts=(n_pol, n_tor), num_tor_symmetry=n_fp
-        )
+        return cls(Rmn=Rmn, Zmn=Zmn, mf=m, nf=n, nbpts=(n_pol, n_tor), num_tor_symmetry=n_fp)
 
     def get_xyz(self, uv):
         angle = 2 * np.pi * (uv[0] * self.mf + uv[1] * self.nf)
@@ -104,26 +108,66 @@ class FourierSurface(AbstractSurface):
             height=self.Zmn[0],
         )
 
-    def get_axisymmetric_envelope(self):
+    def get_axisymmetric_convex_hull(self, polar_coords: bool = True):
+        # Could also find the concave hull as shown here:
+        # https://stackoverflow.com/questions/57260352/python-concave-hull-polygon-of-a-set-of-lines
+
         rtphi = self.cartesian_to_toroidal()
 
-        max_val = []
-        for theta_i in range(rtphi.shape[0]):
-            maxr_i = np.argmax(rtphi[theta_i, :, 0])
-            max_val.append(rtphi[theta_i, maxr_i, :2])
+        points = np.reshape(rtphi[..., :2], (-1, 2))
+        xy_points = np.stack(from_polar(points[:, 0], points[:, 1])).T
+        hull = ConvexHull(xy_points)
+        sel_xy_points = xy_points[hull.vertices, :]
+        if not polar_coords:
+            return sel_xy_points
+        else:
+            r, th = to_polar(sel_xy_points[:, 0], sel_xy_points[:, 1])
+            rth = np.stack((r, th), axis=1)
+            rth = rth[rth[:, 1].argsort()]
+            return np.concatenate((rth, rth[:1]))
 
-        return np.stack(max_val)
+    def get_convex_hull_fourier_coeff(self, num_coeff: int = 5):
+        xy = self.get_axisymmetric_convex_hull(polar_coords=False)
+        r, th = to_polar(xy[:, 0], xy[:, 1])
+        xy = xy[th.argsort()]
+        th = th[th.argsort()]
+        xy = np.concatenate((xy, xy[:1]))
+        th = np.concatenate((th, th[:1] + 2 * np.pi))
+        # rth_s = rth_s.at[-1, 1].set(rth_s[-1, 1] + 2 * np.pi)
+        # interp = CubicSpline(th, xy, bc_type="periodic")
+        interp = interp1d(th, xy, kind="linear", axis=0)
 
-    def plot_cross_sections(self, num: int = 10):
+        def fun(theta):
+            return to_polar(*interp(theta))[0]
+
+        # fun = CubicSpline(rth_s[:, 1], rth_s[:, 0], bc_type="periodic")
+        # fun = lambda x: onp.interp(x, rth_s[:, 1], rth_s[:, 0], period=2*np.pi)
+
+        return fourier_coefficients(th.min(), th.min() + 2 * np.pi, num_coeff, fun)
+
+    def get_toroidal_surface_convex_hull(self, num_coeff: int = 5):
+        minor_radius, coefs = self.get_convex_hull_fourier_coeff(num_coeff=num_coeff)
+        return ToroidalSurface(
+            nbpts=self.nbpts,
+            num_tor_symmetry=self.num_tor_symmetry,
+            major_radius=self.get_major_radius(),
+            minor_radius=minor_radius,
+            fourier_coeffs=coefs / minor_radius,
+        )
+
+    def plot_cross_sections(self, num: int = 10, ax=None):
         import matplotlib.pyplot as plt
 
-        fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+        if ax is None:
+            fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
         rtphi = self.cartesian_to_toroidal()
+
         num_phi_s = rtphi.shape[1]
         for i in range(0, num_phi_s, num_phi_s // num):
-            ax.plot(rtphi[:, i, 1], rtphi[:, i, 0])
-        ax.plot(rtphi[:, i, 1], rtphi[:, i, 0], c="k")
+            rphi = rtphi[:, i, :]
+            # rphi = np.concatenate([rphi, rphi[:,:1]], axis=1)
+            ax.plot(rphi[:, 1], rphi[:, 0])
 
-        env = self.get_axisymmetric_envelope()
+        env = self.get_axisymmetric_convex_hull()
         ax.plot(env[:, 1], env[:, 0], c="k")
-
+        return ax
