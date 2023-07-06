@@ -146,10 +146,7 @@ def get_rot_tensor(Np):
             [0, 0, 1],
         ]
     )
-    rot_tensor = np.zeros((Np, 3, 3))
-    for i in range(Np):
-        rot_tensor = rot_tensor.at[i].set(np.linalg.matrix_power(rot, i))
-    return rot_tensor
+    return np.stack([np.linalg.matrix_power(rot, i) for i in range(Np)])
 
 
 def compute_Qj(matrixd_phi, dpsi, dS):

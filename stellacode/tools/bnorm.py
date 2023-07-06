@@ -1,4 +1,4 @@
-from stellacode import np
+import numpy as onp
 
 
 def get_bnorm(path_bnorm, plasma):
@@ -20,10 +20,10 @@ def get_bnorm(path_bnorm, plasma):
     with open(path_bnorm, "r") as f:
         for line in f:
             data.append(str.split(line))
-    adata = np.array(data, dtype="float64")
+    adata = onp.array(data, dtype="float64")
     m, n, bmn = adata[:, 0], adata[:, 1], adata[:, 2]
 
-    bnorm = np.zeros((plasma.grids[0]).shape)
+    bnorm = onp.zeros((plasma.grids[0]).shape)
     for i in range(len(m)):
-        bnorm += bmn[i] * np.sin(2 * np.pi * m[i] * plasma.grids[0] + 2 * np.pi * n[i] * plasma.grids[1])
+        bnorm += bmn[i] * onp.sin(2 * onp.pi * m[i] * plasma.grids[0] + 2 * onp.pi * n[i] * plasma.grids[1])
     return bnorm
