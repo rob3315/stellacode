@@ -8,7 +8,10 @@ import jax
 import scipy.optimize
 from pydantic import BaseModel, Extra
 
+from stellacode import np
 from stellacode.costs.aggregate_cost import AggregateCost
+from stellacode.surface.coil_surface import CoilSurface
+from stellacode.surface.imports import get_cws
 from stellacode.tools.concat_dict import ConcatDictArray
 
 logger = logging.getLogger(__name__)
@@ -17,6 +20,7 @@ logger = logging.getLogger(__name__)
 class Optimizer(BaseModel):
     cost: AggregateCost
     concater: ConcatDictArray
+    coil_surface: CoilSurface
     loss_and_grad: Any
     init_param: Any
     freq_save: int = 100
@@ -51,7 +55,8 @@ class Optimizer(BaseModel):
         else:
             output_folder_name = None
 
-        cost = AggregateCost(config=config)
+        cost = AggregateCost.from_config(config)
+        cws = get_cws(config)
 
         info = {"Nfeval": 0}
 
@@ -61,6 +66,7 @@ class Optimizer(BaseModel):
 
         return cls.from_cost(
             cost=cost,
+            coil_surface=cws,
             info=info,
             save_res=save_res,
             freq_save=freq_save,
@@ -68,13 +74,17 @@ class Optimizer(BaseModel):
         )
 
     @classmethod
-    def from_cost(cls, cost, **kwargs):
+    def from_cost(cls, cost, coil_surface, **kwargs):
         concater = ConcatDictArray()
-        init_param = concater.concat(cost.init_param)
+        init_param = concater.concat(coil_surface.get_trainable_params())
 
         def loss(X):
             kwargs_ = concater.unconcat(X)
-            res = cost.cost(**kwargs_)
+            # tic = time()
+            coil_surface.update_params(**kwargs_)
+            # print("Surface", time() - tic)
+
+            res, metrics = cost.cost(coil_surface)
             #     log_info(
             #         info,
             #         res,
@@ -86,6 +96,7 @@ class Optimizer(BaseModel):
 
         return cls(
             cost=cost,
+            coil_surface=coil_surface,
             concater=concater,
             loss_and_grad=jax.value_and_grad(loss),
             init_param=init_param,
@@ -107,7 +118,12 @@ class Optimizer(BaseModel):
             with open("{}/result".format(self.output_folder_name), "wb") as output_file:
                 pickle.dump(optimize_shape, output_file)
 
-        return optimize_shape
+        # assert optimize_shape.success
+        optimized_params = self.concater.unconcat(optimize_shape.x)
+
+        self.coil_surface.update_params(**optimized_params)
+        metrics = self.cost.cost(self.coil_surface)
+        return metrics, optimized_params
 
 
 def log_info(info, res, freq_save=100, save_res=False, output_folder_name=""):
