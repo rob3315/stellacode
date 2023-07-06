@@ -156,6 +156,7 @@ class AbstractSurface(BaseModel):
 
         points = self.expand_for_plot_part()
 
+        points_ = []
         for i in range(1, self.num_tor_symmetry):
             angle = 2 * i * np.pi / self.num_tor_symmetry
             rotation_matrix = np.array(
@@ -165,8 +166,8 @@ class AbstractSurface(BaseModel):
                     [0, 0, 1],
                 ]
             )
-            rotated_points = np.einsum("ij,uvj->uvi", rotation_matrix, points)
-            points = np.concatenate((points, rotated_points), axis=1)
+            points_.append(np.einsum("ij,uvj->uvi", rotation_matrix, points))
+        points = np.concatenate(points_, axis=1)
         return np.concatenate((points, points[:, :1]), axis=1)
 
     def plot(
