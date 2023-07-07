@@ -9,8 +9,11 @@ from scipy.io import netcdf_file
 from stellacode import np
 from stellacode.costs.em_cost import EMCost
 from stellacode.surface.cylindrical import CylindricalSurface
-from stellacode.surface.imports import (get_current_potential, get_cws,
-                                        get_plasma_surface)
+from stellacode.surface.imports import (
+    get_current_potential,
+    get_cws,
+    get_plasma_surface,
+)
 from stellacode.surface.rotated_surface import RotatedSurface
 from stellacode.surface.tore import ToroidalSurface
 from stellacode.surface.utils import fit_to_surface
@@ -22,6 +25,33 @@ def test_no_dimension_error():
     config = configparser.ConfigParser()
     config.read(path_config_file)
     EMCost.from_config_file(path_config_file)
+
+
+def test_compare_to_matlab_regcoil():
+    path_config_file = "test/data/w7x/config.ini"
+    config = configparser.ConfigParser()
+    config.read(path_config_file)
+
+    # filename = "test/data/li383/regcoil_out.li383.nc"
+    # file_ = netcdf_file(filename, "r", mmap=False)
+
+    cws = get_cws(config)
+    em_cost = EMCost.from_config(config=config, use_mu_0_factor=True)
+
+    metrics = em_cost.cost(cws)
+    print(metrics)
+    import pdb
+
+    pdb.set_trace()
+    # metrics = em_cost.cost_multiple_lambdas(cws, lambdas)
+
+    # chi2_b = file_.variables["chi2_B"][()][1:].astype(float)
+    # assert np.max(np.abs(metrics.cost_B.values - chi2_b) / chi2_b) < 5e-5
+    # chi_j = file_.variables["chi2_K"][()][1:].astype(float)
+    # assert np.max(np.abs(metrics.cost_J.values - chi_j) / chi_j) < 5e-6
+
+
+# test_compare_to_matlab_regcoil()
 
 
 @pytest.mark.parametrize("use_mu_0_factor", [False, True])
@@ -75,7 +105,12 @@ def test_pwc_fit():
     fourier_coeffs = np.zeros((5, 2))
 
     S = RotatedSurface(
-        surface=CylindricalSurface(fourier_coeffs=fourier_coeffs, nbpts=(32, 16), num_tor_symmetry=9, make_joints=True),
+        surface=CylindricalSurface(
+            fourier_coeffs=fourier_coeffs,
+            nbpts=(32, 16),
+            num_tor_symmetry=9,
+            make_joints=True,
+        ),
         nbpts=(32, 16),
         num_tor_symmetry=3,
         rotate_diff_current=3,
@@ -118,12 +153,15 @@ def test_regcoil_with_pwc():
     # check that the rotated current potential is well constructed
     curent_potential_op = S.get_curent_potential_op()
     s1, s2, s3, _ = curent_potential_op.shape
-    assert s2 == s3 * 9
+    assert s2 * 9 == s3
 
-    assert np.all(curent_potential_op[:, : s2 // 3] == curent_potential_op[:, s2 // 3 : 2 * s2 // 3])
-    cp_op = curent_potential_op.reshape((3, s1 // 3, 9, s2 // 9, s3, -1))
-    assert np.all(cp_op[1:3, :, 0] == 0)
-    assert np.all(cp_op[0, :, 1:3] == 0)
+    assert np.all(
+        curent_potential_op[:, :, : s3 // 3]
+        == curent_potential_op[:, :, s3 // 3 : 2 * s3 // 3]
+    )
+    cp_op = curent_potential_op.reshape((3, s1 // 3, s2, 9, s3 // 9, -1))
+    assert np.all(cp_op[1:3, :, :, 0] == 0)
+    assert np.all(cp_op[0, :, :, 1:3] == 0)
 
     S.compute_surface_attributes()
     S.get_min_distance(surf.P)

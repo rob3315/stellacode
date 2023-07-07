@@ -52,10 +52,10 @@ class RotatedSurface(CoilSurface):
             inner_blocks.rotate(1)
         blocks = np.concatenate(
             blocks,
-            axis=1,
+            axis=2,
         )
 
-        return np.concatenate([blocks] * self.num_tor_symmetry, axis=1)
+        return np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
 
     def compute_surface_attributes(self, deg=2):
         """compute surface elements used in the shape optimization up
@@ -67,32 +67,32 @@ class RotatedSurface(CoilSurface):
         rot_tensor = tools.get_rot_tensor(num_rot)
         self.grids = self.surface.grids
         self.P = np.reshape(
-            np.einsum("opq,ijq->oijp", rot_tensor, self.surface.P),
-            (-1, self.surface.nbpts[1], 3),
+            np.einsum("opq,ijq->iojp", rot_tensor, self.surface.P),
+            (self.surface.nbpts[0],-1,  3),
         )
 
         # We also compute surface element dS and derivatives dS_u and dS_v:
         if deg >= 1:
             self.dpsi = np.reshape(
-                np.einsum("opq,aqij->oijpa", rot_tensor, self.surface.dpsi),
-                (-1, self.surface.nbpts[1], 3, 2),
+                np.einsum("opq,aqij->iojpa", rot_tensor, self.surface.dpsi),
+                (self.surface.nbpts[0],-1,  3, 2),
             )
             "sba,taij->sijbt"
             # import pdb;pdb.set_trace()
             self.N = np.reshape(
-                np.einsum("opq,qij->poij", rot_tensor, self.surface.N),
-                (3, -1, self.surface.nbpts[1]),
+                np.einsum("opq,qij->pioj", rot_tensor, self.surface.N),
+                (3,  self.surface.nbpts[0], -1,),
             )
 
-            self.dS = np.concatenate([self.surface.dS] * num_rot, axis=0)
+            self.dS = np.concatenate([self.surface.dS] * num_rot, axis=1)
 
             self.n = np.reshape(
-                np.einsum("opq,qij->poij", rot_tensor, self.surface.n),
-                (3, -1, self.surface.nbpts[1]),
+                np.einsum("opq,qij->pioj", rot_tensor, self.surface.n),
+                (3,  self.surface.nbpts[0], -1,),
             )
 
         if deg >= 2:
-            self.principles = [np.concatenate([p] * num_rot) for p in self.surface.principles]
+            self.principles = [np.concatenate([p] * num_rot, axis=1) for p in self.surface.principles]
         self.npts = self.surface.npts
         self.nbpts = self.surface.nbpts
 
