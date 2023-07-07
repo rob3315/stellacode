@@ -3,7 +3,7 @@ from stellacode import np
 
 class ConcatDictArray:
     def concat(self, darr):
-        self.shapes = {k: np.array(v.shape) for k, v in darr.items()}
+        self.shapes = {k: np.array(np.array(v).shape, dtype=int) for k, v in darr.items()}
         return np.concatenate([np.reshape(v, -1) for v in darr.values()])
 
     def unconcat(self, arr):
