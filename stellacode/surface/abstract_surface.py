@@ -156,7 +156,7 @@ class AbstractSurface(BaseModel):
 
         points = self.expand_for_plot_part()
 
-        points_ = []
+        points_ = [points]
         for i in range(1, self.num_tor_symmetry):
             angle = 2 * i * np.pi / self.num_tor_symmetry
             rotation_matrix = np.array(
