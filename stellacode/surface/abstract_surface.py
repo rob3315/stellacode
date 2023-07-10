@@ -6,6 +6,19 @@ from pydantic import BaseModel, Extra
 
 from stellacode import np
 from stellacode.tools.utils import get_min_dist
+from .utils import get_principles
+
+
+class SurfaceAttributes(BaseModel):
+    npts: int
+    xyz: ArrayLike
+    jac_xyz: tp.Optional[ArrayLike] = None
+    normal: tp.Optional[ArrayLike] = None
+    normal_unit: tp.Optional[ArrayLike] = None
+    principles: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class AbstractSurface(BaseModel):
@@ -26,6 +39,7 @@ class AbstractSurface(BaseModel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.npts = self.nbpts[0] * self.nbpts[1]
+        self.grids = self.get_uvgrid(*self.nbpts)
         self.compute_surface_attributes()  # computation of the surface attributes
 
     def get_xyz(self, uv):
@@ -42,11 +56,8 @@ class AbstractSurface(BaseModel):
 
     @staticmethod
     def get_uvgrid(lu, lv, concat: bool = False):
-        # u, v = np.linspace(
-        #     0, 1, lu, endpoint=False), (np.arange(lv) + 0.5) / lv
-        u, v = np.linspace(0, 1, lu, endpoint=False), np.linspace(
-            0, 1, lv, endpoint=False
-        )
+        u, v = np.linspace(0, 1, lu, endpoint=False), np.linspace(0, 1, lv, endpoint=False)
+
         ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
         if concat:
             return np.stack((ugrid, vgrid), axis=0)
@@ -86,8 +97,6 @@ class AbstractSurface(BaseModel):
         to degree deg
         deg is 0,1 or 2"""
 
-        self.grids = self.get_uvgrid(*self.nbpts)
-
         uv_grid = np.stack(self.grids, axis=0)
 
         self.P = self.get_xyz_on_grid(uv_grid)
@@ -103,47 +112,7 @@ class AbstractSurface(BaseModel):
 
         if deg >= 2:
             hess = self.get_hess_xyz_on_grid(uv_grid)
-
-            dpsi_uu = hess[:, 0, 0, ...]
-            dpsi_uv = hess[:, 1, 1, ...]
-            dpsi_vv = hess[:, 0, 1, ...]
-
-            dNdu = np.cross(dpsi_uu, self.dpsi[1], 0, 0, 0) + np.cross(
-                self.dpsi[0], dpsi_uv, 0, 0, 0
-            )
-            dNdv = np.cross(dpsi_uv, self.dpsi[1], 0, 0, 0) + np.cross(
-                self.dpsi[0], dpsi_vv, 0, 0, 0
-            )
-            dS_u = np.sum(dNdu * N, axis=0) / self.dS
-            dS_v = np.sum(dNdv * N, axis=0) / self.dS
-            self.n_u = dNdu / self.dS - dS_u * N / (self.dS**2)
-            self.n_v = dNdv / self.dS - dS_v * N / (self.dS**2)
-            # curvature computation
-            # curvature computations :
-            # First fundamental form of the surface (E,F,G)
-            E = np.einsum("lij,lij->ij", self.dpsi[0], self.dpsi[0])
-            F = np.einsum("lij,lij->ij", self.dpsi[0], self.dpsi[1])
-            G = np.einsum("lij,lij->ij", self.dpsi[1], self.dpsi[1])
-            self.I = (E, F, G)
-
-            # Second fundamental of the surface (L,M,N)
-            L = np.einsum("lij,lij->ij", dpsi_uu, self.n)  # e
-            M = np.einsum("lij,lij->ij", dpsi_uv, self.n)  # f
-            N = np.einsum("lij,lij->ij", dpsi_vv, self.n)  # g
-            self.II = (L, M, N)
-
-            # K = det(second fundamental) / det(first fundamental)
-            # Gaussian Curvature
-            K = (L * N - M**2) / (E * G - F**2)
-            self.K = K
-
-            # trace of (second fundamental)(first fundamental^-1)
-            # Mean Curvature
-            H = ((E * N + G * L - 2 * F * M) / ((E * G - F**2))) / 2
-            self.H = H
-            Pmax = H + np.sqrt(H**2 - K)
-            Pmin = H - np.sqrt(H**2 - K)
-            self.principles = [Pmax, Pmin]
+            self.principles = get_principles(hess_xyz=hess, jac_xyz=self.dpsi, normal_unit=self.n)
 
     def get_distance(self, xyz):
         return np.linalg.norm(self.P[..., None, None, :] - xyz[None, None, ...], axis=-1)
@@ -208,14 +177,8 @@ class AbstractSurface(BaseModel):
             color=color,
             **kwargs,
         )
-        mlab.plot3d(
-            np.linspace(0, 10, 100), np.zeros(100), np.zeros(100), color=(1, 0, 0)
-        )
-        mlab.plot3d(
-            np.zeros(100), np.linspace(0, 10, 100), np.zeros(100), color=(0, 1, 0)
-        )
-        mlab.plot3d(
-            np.zeros(100), np.zeros(100), np.linspace(0, 10, 100), color=(0, 0, 1)
-        )
+        mlab.plot3d(np.linspace(0, 10, 100), np.zeros(100), np.zeros(100), color=(1, 0, 0))
+        mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100), np.zeros(100), color=(0, 1, 0))
+        mlab.plot3d(np.zeros(100), np.zeros(100), np.linspace(0, 10, 100), color=(0, 0, 1))
         if scalar is not None:
             mlab.colorbar(surf, nb_labels=4, label_fmt="%.1E", orientation="vertical")

@@ -25,7 +25,7 @@ class CylindricalSurface(AbstractSurface):
 
     def get_xyz(self, uv):
         u_ = 2 * np.pi * uv[0]  # poloidal variable
-        v_ = uv[1] - 0.5  # length variable
+        v_ = uv[1] - 0.5 + 0.5 / self.nbpts[1]  # length variable
 
         axis_a = self.axis_angle
 

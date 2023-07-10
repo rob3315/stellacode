@@ -2,6 +2,7 @@ from pydantic import BaseModel, Extra
 
 from .abstract_surface import AbstractSurface
 from .current_potential import CurrentPotential
+from stellacode import np
 
 
 class CoilSurface(AbstractSurface):
@@ -18,6 +19,10 @@ class CoilSurface(AbstractSurface):
         arbitrary_types_allowed = True
         extra = Extra.allow  # allow extra fields
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.current_op = self.current.get_matrix_from_grid(self.grids)
+
     @classmethod
     def from_config(cls, config):
         from .imports import get_current_potential, get_cws_grid
@@ -29,3 +34,33 @@ class CoilSurface(AbstractSurface):
 
     def get_curent_op(self):
         return self.current.get_matrix_from_grid(self.grids)
+
+    def get_current_scalar_prod(self):
+        return compute_Qj(self.current_op, self.dpsi, self.dS)
+
+    def get_j_3D(self, phi_mn):
+        # phi_mn is a vector containing the components of the best scalar current potential.
+        # The real surface current is given by :
+        return np.einsum(
+            "oijk,ijdk,ij,o->ijd",
+            self.current_op,
+            self.dpsi,
+            1 / self.dS,
+            phi_mn,
+            optimize=True,
+        )
+
+
+def compute_Qj(matrixd_phi, dpsi, dS):
+    """take only the segment whitout rotation of j"""
+    lu, lv = dS.shape
+    Qj = np.einsum(
+        "oija,ijda,ijdk,pijk,ij->op",
+        matrixd_phi,
+        dpsi,
+        dpsi,
+        matrixd_phi,
+        1 / dS,
+        optimize=True,
+    ) / (lu * lv)
+    return Qj

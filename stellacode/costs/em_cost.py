@@ -29,7 +29,6 @@ class EMCost(AbstractCost):
     net_currents: Optional[ArrayLike]
     Sp: AbstractSurface
     bnorm: ArrayLike
-    rot_tensor: ArrayLike
     matrixd_phi: ArrayLike
     use_mu_0_factor: bool = False
     inverse_qj: bool = False
@@ -38,7 +37,6 @@ class EMCost(AbstractCost):
     def from_config(cls, config, use_mu_0_factor=True):
         curpol = float(config["other"]["curpol"])
         num_tor_symmetry = int(config["geometry"]["Np"])
-        rot_tensor = tools.get_rot_tensor(num_tor_symmetry)
         Sp = get_plasma_surface(config)
         bnorm_ = -curpol * bnorm.get_bnorm(str(config["other"]["path_bnorm"]), Sp)
         net_currents = np.array(
@@ -59,7 +57,6 @@ class EMCost(AbstractCost):
             net_currents=net_currents,
             bnorm=bnorm_,
             Sp=Sp,
-            rot_tensor=rot_tensor,
             matrixd_phi=S.get_curent_op(),
             use_mu_0_factor=use_mu_0_factor,
         )
