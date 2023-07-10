@@ -39,8 +39,8 @@ class RotatedSurface(CoilSurface):
             setattr(self.surface, k, v)
         self.compute_surface_attributes(deg=2)
 
-    def get_curent_potential_op(self):
-        curent_potential_op = self.current.get_matrix_from_grid(self.surface.grids)
+    def get_curent_op(self):
+        curent_potential_op = super().get_curent_op()
 
         inner_blocks = collections.deque(
             [curent_potential_op] + [np.zeros_like(curent_potential_op)] * (self.rotate_diff_current - 1)

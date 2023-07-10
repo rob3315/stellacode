@@ -21,10 +21,10 @@ class CoilSurface(AbstractSurface):
 
     @classmethod
     def from_config(cls, config):
-        current_potential = get_current_potential(config)
+        current = get_current_potential(config)
         surface = get_cws_grid(config)
 
-        return cls(surface=surface, current_potential=current_potential)
+        return cls(surface=surface, current=current)
 
-    def get_curent_potential_op(self):
-        return self.current_potential.get_matrix_from_grid(self.grids)
+    def get_curent_op(self):
+        return self.current.get_matrix_from_grid(self.grids)

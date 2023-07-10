@@ -1,5 +1,6 @@
 from scipy.spatial.distance import cdist
-
+import jax.numpy as np
+from scipy.integrate import quad
 from stellacode import np
 
 
@@ -8,10 +9,6 @@ def get_min_dist(S1, S2):
 
     # slower but differentiable
     # return np.linalg.norm(S1.P[...,None,None,:]-S2.P[None,None,...], axis=-1).min()
-
-
-import jax.numpy as np
-from scipy.integrate import quad
 
 
 def fourier_coefficients(li, lf, n, f):

@@ -8,7 +8,7 @@ import wsp.stellacode.stellacode.costs.EM_cost as EM
 from stellacode import np
 from stellacode.costs.curvature import CurvatureCost
 from stellacode.costs.distance import DistanceCost
-from stellacode.costs.perimeter import PerimeterCost
+from stellacode.costs.area import AreaCost
 from stellacode.surface.fourier import FourierSurface
 
 
@@ -42,7 +42,7 @@ class Simu_result:
         self.m, self.n = m, n
         self.init_param = np.concatenate((Rmn, Zmn))
         self.dist = DistanceCost(config=config)
-        self.perim = PerimeterCost(config=config)
+        self.perim = AreaCost(config=config)
         self.curv = CurvatureCost(config=config)
         self.successful = True
 

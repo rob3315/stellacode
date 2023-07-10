@@ -60,7 +60,7 @@ class EMCost(AbstractCost):
             bnorm=bnorm_,
             Sp=Sp,
             rot_tensor=rot_tensor,
-            matrixd_phi=S.get_curent_potential_op(),
+            matrixd_phi=S.get_curent_op(),
             use_mu_0_factor=use_mu_0_factor,
         )
 

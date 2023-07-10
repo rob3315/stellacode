@@ -1,7 +1,5 @@
-import numpy as onp
+import numpy as np
 from pydantic import BaseModel, Extra
-
-from stellacode import np
 
 
 def phi_coeff_from_nb(k, phisize):
@@ -24,20 +22,26 @@ class CurrentPotential(BaseModel):
     num_tor: int
 
     def get_matrix_from_grid(self, grids):
-        # lm, ln = phisize
+        """
+        Only sine coefficients are implmented
+        
+        """
         ugrid, vgrid = grids
         lu, lv = ugrid.shape
         lc = self.num_pol * (2 * self.num_tor + 1) + self.num_tor
-        matrix_dPhi = onp.zeros((lc + 2, lu, lv, 2))
-        # we start with du:
-        matrix_dPhi[0, :, :, 0] = onp.ones((lu, lv))
-        # dv
-        matrix_dPhi[1, :, :, 1] = onp.ones((lu, lv))
-        for coeff in range(lc):
-            m, n = phi_coeff_from_nb(coeff, (self.num_pol, self.num_tor))
-            # Phi=sin(2pi(mu+nv))
-            # \nabla\perp Phi = (-2 pi n cos(2pi(mu+nv)),2pi m cos(2pi(mu+nv)))
-            matrix_dPhi[coeff + 2, :, :, 0] = -2 * onp.pi * n * onp.cos(2 * onp.pi * (m * ugrid + n * vgrid))
-            matrix_dPhi[coeff + 2, :, :, 1] = 2 * onp.pi * m * onp.cos(2 * onp.pi * (m * ugrid + n * vgrid))
 
-        return matrix_dPhi
+        coeffs = get_coeffs(lc, (self.num_pol, self.num_tor))
+        coeffs
+        xm = coeffs[:, None, None, 0]
+        xn = coeffs[:, None, None, 1]
+        angle = 2 * np.pi * (xm * ugrid[:, :] + xn * vgrid[:, :])
+        dphi = np.stack(
+            (-2 * np.pi * xn * np.cos(angle), 2 * np.pi * xm * np.cos(angle)),
+            axis=-1,
+        )
+        dphi = np.concatenate((np.zeros((2, lu, lv, 2)), dphi), axis=0)
+
+        dphi[0, :, :, 0] = np.ones((lu, lv))
+        dphi[1, :, :, 1] = np.ones((lu, lv))
+
+        return dphi

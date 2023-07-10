@@ -4,8 +4,7 @@ from time import time
 from stellacode.costs.curvature import CurvatureCost
 from stellacode.costs.distance import DistanceCost
 from stellacode.costs.em_cost import EMCost
-from stellacode.costs.perimeter import PerimeterCost
-from stellacode.surface.imports import get_cws
+from stellacode.costs.area import AreaCost
 
 from .abstract_cost import AbstractCost
 
@@ -21,7 +20,7 @@ class AggregateCost(AbstractCost):
         if config["optimization_parameters"]["d_min"] == "True":
             costs.append(DistanceCost.from_config(config))
         if config["optimization_parameters"]["perim"] == "True":
-            costs.append(PerimeterCost.from_config(config))
+            costs.append(AreaCost.from_config(config))
         if config["optimization_parameters"]["curvature"] == "True":
             costs.append(CurvatureCost.from_config(config))
         return cls(costs=costs)

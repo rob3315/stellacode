@@ -44,7 +44,9 @@ class AbstractSurface(BaseModel):
     def get_uvgrid(lu, lv, concat: bool = False):
         # u, v = np.linspace(
         #     0, 1, lu, endpoint=False), (np.arange(lv) + 0.5) / lv
-        u, v = np.linspace(0, 1, lu, endpoint=False), np.linspace(0, 1, lv, endpoint=False)
+        u, v = np.linspace(0, 1, lu, endpoint=False), np.linspace(
+            0, 1, lv, endpoint=False
+        )
         ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
         if concat:
             return np.stack((ugrid, vgrid), axis=0)
@@ -107,8 +109,12 @@ class AbstractSurface(BaseModel):
             dpsi_uv = hess[:, 1, 1, ...]
             dpsi_vv = hess[:, 0, 1, ...]
 
-            dNdu = np.cross(dpsi_uu, self.dpsi[1], 0, 0, 0) + np.cross(self.dpsi[0], dpsi_uv, 0, 0, 0)
-            dNdv = np.cross(dpsi_uv, self.dpsi[1], 0, 0, 0) + np.cross(self.dpsi[0], dpsi_vv, 0, 0, 0)
+            dNdu = np.cross(dpsi_uu, self.dpsi[1], 0, 0, 0) + np.cross(
+                self.dpsi[0], dpsi_uv, 0, 0, 0
+            )
+            dNdv = np.cross(dpsi_uv, self.dpsi[1], 0, 0, 0) + np.cross(
+                self.dpsi[0], dpsi_vv, 0, 0, 0
+            )
             dS_u = np.sum(dNdu * N, axis=0) / self.dS
             dS_v = np.sum(dNdv * N, axis=0) / self.dS
             self.n_u = dNdu / self.dS - dS_u * N / (self.dS**2)
@@ -139,6 +145,9 @@ class AbstractSurface(BaseModel):
             Pmax = H + np.sqrt(H**2 - K)
             Pmin = H - np.sqrt(H**2 - K)
             self.principles = [Pmax, Pmin]
+
+    def get_distance(self, xyz):
+        return np.linalg.norm(self.P[..., None, None, :] - xyz[None, None, ...], axis=-1)
 
     def get_min_distance(self, xyz):
         return get_min_dist(self.P, xyz)
@@ -200,8 +209,14 @@ class AbstractSurface(BaseModel):
             color=color,
             **kwargs,
         )
-        mlab.plot3d(np.linspace(0, 10, 100), np.zeros(100), np.zeros(100), color=(1, 0, 0))
-        mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100), np.zeros(100), color=(0, 1, 0))
-        mlab.plot3d(np.zeros(100), np.zeros(100), np.linspace(0, 10, 100), color=(0, 0, 1))
+        mlab.plot3d(
+            np.linspace(0, 10, 100), np.zeros(100), np.zeros(100), color=(1, 0, 0)
+        )
+        mlab.plot3d(
+            np.zeros(100), np.linspace(0, 10, 100), np.zeros(100), color=(0, 1, 0)
+        )
+        mlab.plot3d(
+            np.zeros(100), np.zeros(100), np.linspace(0, 10, 100), color=(0, 0, 1)
+        )
         if scalar is not None:
             mlab.colorbar(surf, nb_labels=4, label_fmt="%.1E", orientation="vertical")

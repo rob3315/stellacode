@@ -3,7 +3,7 @@ from stellacode.costs.abstract_cost import AbstractCost
 from stellacode.costs.auxi import f_e
 
 
-class PerimeterCost(AbstractCost):
+class AreaCost(AbstractCost):
     """Non linear penalization on the perimeter (upper bound)"""
 
     num_tor_symmetry: int

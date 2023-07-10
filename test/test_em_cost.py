@@ -138,7 +138,7 @@ def test_regcoil_with_pwc():
     )
 
     # check that the rotated current potential is well constructed
-    curent_potential_op = S.get_curent_potential_op()
+    curent_potential_op = S.get_curent_op()
     s1, s2, s3, _ = curent_potential_op.shape
     assert s2 * 9 == s3
 
@@ -163,7 +163,7 @@ def test_regcoil_with_pwc():
     # compute regcoil metrics
 
     # need to update matrix_dphi with new surface params
-    em_cost.matrixd_phi = new_surface.get_curent_potential_op()
+    em_cost.matrixd_phi = new_surface.get_curent_op()
 
     lambdas = np.array([1.2e-24, 1.2e-18, 1.2e-14, 1.0e00])
     metrics = em_cost.cost_multiple_lambdas(new_surface, lambdas)

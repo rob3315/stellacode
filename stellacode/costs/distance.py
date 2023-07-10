@@ -28,14 +28,20 @@ class DistanceCost(AbstractCost):
             rot_tensor=tools.get_rot_tensor(num_tor_symmetry),
             d_min_hard=float(config["optimization_parameters"]["d_min_hard"]),
             d_min_soft=float(config["optimization_parameters"]["d_min_soft"]),
-            d_min_penalization=float(config["optimization_parameters"]["d_min_penalization"]),
+            d_min_penalization=float(
+                config["optimization_parameters"]["d_min_penalization"]
+            ),
         )
 
     def cost(self, S):
-        vf = np.vectorize(lambda x: f_non_linear(self.d_min_hard, self.d_min_soft, self.d_min_penalization, x))
-        T = tools.get_tensor_distance(S, self.Sp, self.rot_tensor)
-        dist = np.linalg.norm(T, axis=-1)
-        dist_min = np.amin(dist, axis=(0, 3, 4))
+        vf = np.vectorize(
+            lambda x: f_non_linear(
+                self.d_min_hard, self.d_min_soft, self.d_min_penalization, x
+            )
+        )
+
+        dist_min = S.get_distance(self.Sp.P).min((-1, -2))
+
         cost = np.einsum("ij,ij->", vf(dist_min), S.dS / S.npts)
 
         return cost, {"min_distance": np.min(dist_min)}
