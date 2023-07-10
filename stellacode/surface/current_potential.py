@@ -20,12 +20,10 @@ def get_coeffs(lc, phisize):
 class CurrentPotential(BaseModel):
     num_pol: int
     num_tor: int
+    sin_basis: bool = True
+    cos_basis: bool = False
 
     def get_matrix_from_grid(self, grids):
-        """
-        Only sine coefficients are implmented
-        
-        """
         ugrid, vgrid = grids
         lu, lv = ugrid.shape
         lc = self.num_pol * (2 * self.num_tor + 1) + self.num_tor
@@ -35,10 +33,23 @@ class CurrentPotential(BaseModel):
         xm = coeffs[:, None, None, 0]
         xn = coeffs[:, None, None, 1]
         angle = 2 * np.pi * (xm * ugrid[:, :] + xn * vgrid[:, :])
-        dphi = np.stack(
-            (-2 * np.pi * xn * np.cos(angle), 2 * np.pi * xm * np.cos(angle)),
-            axis=-1,
-        )
+        dphi = []
+        assert self.sin_basis or self.cos_basis
+        if self.sin_basis:
+            dphi.append(
+                np.stack(
+                    (-2 * np.pi * xn * np.cos(angle), 2 * np.pi * xm * np.cos(angle)),
+                    axis=-1,
+                )
+            )
+        if self.cos_basis:
+            dphi.append(
+                np.stack(
+                    (2 * np.pi * xn * np.sin(angle), -2 * np.pi * xm * np.sin(angle)),
+                    axis=-1,
+                )
+            )
+        dphi = np.concatenate(dphi, axis=0)
         dphi = np.concatenate((np.zeros((2, lu, lv, 2)), dphi), axis=0)
 
         dphi[0, :, :, 0] = np.ones((lu, lv))

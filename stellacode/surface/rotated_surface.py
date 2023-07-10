@@ -1,9 +1,4 @@
 import collections
-import typing as tp
-
-import jax
-from jax.typing import ArrayLike
-from pydantic import BaseModel, Extra
 
 import stellacode.tools as tools
 from stellacode import np

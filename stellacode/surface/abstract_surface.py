@@ -86,7 +86,6 @@ class AbstractSurface(BaseModel):
         to degree deg
         deg is 0,1 or 2"""
 
-        self.get_uvgrid(*self.nbpts)
         self.grids = self.get_uvgrid(*self.nbpts)
 
         uv_grid = np.stack(self.grids, axis=0)

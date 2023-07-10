@@ -2,7 +2,6 @@ from pydantic import BaseModel, Extra
 
 from .abstract_surface import AbstractSurface
 from .current_potential import CurrentPotential
-from .imports import get_current_potential, get_cws_grid
 
 
 class CoilSurface(AbstractSurface):
@@ -21,6 +20,8 @@ class CoilSurface(AbstractSurface):
 
     @classmethod
     def from_config(cls, config):
+        from .imports import get_current_potential, get_cws_grid
+
         current = get_current_potential(config)
         surface = get_cws_grid(config)
 
