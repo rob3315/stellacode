@@ -1,6 +1,7 @@
 from stellacode import np
 import typing as tp
 from scipy.io import netcdf_file
+from scipy.constants import mu_0
 
 
 def _dot(coeff, cossin):
@@ -20,8 +21,6 @@ class VMECIO:
         diff: tp.Optional[str] = None,
     ):
         xm = self.file.variables["xm_nyq"][()].astype(int)
-
-
 
         xn = self.file.variables["xn_nyq"][()].astype(int)
         angle = theta[..., None] * xm - zeta[..., None] * xn
@@ -126,3 +125,31 @@ class VMECIO:
             ),
             axis=-1,
         )
+
+    def get_nfp(self):
+        return self.file.variables["nfp"][()].astype(int)
+
+    def scale_bnorm(self, b_norm):
+        """
+        From regcoil:
+        BNORM scales B_n by curpol=(2*pi/nfp)*bsubv(m=0,n=0)
+        where bsubv is the extrapolation to the last full mesh point of
+        bsubvmnc.  Let's undo this scaling now.
+        """
+        nfp = self.get_nfp()
+        bsubvmnc = self.file.variables["bsubvmnc"][()].astype(float)
+
+        bsubv00 = 1.5 * bsubvmnc[0, -1] - 0.5 * bsubvmnc[0, -2]
+        curpol = 2 * np.pi / nfp * bsubv00
+        return b_norm * curpol
+
+    def get_net_poloidal_current(self):
+        """
+        From regcoil:
+        bvco seems related to the covariant components of B bsubvmnc/s
+        In principle this value should be given by: 
+        2pi/mu_0*integral_zeta(B(theta=interior, radius=last_radius))
+        """
+
+        bvco = self.file.variables["bvco"][()].astype(float)
+        return 2 * np.pi / mu_0 * (1.5 * bvco[-1] - 0.5 * bvco[-2])

@@ -5,19 +5,12 @@ from stellacode.costs.auxi import f_e
 
 class CurvatureCost(AbstractCost):
     """Non linear penalization on the curvature (upper bound)"""
-
-    num_tor_symmetry: int
-    ntheta_coil: int
-    nzeta_coil: int
     c0: float
     c1: float
 
     @classmethod
     def from_config(cls, config):
         return cls(
-            num_tor_symmetry=int(config["geometry"]["Np"]),
-            ntheta_coil=int(config["geometry"]["ntheta_coil"]),
-            nzeta_coil=int(config["geometry"]["nzeta_coil"]),
             c0=float(config["optimization_parameters"]["curvature_c0"]),
             c1=float(config["optimization_parameters"]["curvature_c1"]),
         )
