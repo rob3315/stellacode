@@ -68,27 +68,35 @@ class RotatedSurface(CoilSurface):
         self.grids = self.surface.grids
         self.P = np.reshape(
             np.einsum("opq,ijq->iojp", rot_tensor, self.surface.P),
-            (self.surface.nbpts[0],-1,  3),
+            (self.surface.nbpts[0], -1, 3),
         )
 
         # We also compute surface element dS and derivatives dS_u and dS_v:
         if deg >= 1:
             self.dpsi = np.reshape(
                 np.einsum("opq,aqij->iojpa", rot_tensor, self.surface.dpsi),
-                (self.surface.nbpts[0],-1,  3, 2),
+                (self.surface.nbpts[0], -1, 3, 2),
             )
             "sba,taij->sijbt"
             # import pdb;pdb.set_trace()
             self.N = np.reshape(
                 np.einsum("opq,qij->pioj", rot_tensor, self.surface.N),
-                (3,  self.surface.nbpts[0], -1,),
+                (
+                    3,
+                    self.surface.nbpts[0],
+                    -1,
+                ),
             )
 
             self.dS = np.concatenate([self.surface.dS] * num_rot, axis=1)
 
             self.n = np.reshape(
                 np.einsum("opq,qij->pioj", rot_tensor, self.surface.n),
-                (3,  self.surface.nbpts[0], -1,),
+                (
+                    3,
+                    self.surface.nbpts[0],
+                    -1,
+                ),
             )
 
         if deg >= 2:

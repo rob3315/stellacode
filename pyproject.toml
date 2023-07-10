@@ -48,6 +48,6 @@ Source = "https://plmlab.math.cnrs.fr/rrobin/stellacode"
 line-length = 120
 
 [tool.isort]
-reverse_relative = true
+profile = "black"
 
 [project.scripts]

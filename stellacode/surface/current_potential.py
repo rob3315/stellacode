@@ -9,10 +9,14 @@ def phi_coeff_from_nb(k, phisize):
     this function make the conversion with a 2d matrix"""
     lm, ln = phisize
     if k < ln:
-        return (0, k + 1)
+        return [0, k + 1]
     else:
         kk = k - ln
-        return (1 + kk // (2 * ln + 1), kk % (2 * ln + 1) - ln)
+        return [1 + kk // (2 * ln + 1), kk % (2 * ln + 1) - ln]
+
+
+def get_coeffs(lc, phisize):
+    return np.array([phi_coeff_from_nb(k, phisize) for k in range(lc)])
 
 
 class CurrentPotential(BaseModel):

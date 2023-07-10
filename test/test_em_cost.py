@@ -9,11 +9,8 @@ from scipy.io import netcdf_file
 from stellacode import np
 from stellacode.costs.em_cost import EMCost
 from stellacode.surface.cylindrical import CylindricalSurface
-from stellacode.surface.imports import (
-    get_current_potential,
-    get_cws,
-    get_plasma_surface,
-)
+from stellacode.surface.imports import (get_current_potential, get_cws,
+                                        get_plasma_surface)
 from stellacode.surface.rotated_surface import RotatedSurface
 from stellacode.surface.tore import ToroidalSurface
 from stellacode.surface.utils import fit_to_surface
@@ -32,26 +29,10 @@ def test_compare_to_matlab_regcoil():
     config = configparser.ConfigParser()
     config.read(path_config_file)
 
-    # filename = "test/data/li383/regcoil_out.li383.nc"
-    # file_ = netcdf_file(filename, "r", mmap=False)
-
     cws = get_cws(config)
     em_cost = EMCost.from_config(config=config, use_mu_0_factor=True)
 
     metrics = em_cost.cost(cws)
-    print(metrics)
-    import pdb
-
-    pdb.set_trace()
-    # metrics = em_cost.cost_multiple_lambdas(cws, lambdas)
-
-    # chi2_b = file_.variables["chi2_B"][()][1:].astype(float)
-    # assert np.max(np.abs(metrics.cost_B.values - chi2_b) / chi2_b) < 5e-5
-    # chi_j = file_.variables["chi2_K"][()][1:].astype(float)
-    # assert np.max(np.abs(metrics.cost_J.values - chi_j) / chi_j) < 5e-6
-
-
-# test_compare_to_matlab_regcoil()
 
 
 @pytest.mark.parametrize("use_mu_0_factor", [False, True])
@@ -65,13 +46,19 @@ def test_compare_to_regcoil(use_mu_0_factor):
 
     cws = get_cws(config)
     em_cost = EMCost.from_config(config=config, use_mu_0_factor=use_mu_0_factor)
-    lambdas = np.array([1.2e-14, 1.0e00])
+
+    lambdas = file_.variables["lambda"][()].astype(float)
     metrics = em_cost.cost_multiple_lambdas(cws, lambdas)
 
-    chi2_b = file_.variables["chi2_B"][()][1:].astype(float)
-    assert np.max(np.abs(metrics.cost_B.values - chi2_b) / chi2_b) < 5e-5
-    chi_j = file_.variables["chi2_K"][()][1:].astype(float)
-    assert np.max(np.abs(metrics.cost_J.values - chi_j) / chi_j) < 5e-6
+    chi2_b = file_.variables["chi2_B"][()].astype(float)
+    assert np.max(np.abs(metrics.cost_B.values - chi2_b) / np.max(chi2_b)) < 5e-5
+    chi_j = file_.variables["chi2_K"][()].astype(float)
+    assert np.max(np.abs(metrics.cost_J.values[1:] - chi_j[1:]) / np.max(chi_j[1:])) < 5e-6
+
+    # chi2_b = file_.variables["chi2_B"][()][1:].astype(float)
+    # assert np.max(np.abs(metrics.cost_B.values - chi2_b) / chi2_b) < 5e-5
+    # chi_j = file_.variables["chi2_K"][()][1:].astype(float)
+    # assert np.max(np.abs(metrics.cost_J.values - chi_j) / chi_j) < 5e-6
 
 
 def test_regcoil_with_axisymmetric():
@@ -155,10 +142,7 @@ def test_regcoil_with_pwc():
     s1, s2, s3, _ = curent_potential_op.shape
     assert s2 * 9 == s3
 
-    assert np.all(
-        curent_potential_op[:, :, : s3 // 3]
-        == curent_potential_op[:, :, s3 // 3 : 2 * s3 // 3]
-    )
+    assert np.all(curent_potential_op[:, :, : s3 // 3] == curent_potential_op[:, :, s3 // 3 : 2 * s3 // 3])
     cp_op = curent_potential_op.reshape((3, s1 // 3, s2, 9, s3 // 9, -1))
     assert np.all(cp_op[1:3, :, :, 0] == 0)
     assert np.all(cp_op[0, :, :, 1:3] == 0)

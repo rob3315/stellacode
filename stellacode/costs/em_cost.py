@@ -32,6 +32,7 @@ class EMCost(AbstractCost):
     rot_tensor: ArrayLike
     matrixd_phi: ArrayLike
     use_mu_0_factor: bool = False
+    inverse_qj: bool = False
 
     @classmethod
     def from_config(cls, config, use_mu_0_factor=True):
@@ -95,27 +96,40 @@ class EMCost(AbstractCost):
 
         if self.net_currents is not None:
             BS_R = BS[2:]
-            Qj_inv_R = np.linalg.inv(Qj[2:, 2:])
+            if self.inverse_qj:
+                Qj_inv_R = np.linalg.inv(Qj[2:, 2:])
             bnorm_ = self.bnorm - np.einsum("tpq,t", BS[:2], self.net_currents)
         else:
             BS_R = BS
-            Qj_inv_R = np.linalg.inv(Qj)
+            if self.inverse_qj:
+                Qj_inv_R = np.linalg.inv(Qj)
             bnorm_ = self.bnorm
-
-        BS_dagger = np.einsum("ut,tij,ij->uij", Qj_inv_R, BS_R, Sp.dS / Sp.npts)
+        if self.inverse_qj:
+            BS_dagger = np.einsum("ut,tij,ij->uij", Qj_inv_R, BS_R, Sp.dS / Sp.npts)
+        else:
+            BS_dagger = np.einsum("uij,ij->uij", BS_R, Sp.dS / Sp.npts)
 
         RHS = np.einsum("hpq,pq->h", BS_dagger, bnorm_)
 
         if self.net_currents is not None:
-            RHS_lamb = Qj_inv_R @ Qj[2:, :2] @ self.net_currents
+            if self.inverse_qj:
+                RHS_lamb = Qj_inv_R @ Qj[2:, :2] @ self.net_currents
+            else:
+                RHS_lamb = Qj[2:, :2] @ self.net_currents
         else:
             RHS_lamb = None
 
+        matrix = np.einsum("tpq,upq->tu", BS_dagger, BS_R)
+        if self.inverse_qj:
+            matrix_reg = np.eye(BS_R.shape[0])
+        else:
+            matrix_reg = Qj[2:, 2:]
+
         j_S = self.solve_lambda(
-            BS_R=BS_R,
-            BS_dagger=BS_dagger,
-            RHS=RHS,
-            RHS_lamb=RHS_lamb,
+            matrix=matrix,
+            matrix_reg=matrix_reg,
+            rhs=RHS,
+            rhs_reg=RHS_lamb,
             lamb=lamb,
         )
 
@@ -141,16 +155,14 @@ class EMCost(AbstractCost):
 
         return metrics["cost"], metrics
 
-    def solve_lambda(self, BS_R, BS_dagger, RHS, RHS_lamb=None, lamb: float = 0.0):
+    def solve_lambda(self, matrix, matrix_reg, rhs, rhs_reg=None, lamb: float = 0.0):
         if not self.use_mu_0_factor:
             lamb /= mu_0_fac**2
-        inside_M_lambda_R = lamb * np.eye(BS_R.shape[0]) + np.einsum("tpq,upq->tu", BS_dagger, BS_R)
-        M_lambda_R = np.linalg.inv(inside_M_lambda_R)
 
         if self.net_currents is not None:
-            RHS = RHS - lamb * RHS_lamb
+            rhs = rhs - lamb * rhs_reg
 
-        j_S_R = M_lambda_R @ RHS
+        j_S_R = np.linalg.solve(matrix + lamb * matrix_reg, rhs)
 
         if self.net_currents is not None:
             j_S = np.concatenate((self.net_currents, j_S_R))
