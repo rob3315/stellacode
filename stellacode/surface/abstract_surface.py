@@ -5,6 +5,7 @@ from jax.typing import ArrayLike
 from pydantic import BaseModel, Extra
 
 from stellacode import np
+import numpy as onp
 from stellacode.tools.utils import get_min_dist
 
 from .utils import get_principles
@@ -148,7 +149,8 @@ class AbstractSurface(BaseModel):
 
     def plot(
         self,
-        scalar=None,
+        scalar: tp.Optional[onp.ndarray] = None,
+        vector_field: tp.Optional[onp.ndarray] = None,
         only_one_period: bool = False,
         representation: str = "surface",
         color: tp.Optional[str] = None,
@@ -176,8 +178,25 @@ class AbstractSurface(BaseModel):
             color=color,
             **kwargs,
         )
+        if vector_field is not None:
+            vector_field = vector_field / np.max(vector_field)
+            max_tor = xyz.shape[1]
+            mlab.quiver3d(
+                xyz[:-1, :, 0],
+                xyz[:-1, :, 1],
+                xyz[:-1, :, 2],
+                vector_field[:, :max_tor, 0],
+                vector_field[:, :max_tor, 1],
+                vector_field[:, :max_tor, 3],
+                line_width=0.5,
+                scale_factor=0.3,
+            )
+
         mlab.plot3d(np.linspace(0, 10, 100), np.zeros(100), np.zeros(100), color=(1, 0, 0))
         mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100), np.zeros(100), color=(0, 1, 0))
         mlab.plot3d(np.zeros(100), np.zeros(100), np.linspace(0, 10, 100), color=(0, 0, 1))
+
         if scalar is not None:
             mlab.colorbar(surf, nb_labels=4, label_fmt="%.1E", orientation="vertical")
+
+        mlab.view(39.35065816238082, 52.4711478893247, 4.259806307223165, np.array([4.10903064, 2.9532187, 4.20616949]))

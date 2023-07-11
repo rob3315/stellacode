@@ -62,6 +62,10 @@ class EMCost(AbstractCost):
         j_S, Qj = self.get_current(BS=BS, S=S, lamb=self.lamb)
         return self.get_results(BS=BS, j_S=j_S, S=S, Qj=Qj, lamb=self.lamb)
 
+    def get_current_result(self, S):
+        BS = self.get_BS_norm(S)
+        return self.get_current(BS=BS, S=S, lamb=self.lamb)[0]
+
     def get_BS_norm(self, S):
         Sp = self.Sp
         r_plasma = Sp.xyz

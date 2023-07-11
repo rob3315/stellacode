@@ -109,6 +109,12 @@ def test_pwc_fit():
 
     # S.plot(only_one_period=True)
     # S.surface.plot(only_one_period=True)
+    # phi_mn = em_cost.get_current_result(S)
+    # j_3d = S.get_j_3D(phi_mn)
+    # S.plot(only_one_period=True, vector_field=j_3d)
+    # S.surface.plot(only_one_period=True,vector_field=j_3d)
+    # em_cost.Sp.plot()
+
 
     new_surface = fit_to_surface(S, em_cost.Sp)
 
@@ -159,9 +165,8 @@ def test_regcoil_with_pwc():
     assert abs(new_surface.get_min_distance(surf.xyz) - 0.1) < 1e-2
 
     # compute regcoil metrics
-    BS = em_cost.get_BS_norm(S)
-    j_s, Qj = em_cost.get_current(BS=BS, S=S, lamb=em_cost.lamb)
-    new_surface.plot_j_surface(j_s, num_rot=1)
+    phi_mn = em_cost.get_current_result(S)
+    new_surface.plot_j_surface(phi_mn, num_rot=1)
 
     lambdas = np.array([1.2e-24, 1.2e-18, 1.2e-14, 1.0e00])
     metrics = em_cost.cost_multiple_lambdas(new_surface, lambdas)
