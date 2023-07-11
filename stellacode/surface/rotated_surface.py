@@ -2,7 +2,6 @@ import collections
 
 import stellacode.tools as tools
 from stellacode import np
-from stellacode.tools.utils import get_min_dist
 
 from .coil_surface import CoilSurface
 
@@ -20,7 +19,7 @@ class RotatedSurface(CoilSurface):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         assert self.num_tor_symmetry * self.rotate_diff_current == self.surface.num_tor_symmetry
-        self.compute_surface_attributes()  # computation of the surface attributes
+        self.compute_surface_attributes()
 
     def get_num_rotations(self):
         return self.num_tor_symmetry * self.rotate_diff_current
@@ -40,10 +39,10 @@ class RotatedSurface(CoilSurface):
             [curent_potential_op] + [np.zeros_like(curent_potential_op)] * (self.rotate_diff_current - 1)
         )
         blocks = []
-        for i in range(len(inner_blocks)):
+        for _ in range(len(inner_blocks)):
             blocks.append(np.concatenate(inner_blocks, axis=0))
-
             inner_blocks.rotate(1)
+
         blocks = np.concatenate(
             blocks,
             axis=2,
@@ -97,6 +96,3 @@ class RotatedSurface(CoilSurface):
             self.principles = [np.concatenate([p] * num_rot, axis=1) for p in self.surface.principles]
 
         self.nbpts = self.surface.nbpts
-
-    def get_min_distance(self, xyz):
-        return get_min_dist(self.xyz, xyz)

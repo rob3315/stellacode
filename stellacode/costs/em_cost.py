@@ -101,7 +101,7 @@ class EMCost(AbstractCost):
                 Qj_inv_R = np.linalg.inv(Qj)
             bnorm_ = self.bnorm
         if self.inverse_qj:
-            BS_dagger = np.einsum("ut,tij,ij->uij", Qj_inv_R, BS_R, Sp.dS / Sp.npts)
+            BS_dagger = np.einsum("ut,tij,ij->uij", Qj_inv_R, BS_R, Sp.ds / Sp.npts)
         else:
             BS_dagger = np.einsum("uij,ij->uij", BS_R, Sp.ds / Sp.npts)
 

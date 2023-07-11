@@ -28,7 +28,7 @@ class Optimizer(BaseModel):
     save_res: bool = False
     output_folder_name: Optional[str] = None
     info: dict = dict(Nfeval=0)
-    method: str = None
+    method: Optional[str] = None
     options: dict = {}
 
     class Config:

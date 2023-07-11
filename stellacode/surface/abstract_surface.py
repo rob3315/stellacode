@@ -35,7 +35,7 @@ class AbstractSurface(BaseModel):
         super().__init__(**kwargs)
 
         self.grids = self.get_uvgrid(*self.nbpts)
-        self.compute_surface_attributes()  # computation of the surface attributes
+        self.compute_surface_attributes()
 
     @property
     def npts(self):
