@@ -7,10 +7,10 @@ def phi_coeff_from_nb(k, phisize):
     this function make the conversion with a 2d matrix"""
     lm, ln = phisize
     if k < ln:
-        return [0, k + 1]
+        return [0, -(k + 1)]
     else:
         kk = k - ln
-        return [1 + kk // (2 * ln + 1), kk % (2 * ln + 1) - ln]
+        return [1 + kk // (2 * ln + 1), -(kk % (2 * ln + 1) - ln)]
 
 
 def _stack(a, b):
@@ -31,8 +31,6 @@ class CurrentPotential(BaseModel):
     def get_matrix_from_grid(self, grids):
         ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
         lu, lv = ugrid.shape
-        lc = self.num_pol * (2 * self.num_tor + 1) + self.num_tor
-
         coeffs = self.get_coeffs()
 
         xm = coeffs[:, None, None, 0]

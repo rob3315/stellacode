@@ -3,26 +3,26 @@
 &regcoil_nml
   general_option=1
 
-  nlambda=3
+  nlambda=5
   lambda_min = 1.2e-14
   lambda_max = 1
 
   ntheta_plasma=32
-  ntheta_coil  =32
-  nzeta_plasma =32
-  nzeta_coil   =32
+  ntheta_coil  =33
+  nzeta_plasma =34
+  nzeta_coil   =35
 
-  mpol_potential = 8
-  ntor_potential = 8
+  mpol_potential = 10
+  ntor_potential = 10
 
   geometry_option_plasma = 2
   !R0_plasma = 3.0
   !a_plasma = 1.0
   wout_filename = 'wout_li383_1.4m.nc'
 
-  geometry_option_coil=3
   !R0_coil = 3.0
   !a_coil = 1.7
+  geometry_option_coil=3
   nescin_filename = 'nescin.li383_realWindingSurface'
 
   net_poloidal_current_Amperes = 11884578.094260072

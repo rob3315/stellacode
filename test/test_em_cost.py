@@ -36,6 +36,14 @@ def test_compare_to_matlab_regcoil():
     em_cost = EMCost.from_config(config=config, use_mu_0_factor=True)
 
     metrics = em_cost.cost(cws)
+    print(metrics)
+    from stellacode.tools.vmec import VMECIO
+
+    vmec = VMECIO("test/data/w7x/wout_d23p4_tm.nc")
+    vmec.get_net_poloidal_current()
+    import pdb
+
+    pdb.set_trace()
 
 
 @pytest.mark.parametrize("use_mu_0_factor", [False, True])
@@ -48,20 +56,32 @@ def test_compare_to_regcoil(use_mu_0_factor):
     file_ = netcdf_file(filename, "r", mmap=False)
 
     cws = get_cws(config)
+    xm, xn = cws.current.get_coeffs().T
+    assert np.all(file_.variables["xm_coil"][()][1:] == xm)
+    assert np.all(file_.variables["xn_coil"][()][1:] // 3 == xn)
+
     em_cost = EMCost.from_config(config=config, use_mu_0_factor=use_mu_0_factor)
 
     lambdas = file_.variables["lambda"][()].astype(float)
+
     metrics = em_cost.cost_multiple_lambdas(cws, lambdas)
 
     chi2_b = file_.variables["chi2_B"][()].astype(float)
     assert np.max(np.abs(metrics.cost_B.values - chi2_b) / np.max(chi2_b)) < 5e-5
     chi_j = file_.variables["chi2_K"][()].astype(float)
-    assert np.max(np.abs(metrics.cost_J.values[1:] - chi_j[1:]) / np.max(chi_j[1:])) < 5e-6
 
-    # chi2_b = file_.variables["chi2_B"][()][1:].astype(float)
-    # assert np.max(np.abs(metrics.cost_B.values - chi2_b) / chi2_b) < 5e-5
-    # chi_j = file_.variables["chi2_K"][()][1:].astype(float)
-    # assert np.max(np.abs(metrics.cost_J.values - chi_j) / chi_j) < 5e-6
+    # for some reason chi_j is not well reproduced for low lambdas
+    assert np.max(np.abs(metrics.cost_J.values[1:] - chi_j[1:]) / np.max(chi_j[1:])) < 5e-6
+    em_cost.lamb = lambdas[-1]
+    j_s = em_cost.get_current_result(cws)
+    js_reg = file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]
+    assert np.abs(js_reg - j_s[2:]).max() / js_reg.max() < 1e-14
+
+    # however the result is no more the same for very low lambdas
+    em_cost.lamb = lambdas[2]
+    j_s = em_cost.get_current_result(cws)
+    js_reg = file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]
+    assert np.abs(js_reg - j_s[2:]).max() / js_reg.max() < 2e-4
 
 
 def test_regcoil_with_axisymmetric():
@@ -107,16 +127,13 @@ def test_pwc_fit():
         current=get_current_potential(config),
     )
 
-    # S.plot(only_one_period=True)
-    # S.surface.plot(only_one_period=True)
-    # phi_mn = em_cost.get_current_result(S)
-    # j_3d = S.get_j_3D(phi_mn)
-    # S.plot(only_one_period=True, vector_field=j_3d)
-    # S.surface.plot(only_one_period=True,vector_field=j_3d)
-    # em_cost.Sp.plot()
-
-
     new_surface = fit_to_surface(S, em_cost.Sp)
+
+    # phi_mn = em_cost.get_current_result(new_surface)
+    # j_3d = new_surface.get_j_3D(phi_mn)
+    # S.plot(only_one_period=True, vector_field=j_3d)
+    # new_surface.surface.plot(only_one_period=True,vector_field=j_3d)
+    # em_cost.Sp.plot()
 
     assert new_surface.get_min_distance(em_cost.Sp.xyz) < 3e-2
 
