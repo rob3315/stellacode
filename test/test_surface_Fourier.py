@@ -14,9 +14,9 @@ def test_normal_derivative():
 
     import matplotlib.pyplot as plt
 
-    grad_dS = np.gradient(S.dS, 1 / lu, 1 / lv)
+    grad_dS = np.gradient(S.ds, 1 / lu, 1 / lv)
     # plt.plot(grad_dS[1][33])
-    # plt.plot(S.dS_v[33])
+    # plt.plot(S.ds_v[33])
     # plt.show()
 
     grad_nx = np.gradient(S.n[0], 1 / lu, 1 / lv)

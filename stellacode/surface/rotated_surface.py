@@ -96,3 +96,4 @@ class RotatedSurface(CoilSurface):
             self.principles = [np.concatenate([p] * num_rot, axis=1) for p in self.surface.principles]
 
         self.nbpts = self.surface.nbpts
+        self.current_op = self.get_curent_op()

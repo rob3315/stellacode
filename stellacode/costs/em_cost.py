@@ -29,7 +29,6 @@ class EMCost(AbstractCost):
     net_currents: Optional[ArrayLike]
     Sp: AbstractSurface
     bnorm: ArrayLike
-    matrixd_phi: ArrayLike
     use_mu_0_factor: bool = False
     inverse_qj: bool = False
 
@@ -49,15 +48,12 @@ class EMCost(AbstractCost):
             bnorm_ /= mu_0_fac
             # net_currents /= mu_0_fac
 
-        S = get_cws(config)
-
         return cls(
             lamb=float(config["other"]["lamb"]),
             num_tor_symmetry=num_tor_symmetry,
             net_currents=net_currents,
             bnorm=bnorm_,
             Sp=Sp,
-            matrixd_phi=S.get_curent_op(),
             use_mu_0_factor=use_mu_0_factor,
         )
 
@@ -73,7 +69,7 @@ class EMCost(AbstractCost):
         r_coil = S.xyz
         jac_xyz = S.jac_xyz
 
-        BS = biot_et_savart(r_plasma, r_coil, self.matrixd_phi, jac_xyz) / S.npts
+        BS = biot_et_savart(r_plasma, r_coil, S.current_op, jac_xyz) / S.npts
 
         BS = np.einsum("tpqd,dpq->tpq", BS, Sp.normal_unit)
         if self.use_mu_0_factor:
@@ -88,7 +84,7 @@ class EMCost(AbstractCost):
         # "Optimal shape of stellarators for magnetic confinement fusion"
         # in order to understand what's going on.
 
-        Qj = tools.compute_Qj(self.matrixd_phi, S.jac_xyz, S.ds)
+        Qj = tools.compute_Qj(S.current_op, S.jac_xyz, S.ds)
 
         if self.net_currents is not None:
             BS_R = BS[2:]
@@ -138,7 +134,7 @@ class EMCost(AbstractCost):
             fac = mu_0_fac
         lamb /= fac**2
 
-        j_3D = self.get_j_3D(j_S, S)
+        j_3D = S.get_j_3D(j_S)
         metrics = {}
         bnorm_pred = np.einsum("hpq,h", BS, j_S)
         B_err = bnorm_pred - self.bnorm
@@ -166,18 +162,6 @@ class EMCost(AbstractCost):
             j_S = j_S_R
 
         return j_S
-
-    def get_j_3D(self, j_S, S):
-        # j_S is a vector containing the components of the best scalar current potential.
-        # The real surface current is given by :
-        return np.einsum(
-            "oijk,ijdk,ij,o->ijd",
-            self.matrixd_phi,
-            S.jac_xyz,
-            1 / S.ds,
-            j_S,
-            optimize=True,
-        )
 
     def cost_multiple_lambdas(self, S, lambdas):
         BS = self.get_BS_norm(S)

@@ -155,18 +155,13 @@ def test_regcoil_with_pwc():
 
     # fit the rotated surface to the plasma surface
     new_surface = fit_to_surface(S, surf)
-    new_surface.surface = new_surface.surface.copy(
-        update=dict(
-            radius=new_surface.surface.radius + 0.1,
-        )
-    )
-    new_surface.compute_surface_attributes()
-    assert (new_surface.get_min_distance(surf.xyz) - 0.1) < 1e-2
+    new_surface.update_params(radius=new_surface.surface.radius + 0.1)
+    assert abs(new_surface.get_min_distance(surf.xyz) - 0.1) < 1e-2
 
     # compute regcoil metrics
-
-    # need to update matrix_dphi with new surface params
-    em_cost.matrixd_phi = new_surface.get_curent_op()
+    BS = em_cost.get_BS_norm(S)
+    j_s, Qj = em_cost.get_current(BS=BS, S=S, lamb=em_cost.lamb)
+    new_surface.plot_j_surface(j_s, num_rot=1)
 
     lambdas = np.array([1.2e-24, 1.2e-18, 1.2e-14, 1.0e00])
     metrics = em_cost.cost_multiple_lambdas(new_surface, lambdas)

@@ -70,10 +70,3 @@ class CurrentPotential(BaseModel):
 
         return dphi
 
-    def plot(self, dphi, grids):
-        import matplotlib.pyplot as plt
-
-        fig1, ax1 = plt.subplots()
-
-        Q = ax1.quiver(grids[0], grids[1], dphi[..., 0], dphi[..., 1], units="width")
-        qk = ax1.quiverkey(Q, 0.9, 0.9, 2, r"$2 \frac{m}{s}$", labelpos="E", coordinates="figure")
