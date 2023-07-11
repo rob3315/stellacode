@@ -6,19 +6,8 @@ from pydantic import BaseModel, Extra
 
 from stellacode import np
 from stellacode.tools.utils import get_min_dist
+
 from .utils import get_principles
-
-
-class SurfaceAttributes(BaseModel):
-    npts: int
-    xyz: ArrayLike
-    jac_xyz: tp.Optional[ArrayLike] = None
-    normal: tp.Optional[ArrayLike] = None
-    normal_unit: tp.Optional[ArrayLike] = None
-    principles: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class AbstractSurface(BaseModel):
@@ -31,6 +20,12 @@ class AbstractSurface(BaseModel):
     nbpts: tp.Tuple[int, int]
     num_tor_symmetry: int = 1
     trainable_params: tp.List[str] = []
+    xyz: tp.Optional[ArrayLike] = None
+    jac_xyz: tp.Optional[ArrayLike] = None
+    normal: tp.Optional[ArrayLike] = None
+    normal_unit: tp.Optional[ArrayLike] = None
+    ds: tp.Optional[ArrayLike] = None
+    principles: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -38,9 +33,13 @@ class AbstractSurface(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.npts = self.nbpts[0] * self.nbpts[1]
+
         self.grids = self.get_uvgrid(*self.nbpts)
         self.compute_surface_attributes()  # computation of the surface attributes
+
+    @property
+    def npts(self):
+        return self.nbpts[0] * self.nbpts[1]
 
     def get_xyz(self, uv):
         """return the point parametrized by uv in cartesian coordinate"""
@@ -92,39 +91,39 @@ class AbstractSurface(BaseModel):
         hess_surf_res = hess_surf_vmap(grid_)
         return np.reshape(hess_surf_res, (3, 2, 2, lu, lv))
 
-    def compute_surface_attributes(self, deg=2):
+    def compute_surface_attributes(self, deg: int = 2):
         """compute surface elements used in the shape optimization up
         to degree deg
         deg is 0,1 or 2"""
 
         uv_grid = np.stack(self.grids, axis=0)
 
-        self.P = self.get_xyz_on_grid(uv_grid)
+        self.xyz = self.get_xyz_on_grid(uv_grid)
 
         # We also compute surface element dS and derivatives dS_u and dS_v:
         if deg >= 1:
-            self.dpsi = self.get_jac_xyz_on_grid(uv_grid)
+            self.jac_xyz = self.get_jac_xyz_on_grid(uv_grid)
 
-            N = np.cross(self.dpsi[0], self.dpsi[1], 0, 0, 0)
-            self.N = N
-            self.dS = np.linalg.norm(N, axis=0)
-            self.n = N / self.dS  # normal inward unit vector
+            N = np.cross(self.jac_xyz[0], self.jac_xyz[1], 0, 0, 0)
+            self.normal = N
+            self.ds = np.linalg.norm(N, axis=0)
+            self.normal_unit = N / self.ds  # normal inward unit vector
 
         if deg >= 2:
             hess = self.get_hess_xyz_on_grid(uv_grid)
-            self.principles = get_principles(hess_xyz=hess, jac_xyz=self.dpsi, normal_unit=self.n)
+            self.principles = get_principles(hess_xyz=hess, jac_xyz=self.jac_xyz, normal_unit=self.normal_unit)
 
     def get_distance(self, xyz):
-        return np.linalg.norm(self.P[..., None, None, :] - xyz[None, None, ...], axis=-1)
+        return np.linalg.norm(self.xyz[..., None, None, :] - xyz[None, None, ...], axis=-1)
 
     def get_min_distance(self, xyz):
-        return get_min_dist(self.P, xyz)
+        return get_min_dist(self.xyz, xyz)
 
     def expand_for_plot_part(self):
         """Returns X, Y, Z arrays of one field period, adding redundancy of first column."""
         import numpy as np
 
-        P = np.array(self.P)
+        P = np.array(self.xyz)
         return np.concatenate((P, P[:1]), axis=0)
 
     def expand_for_plot_whole(self):

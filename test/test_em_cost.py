@@ -9,8 +9,11 @@ from scipy.io import netcdf_file
 from stellacode import np
 from stellacode.costs.em_cost import EMCost
 from stellacode.surface.cylindrical import CylindricalSurface
-from stellacode.surface.imports import (get_current_potential, get_cws,
-                                        get_plasma_surface)
+from stellacode.surface.imports import (
+    get_current_potential,
+    get_cws,
+    get_plasma_surface,
+)
 from stellacode.surface.rotated_surface import RotatedSurface
 from stellacode.surface.tore import ToroidalSurface
 from stellacode.surface.utils import fit_to_surface
@@ -77,9 +80,9 @@ def test_regcoil_with_axisymmetric():
         params={},
         nbpts=(32, 32),
     )
-    S.get_min_distance(em_cost.Sp.P)
+    S.get_min_distance(em_cost.Sp.xyz)
 
-    assert abs(S.get_min_distance(em_cost.Sp.P) - 0.2) < 2e-3
+    assert abs(S.get_min_distance(em_cost.Sp.xyz) - 0.2) < 2e-3
 
 
 def test_pwc_fit():
@@ -109,7 +112,7 @@ def test_pwc_fit():
 
     new_surface = fit_to_surface(S, em_cost.Sp)
 
-    assert new_surface.get_min_distance(em_cost.Sp.P) < 3e-2
+    assert new_surface.get_min_distance(em_cost.Sp.xyz) < 3e-2
 
 
 def test_regcoil_with_pwc():
@@ -148,7 +151,7 @@ def test_regcoil_with_pwc():
     assert np.all(cp_op[0, :, :, 1:3] == 0)
 
     S.compute_surface_attributes()
-    S.get_min_distance(surf.P)
+    S.get_min_distance(surf.xyz)
 
     # fit the rotated surface to the plasma surface
     new_surface = fit_to_surface(S, surf)
@@ -158,7 +161,7 @@ def test_regcoil_with_pwc():
         )
     )
     new_surface.compute_surface_attributes()
-    assert (new_surface.get_min_distance(surf.P) - 0.1) < 1e-2
+    assert (new_surface.get_min_distance(surf.xyz) - 0.1) < 1e-2
 
     # compute regcoil metrics
 

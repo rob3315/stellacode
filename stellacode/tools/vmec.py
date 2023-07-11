@@ -1,7 +1,9 @@
-from stellacode import np
 import typing as tp
-from scipy.io import netcdf_file
+
 from scipy.constants import mu_0
+from scipy.io import netcdf_file
+
+from stellacode import np
 
 
 def _dot(coeff, cossin):
@@ -147,7 +149,7 @@ class VMECIO:
         """
         From regcoil:
         bvco seems related to the covariant components of B bsubvmnc/s
-        In principle this value should be given by: 
+        In principle this value should be given by:
         2pi/mu_0*integral_zeta(B(theta=interior, radius=last_radius))
         """
 

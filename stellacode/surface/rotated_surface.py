@@ -20,7 +20,6 @@ class RotatedSurface(CoilSurface):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         assert self.num_tor_symmetry * self.rotate_diff_current == self.surface.num_tor_symmetry
-        # self.npts = self.nbpts[0] * self.nbpts[1]
         self.compute_surface_attributes()  # computation of the surface attributes
 
     def get_num_rotations(self):
@@ -60,22 +59,22 @@ class RotatedSurface(CoilSurface):
 
         num_rot = self.get_num_rotations()
         rot_tensor = tools.get_rot_tensor(num_rot)
+
         self.grids = self.surface.grids
-        self.P = np.reshape(
-            np.einsum("opq,ijq->iojp", rot_tensor, self.surface.P),
+        self.xyz = np.reshape(
+            np.einsum("opq,ijq->iojp", rot_tensor, self.surface.xyz),
             (self.surface.nbpts[0], -1, 3),
         )
 
         # We also compute surface element dS and derivatives dS_u and dS_v:
         if deg >= 1:
-            self.dpsi = np.reshape(
-                np.einsum("opq,aqij->iojpa", rot_tensor, self.surface.dpsi),
+            self.jac_xyz = np.reshape(
+                np.einsum("opq,aqij->iojpa", rot_tensor, self.surface.jac_xyz),
                 (self.surface.nbpts[0], -1, 3, 2),
             )
-            "sba,taij->sijbt"
-            # import pdb;pdb.set_trace()
-            self.N = np.reshape(
-                np.einsum("opq,qij->pioj", rot_tensor, self.surface.N),
+
+            self.normal = np.reshape(
+                np.einsum("opq,qij->pioj", rot_tensor, self.surface.normal),
                 (
                     3,
                     self.surface.nbpts[0],
@@ -83,10 +82,10 @@ class RotatedSurface(CoilSurface):
                 ),
             )
 
-            self.dS = np.concatenate([self.surface.dS] * num_rot, axis=1)
+            self.ds = np.concatenate([self.surface.ds] * num_rot, axis=1)
 
-            self.n = np.reshape(
-                np.einsum("opq,qij->pioj", rot_tensor, self.surface.n),
+            self.normal_unit = np.reshape(
+                np.einsum("opq,qij->pioj", rot_tensor, self.surface.normal_unit),
                 (
                     3,
                     self.surface.nbpts[0],
@@ -96,8 +95,8 @@ class RotatedSurface(CoilSurface):
 
         if deg >= 2:
             self.principles = [np.concatenate([p] * num_rot, axis=1) for p in self.surface.principles]
-        self.npts = self.surface.npts
+
         self.nbpts = self.surface.nbpts
 
     def get_min_distance(self, xyz):
-        return get_min_dist(self.P, xyz)
+        return get_min_dist(self.xyz, xyz)

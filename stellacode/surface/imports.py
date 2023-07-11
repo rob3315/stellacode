@@ -2,10 +2,11 @@
 Imports for the surface module.
 """
 from stellacode import np
+
 from .abstract_surface import AbstractSurface
+from .current_potential import CurrentPotential
 from .fourier import FourierSurface
 from .rotated_surface import RotatedSurface
-from .current_potential import CurrentPotential
 
 
 def get_cws(config):
@@ -62,12 +63,8 @@ def plot_cws_and_plasma(cws, plasma):
     from mayavi import mlab
     from numpy import linspace, zeros
 
-    mlab.mesh(
-        *cws.expand_for_plot_part(), representation="wireframe", colormap="Wistia"
-    )
-    mlab.mesh(
-        *plasma.expand_for_plot_part(), representation="surface", colormap="Spectral"
-    )
+    mlab.mesh(*cws.expand_for_plot_part(), representation="wireframe", colormap="Wistia")
+    mlab.mesh(*plasma.expand_for_plot_part(), representation="surface", colormap="Spectral")
     mlab.plot3d(linspace(0, 5, 100), zeros(100), zeros(100), color=(1, 0, 0))
     mlab.plot3d(zeros(100), linspace(0, 5, 100), zeros(100), color=(0, 1, 0))
     mlab.plot3d(zeros(100), zeros(100), linspace(0, 5, 100), color=(0, 0, 1))

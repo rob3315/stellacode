@@ -27,7 +27,7 @@ class ToroidalSurface(AbstractSurface):
         return np.array([x, y, z])
 
     def cartesian_to_toroidal(self):
-        return cartesian_to_toroidal(xyz=self.P, tore_radius=self.major_radius, height=0.0)
+        return cartesian_to_toroidal(xyz=self.xyz, tore_radius=self.major_radius, height=0.0)
 
     def plot_cross_section(self, ax=None):
         import matplotlib.pyplot as plt

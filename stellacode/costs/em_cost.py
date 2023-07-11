@@ -68,14 +68,14 @@ class EMCost(AbstractCost):
 
     def get_BS_norm(self, S):
         Sp = self.Sp
-        r_plasma = Sp.P
+        r_plasma = Sp.xyz
 
-        r_coil = S.P
-        jac_r_plasma = S.dpsi
+        r_coil = S.xyz
+        jac_xyz = S.jac_xyz
 
-        BS = biot_et_savart(r_plasma, r_coil, self.matrixd_phi, jac_r_plasma) / S.npts
+        BS = biot_et_savart(r_plasma, r_coil, self.matrixd_phi, jac_xyz) / S.npts
 
-        BS = np.einsum("tpqd,dpq->tpq", BS, Sp.n)
+        BS = np.einsum("tpqd,dpq->tpq", BS, Sp.normal_unit)
         if self.use_mu_0_factor:
             BS *= mu_0_fac
         return BS
@@ -88,8 +88,7 @@ class EMCost(AbstractCost):
         # "Optimal shape of stellarators for magnetic confinement fusion"
         # in order to understand what's going on.
 
-        # need to rotate dpsi
-        Qj = tools.compute_Qj(self.matrixd_phi, S.dpsi, S.dS)
+        Qj = tools.compute_Qj(self.matrixd_phi, S.jac_xyz, S.ds)
 
         if self.net_currents is not None:
             BS_R = BS[2:]
@@ -104,7 +103,7 @@ class EMCost(AbstractCost):
         if self.inverse_qj:
             BS_dagger = np.einsum("ut,tij,ij->uij", Qj_inv_R, BS_R, Sp.dS / Sp.npts)
         else:
-            BS_dagger = np.einsum("uij,ij->uij", BS_R, Sp.dS / Sp.npts)
+            BS_dagger = np.einsum("uij,ij->uij", BS_R, Sp.ds / Sp.npts)
 
         RHS = np.einsum("hpq,pq->h", BS_dagger, bnorm_)
 
@@ -145,7 +144,7 @@ class EMCost(AbstractCost):
         B_err = bnorm_pred - self.bnorm
         metrics["err_max_B"] = np.max(np.abs(B_err)) * fac
         metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2)) * fac
-        metrics["cost_B"] = self.num_tor_symmetry * np.sum(B_err**2 * self.Sp.dS) / self.Sp.npts * fac**2
+        metrics["cost_B"] = self.num_tor_symmetry * np.sum(B_err**2 * self.Sp.ds) / self.Sp.npts * fac**2
 
         metrics["cost_J"] = self.num_tor_symmetry * np.einsum("i,ij,j->", j_S, Qj, j_S)
         metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
@@ -174,8 +173,8 @@ class EMCost(AbstractCost):
         return np.einsum(
             "oijk,ijdk,ij,o->ijd",
             self.matrixd_phi,
-            S.dpsi,
-            1 / S.dS,
+            S.jac_xyz,
+            1 / S.ds,
             j_S,
             optimize=True,
         )

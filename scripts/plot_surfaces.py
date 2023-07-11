@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 
 from stellacode.costs.em_cost import EMCost
+
 # from stellacode.surface.utils import get_cws
 from stellacode.surface.cylindrical import CylindricalSurface
 
@@ -28,10 +29,10 @@ res = em_cost.Sp.cartesian_to_toroidal()
 minor_radius = np.max(res[:, :, 0])
 major_radius = em_cost.Sp.params["Rmn"][0]
 # surf = ToroidalSurface(Np=3, major_radius = major_radius, minor_radius=minor_radius+0.2, params={}, nbpts=(64,64))
-# get_min_dist(surf.P, em_cost.Sp.P)
+# get_min_dist(surf.P, em_cost.Sp.xyz)
 
 # # surf = FourierSurface(Np=1, mf=np.array([0]), nf=np.array([0]), params={"Zmn":np.array([0]), "Rmn":np.array([1]) }, nbpts=(32,32))
-# res = surf.cartesian_to_toroidal(surf.P)
+# res = surf.cartesian_to_toroidal(surf.xyz)
 # em_cost.Sp.cartesian_to_toroidal()
 
 
@@ -43,7 +44,7 @@ S = CylindricalSurface(
     nbpts=(64, 64),
     num_tor_symmetry=6,
 )
-get_min_dist(S.get_rotated_xyz(), em_cost.Sp.P)
+get_min_dist(S.get_rotated_xyz(), em_cost.Sp.xyz)
 
 import pdb
 
@@ -73,7 +74,7 @@ fourier_coeffs = np.zeros((5, 2))
 S = CylindricalSurface(params={"fourier_coeffs": fourier_coeffs}, nbpts=(64, 64), Np=3)
 
 uv_grid = np.stack(em_cost.Sp.grids, axis=0)
-cyl_pos = em_cost.Sp.cartesian_to_toroidal(em_cost.Sp.P)
+cyl_pos = em_cost.Sp.cartesian_to_toroidal(em_cost.Sp.xyz)
 
 em_cost.Sp.params["Rmn"]
 

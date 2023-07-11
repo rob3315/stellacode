@@ -17,7 +17,7 @@ class AreaCost(AbstractCost):
         )
 
     def cost(self, S):
-        area = np.sum(S.dS) / S.npts
+        area = np.sum(S.ds) / S.npts
         area_cost = f_e(self.c0, self.c1, area)
         aux_dic = {}
         aux_dic["area"] = area

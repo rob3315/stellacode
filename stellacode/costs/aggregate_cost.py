@@ -1,10 +1,10 @@
 import configparser
 from time import time
 
+from stellacode.costs.area import AreaCost
 from stellacode.costs.curvature import CurvatureCost
 from stellacode.costs.distance import DistanceCost
 from stellacode.costs.em_cost import EMCost
-from stellacode.costs.area import AreaCost
 
 from .abstract_cost import AbstractCost
 

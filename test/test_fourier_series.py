@@ -4,8 +4,11 @@ import numpy as onp
 
 from stellacode import np
 from stellacode.surface.imports import get_plasma_surface
-from stellacode.surface.utils import (fit_to_surface, fourier_coefficients,
-                                      fourier_transform)
+from stellacode.surface.utils import (
+    fit_to_surface,
+    fourier_coefficients,
+    fourier_transform,
+)
 
 
 def test_fourier_series():
@@ -33,4 +36,4 @@ def test_convex_hull_fourier_series():
 
     new_surface = fit_to_surface(tor_surf, surf)
 
-    assert new_surface.get_min_distance(surf.P) < 3e-2
+    assert new_surface.get_min_distance(surf.xyz) < 3e-2

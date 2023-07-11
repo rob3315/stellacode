@@ -12,8 +12,7 @@ from stellacode.surface.utils import fourier_coefficients
 
 from .abstract_surface import AbstractSurface
 from .tore import ToroidalSurface
-from .utils import (cartesian_to_cylindrical, cartesian_to_toroidal,
-                    from_polar, to_polar)
+from .utils import cartesian_to_cylindrical, cartesian_to_toroidal, from_polar, to_polar
 
 
 class FourierSurface(AbstractSurface):
@@ -99,11 +98,11 @@ class FourierSurface(AbstractSurface):
         return np.max(self.cartesian_to_toroidal()[:, :, 0])
 
     def cartesian_to_cylindrical(self):
-        return cartesian_to_cylindrical(xyz=self.P)
+        return cartesian_to_cylindrical(xyz=self.xyz)
 
     def cartesian_to_toroidal(self):
         return cartesian_to_toroidal(
-            xyz=self.P,
+            xyz=self.xyz,
             tore_radius=self.get_major_radius(),
             height=self.Zmn[0],
         )

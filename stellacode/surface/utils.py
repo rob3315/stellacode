@@ -68,7 +68,7 @@ def fit_to_surface(fitted_surface, surface):
         distance=major_radius,
     )
 
-    min_dist = new_surf.get_min_distance(surface.P)
+    min_dist = new_surf.get_min_distance(surface.xyz)
 
     new_surf.update_params(
         radius=minor_radius + major_radius / 3 - min_dist,

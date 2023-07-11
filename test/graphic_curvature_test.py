@@ -65,9 +65,8 @@ def surface_curvature_num(X, Y, Z):
 def test_graphic_curvature():
     lu, lv = 128, 128
     S = FourierSurface.from_file("data/li383/cws.txt", 3, lu, lv)
-    S = FourierSurface.from_file("data/li383/cws.txt", 3, lu, lv)
 
-    tmp = surface_curvature_num(S.P[:, :, 0], S.P[:, :, 1], S.P[:, :, 2])
+    tmp = surface_curvature_num(S.xyz[:, :, 0], S.xyz[:, :, 1], S.xyz[:, :, 2])
     # Plot numerical vs analytical curvature
     if False:
         import matplotlib.pyplot as plt

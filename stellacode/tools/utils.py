@@ -1,6 +1,7 @@
-from scipy.spatial.distance import cdist
 import jax.numpy as np
 from scipy.integrate import quad
+from scipy.spatial.distance import cdist
+
 from stellacode import np
 
 

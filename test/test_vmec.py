@@ -3,9 +3,10 @@ import pytest
 
 @pytest.mark.skip("Missing dependency")
 def test_vmec():
-    from stellacode.tools.vmec import VMECIO
-    import utilitiesRF as urf
     import numpy as np
+    import utilitiesRF as urf
+
+    from stellacode.tools.vmec import VMECIO
 
     vmec = VMECIO("data/w7x/wout_d23p4_tm.nc")
     vmec2 = urf.VmecIO()

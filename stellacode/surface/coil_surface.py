@@ -1,8 +1,9 @@
 from pydantic import BaseModel, Extra
 
+from stellacode import np
+
 from .abstract_surface import AbstractSurface
 from .current_potential import CurrentPotential
-from stellacode import np
 
 
 class CoilSurface(AbstractSurface):

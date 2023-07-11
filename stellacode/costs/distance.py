@@ -23,20 +23,14 @@ class DistanceCost(AbstractCost):
             Sp=get_plasma_surface(config),
             d_min_hard=float(config["optimization_parameters"]["d_min_hard"]),
             d_min_soft=float(config["optimization_parameters"]["d_min_soft"]),
-            d_min_penalization=float(
-                config["optimization_parameters"]["d_min_penalization"]
-            ),
+            d_min_penalization=float(config["optimization_parameters"]["d_min_penalization"]),
         )
 
     def cost(self, S):
-        vf = np.vectorize(
-            lambda x: f_non_linear(
-                self.d_min_hard, self.d_min_soft, self.d_min_penalization, x
-            )
-        )
+        vf = np.vectorize(lambda x: f_non_linear(self.d_min_hard, self.d_min_soft, self.d_min_penalization, x))
 
-        dist_min = S.get_distance(self.Sp.P).min((-1, -2))
+        dist_min = S.get_distance(self.Sp.xyz).min((-1, -2))
 
-        cost = np.einsum("ij,ij->", vf(dist_min), S.dS / S.npts)
+        cost = np.einsum("ij,ij->", vf(dist_min), S.ds / S.npts)
 
         return cost, {"min_distance": np.min(dist_min)}
