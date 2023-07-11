@@ -13,10 +13,6 @@ def phi_coeff_from_nb(k, phisize):
         return [1 + kk // (2 * ln + 1), kk % (2 * ln + 1) - ln]
 
 
-def get_coeffs(lc, phisize):
-    return np.array([phi_coeff_from_nb(k, phisize) for k in range(lc)])
-
-
 def _stack(a, b):
     return 2 * np.pi * np.stack((a, b), axis=-1)
 
@@ -28,12 +24,16 @@ class CurrentPotential(BaseModel):
     cos_basis: bool = False
     zero_tor_bc: bool = False
 
+    def get_coeffs(self):
+        lc = self.num_pol * (2 * self.num_tor + 1) + self.num_tor
+        return np.array([phi_coeff_from_nb(k, (self.num_pol, self.num_tor)) for k in range(lc)])
+
     def get_matrix_from_grid(self, grids):
         ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
         lu, lv = ugrid.shape
         lc = self.num_pol * (2 * self.num_tor + 1) + self.num_tor
 
-        coeffs = get_coeffs(lc, (self.num_pol, self.num_tor))
+        coeffs = self.get_coeffs()
 
         xm = coeffs[:, None, None, 0]
         xn = coeffs[:, None, None, 1]
@@ -69,4 +69,3 @@ class CurrentPotential(BaseModel):
         dphi[1, :, :, 1] = np.ones((lu, lv))
 
         return dphi
-
