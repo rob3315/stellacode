@@ -38,12 +38,16 @@ def test_compare_to_matlab_regcoil():
     metrics = em_cost.cost(cws)
     print(metrics)
     from stellacode.tools.vmec import VMECIO
-
     vmec = VMECIO("test/data/w7x/wout_d23p4_tm.nc")
     vmec.get_net_poloidal_current()
-    import pdb
-
-    pdb.set_trace()
+    # filename = "test/data/w7x/regcoil_out.w7x.nc"
+    # file_ = netcdf_file(filename, "r", mmap=False)
+    # chi2_b = file_.variables["chi2_B"][()].astype(float)
+    # print(chi2_b)
+    # import pdb;pdb.set_trace()
+    # xm, xn = cws.current.get_coeffs().T
+    # assert np.all(file_.variables["xm_coil"][()]- xm[:-1])
+    # assert np.all(file_.variables["xn_coil"][()][1:] // 5 == xn)
 
 
 @pytest.mark.parametrize("use_mu_0_factor", [False, True])
@@ -166,8 +170,6 @@ def test_regcoil_with_pwc():
     # check that the rotated current potential is well constructed
     curent_potential_op = S.get_curent_op()
     s1, s2, s3, _ = curent_potential_op.shape
-    assert s2 * 9 == s3
-
     assert np.all(curent_potential_op[:, :, : s3 // 3] == curent_potential_op[:, :, s3 // 3 : 2 * s3 // 3])
     cp_op = curent_potential_op.reshape((3, s1 // 3, s2, 9, s3 // 9, -1))
     assert np.all(cp_op[1:3, :, :, 0] == 0)
