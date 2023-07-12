@@ -6,6 +6,7 @@ from stellacode import np
 
 from .abstract_surface import AbstractSurface
 from .utils import fourier_transform
+from .utils import cartesian_to_toroidal
 
 
 class CylindricalSurface(AbstractSurface):
@@ -48,3 +49,6 @@ class CylindricalSurface(AbstractSurface):
         cyl_axis = np.array([np.cos(axis_a), np.sin(axis_a), 0.0]) * v_ * _length
 
         return cyl_axis + circle + self.distance * axis_orth
+
+    def cartesian_to_toroidal(self):
+        return cartesian_to_toroidal(xyz=self.xyz, tore_radius=self.distance, height=0.0)
