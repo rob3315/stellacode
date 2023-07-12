@@ -125,13 +125,13 @@ class AbstractSurface(BaseModel):
         import numpy as np
 
         P = np.array(self.xyz)
-        return np.concatenate((P, P[:1]), axis=0)
+        return [np.concatenate((P, P[:1]), axis=0)]
 
-    def expand_for_plot_whole(self):
+    def expand_for_plot_whole(self, detach_parts: bool=False):
         """Returns X, Y, Z arrays of the whole Stellarator."""
         import numpy as np
 
-        points = self.expand_for_plot_part()
+        points = self.expand_for_plot_part()[0]
 
         points_ = [points]
         for i in range(1, self.num_tor_symmetry):
@@ -144,8 +144,11 @@ class AbstractSurface(BaseModel):
                 ]
             )
             points_.append(np.einsum("ij,uvj->uvi", rotation_matrix, points))
-        points = np.concatenate(points_, axis=1)
-        return np.concatenate((points, points[:, :1]), axis=1)
+        if detach_parts:
+            return points_
+        else:
+            points = np.concatenate(points_, axis=1)
+            return [np.concatenate((points, points[:, :1]), axis=1)]
 
     def plot(
         self,
@@ -155,6 +158,7 @@ class AbstractSurface(BaseModel):
         representation: str = "surface",
         color: tp.Optional[str] = None,
         colormap: str = "Wistia",
+        detach_parts: bool=False
     ):
         """Plot the surface"""
         import numpy as np
@@ -163,21 +167,22 @@ class AbstractSurface(BaseModel):
         if only_one_period:
             xyz = self.expand_for_plot_part()
         else:
-            xyz = self.expand_for_plot_whole()
+            xyz = self.expand_for_plot_whole(detach_parts)
 
         kwargs = {}
         if scalar is not None:
             kwargs["scalars"] = np.concatenate((scalar, scalar[0:1]), axis=0)
 
-        surf = mlab.mesh(
-            xyz[..., 0],
-            xyz[..., 1],
-            xyz[..., 2],
-            representation=representation,
-            colormap=colormap,
-            color=color,
-            **kwargs,
-        )
+        for xyz_ in xyz:
+            surf = mlab.mesh(
+                xyz_[..., 0],
+                xyz_[..., 1],
+                xyz_[..., 2],
+                representation=representation,
+                colormap=colormap,
+                color=color,
+                **kwargs,
+            )
         if vector_field is not None:
             vector_field = vector_field / np.max(vector_field)
             max_tor = xyz.shape[1]

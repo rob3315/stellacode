@@ -60,7 +60,7 @@ def test_compare_to_regcoil(use_mu_0_factor):
     file_ = netcdf_file(filename, "r", mmap=False)
 
     cws = get_cws(config)
-    xm, xn = cws.current.get_coeffs().T
+    xm, xn = cws.current.get_coeffs()
     assert np.all(file_.variables["xm_coil"][()][1:] == xm)
     assert np.all(file_.variables["xn_coil"][()][1:] // 3 == xn)
 
@@ -164,6 +164,7 @@ def test_regcoil_with_pwc():
         nbpts=(n_pol_coil, n_tor_coil),
         num_tor_symmetry=3,
         rotate_diff_current=3,
+        
         current=get_current_potential(config),
     )
 

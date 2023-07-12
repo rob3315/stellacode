@@ -15,6 +15,7 @@ class RotatedSurface(CoilSurface):
 
     num_tor_symmetry: int = 1
     rotate_diff_current: int = 1
+    common_current_on_each_rot: bool = False
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -33,20 +34,27 @@ class RotatedSurface(CoilSurface):
         self.compute_surface_attributes(deg=2)
 
     def get_curent_op(self):
-        curent_potential_op = super().get_curent_op()
+        if self.common_current_on_each_rot:
+            gridu, gridv = self.grids
+            gridu = np.concatenate([gridu]*self.rotate_diff_current, axis=1)
+            rd = self.rotate_diff_current
+            gridv = np.concatenate([gridv*i/rd for i in range(1, rd+1)], axis=1)
+            blocks = self.current.get_matrix_from_grid((gridu, gridv))
+        else:
+            curent_op = super().get_curent_op()
 
-        inner_blocks = collections.deque(
-            [curent_potential_op] + [np.zeros_like(curent_potential_op)] * (self.rotate_diff_current - 1)
-        )
-        blocks = []
-        for _ in range(len(inner_blocks)):
-            blocks.append(np.concatenate(inner_blocks, axis=0))
-            inner_blocks.rotate(1)
+            inner_blocks = collections.deque(
+                [curent_op] + [np.zeros_like(curent_op)] * (self.rotate_diff_current - 1)
+            )
+            blocks = []
+            for _ in range(len(inner_blocks)):
+                blocks.append(np.concatenate(inner_blocks, axis=0))
+                inner_blocks.rotate(1)
 
-        blocks = np.concatenate(
-            blocks,
-            axis=2,
-        )
+            blocks = np.concatenate(
+                blocks,
+                axis=2,
+            )
 
         return np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
 
