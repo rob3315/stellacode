@@ -73,7 +73,7 @@ class EMCost(AbstractCost):
         r_coil = S.xyz
         jac_xyz = S.jac_xyz
 
-        BS = biot_et_savart(r_plasma, r_coil, S.current_op, jac_xyz) / S.npts
+        BS = biot_et_savart(r_plasma, r_coil, S.current_op, jac_xyz) / S.npts  # S.npts stands for dudv
 
         BS = np.einsum("tpqd,dpq->tpq", BS, Sp.normal_unit)
         if self.use_mu_0_factor:

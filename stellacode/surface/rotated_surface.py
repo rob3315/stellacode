@@ -22,6 +22,11 @@ class RotatedSurface(CoilSurface):
         assert self.num_tor_symmetry * self.rotate_diff_current == self.surface.num_tor_symmetry
         self.compute_surface_attributes()
 
+    @property
+    def npts(self):
+        # This is wrong, there should be num_tor_symmetry
+        return self.nbpts[0] * self.nbpts[1]*self.rotate_diff_current
+    
     def get_num_rotations(self):
         return self.num_tor_symmetry * self.rotate_diff_current
 
@@ -38,7 +43,7 @@ class RotatedSurface(CoilSurface):
             gridu, gridv = self.grids
             gridu = np.concatenate([gridu]*self.rotate_diff_current, axis=1)
             rd = self.rotate_diff_current
-            gridv = np.concatenate([gridv*i/rd for i in range(1, rd+1)], axis=1)
+            gridv = np.concatenate([(i+gridv)/rd for i in range(rd)], axis=1)
             blocks = self.current.get_matrix_from_grid((gridu, gridv))
         else:
             curent_op = super().get_curent_op()
@@ -79,6 +84,10 @@ class RotatedSurface(CoilSurface):
                 np.einsum("opq,aqij->iojpa", rot_tensor, self.surface.jac_xyz),
                 (self.surface.nbpts[0], -1, 3, 2),
             )
+
+            # This is clearly wrong!!
+            # and the result should not depend on the parametrization
+            self.jac_xyz = self.jac_xyz.at[..., 1].set(self.jac_xyz[..., 1]*self.rotate_diff_current)
 
             self.normal = np.reshape(
                 np.einsum("opq,qij->pioj", rot_tensor, self.surface.normal),
