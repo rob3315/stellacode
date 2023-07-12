@@ -80,6 +80,9 @@ class EMCost(AbstractCost):
             BS *= mu_0_fac
         return BS
 
+    def get_b_field(self, BS, j_S):
+        return np.einsum("hpqd,h", BS, j_S)
+
     def get_current(self, BS, S, lamb: float = 0.0):
         Sp = self.Sp
 
