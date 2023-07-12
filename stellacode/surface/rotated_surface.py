@@ -2,7 +2,7 @@ import collections
 
 import stellacode.tools as tools
 from stellacode import np
-
+from .utils import cartesian_to_toroidal
 from .coil_surface import CoilSurface
 
 
@@ -85,10 +85,6 @@ class RotatedSurface(CoilSurface):
                 (self.surface.nbpts[0], -1, 3, 2),
             )
 
-            # This is clearly wrong!!
-            # and the result should not depend on the parametrization
-            self.jac_xyz = self.jac_xyz.at[..., 1].set(self.jac_xyz[..., 1]*self.rotate_diff_current)
-
             self.normal = np.reshape(
                 np.einsum("opq,qij->pioj", rot_tensor, self.surface.normal),
                 (
@@ -109,8 +105,21 @@ class RotatedSurface(CoilSurface):
                 ),
             )
 
+            # This is clearly wrong!!
+            # and the result should not depend on the parametrization
+            self.jac_xyz = self.jac_xyz.at[..., 1].set(self.jac_xyz[..., 1]*self.rotate_diff_current)
+            self.normal = self.normal*self.rotate_diff_current
+            self.ds = self.ds*self.rotate_diff_current
+
         if deg >= 2:
             self.principles = [np.concatenate([p] * num_rot, axis=1) for p in self.surface.principles]
 
         self.nbpts = self.surface.nbpts
         self.current_op = self.get_curent_op()
+
+    def cartesian_to_toroidal(self):
+        try:
+            major_radius = self.surface.distance
+        except:
+            major_radius = self.surface.major_radius
+        return cartesian_to_toroidal(xyz=self.xyz, tore_radius=major_radius, height=0.0)
