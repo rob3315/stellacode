@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, Extra, Field
 import typing as tp
 from stellacode import np
 from jax.typing import ArrayLike
@@ -16,12 +16,18 @@ class CoilSurface(AbstractSurface):
     surface: AbstractSurface
     current: CurrentPotential
     current_op: tp.Optional[ArrayLike] = None
+    # mult_current_grid: tp.Optional[int] = None
 
     class Config:
         arbitrary_types_allowed = True
         extra = Extra.allow  # allow extra fields
 
     def __init__(self, **kwargs):
+        # if self.mult_current_grid is not None:
+        #     self.surface.nbpts = (
+        #         self.mult_current_grid * self.current.num_pol,
+        #         self.mult_current_grid * self.current.num_tor,
+        #     )
         super().__init__(**kwargs)
         self.current_op = self.current.get_matrix_from_grid(self.grids)
 
