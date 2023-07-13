@@ -19,6 +19,7 @@ class AbstractSurface(BaseModel):
     """
 
     nbpts: tp.Tuple[int, int]
+    grids: tp.Optional[ArrayLike] = None
     num_tor_symmetry: int = 1
     trainable_params: tp.List[str] = []
     xyz: tp.Optional[ArrayLike] = None
@@ -44,8 +45,11 @@ class AbstractSurface(BaseModel):
 
     @property
     def dudv(self):
-        return (self.grids[1][0, 1] - self.grids[1][0, 0]) * (self.grids[0][1, 0] - self.grids[0][0, 1])
-
+        if self.grids[1].shape[1]>1:
+            return (self.grids[1][0, 1] - self.grids[1][0, 0]) * (self.grids[0][1, 0] - self.grids[0][0, 1])
+        else:
+            return 1/(self.nbpts[0] * self.nbpts[1])
+        
     def get_xyz(self, uv):
         """return the point parametrized by uv in cartesian coordinate"""
         raise NotImplementedError

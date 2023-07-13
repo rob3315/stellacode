@@ -25,7 +25,20 @@ class RotatedSurface(CoilSurface):
     @property
     def npts(self):
         return self.nbpts[0] * self.nbpts[1]*self.get_num_rotations()
-    
+
+
+    @property
+    def dudv(self):
+        if self.grids[1].shape[1]>1:
+            gridu, gridv = self.grids
+            gridu = np.concatenate([gridu]*self.rotate_diff_current, axis=1)
+            rd = self.rotate_diff_current
+            gridv = np.concatenate([(i+gridv)/rd for i in range(rd)], axis=1)
+            return (self.grids[1][0, 1] - self.grids[1][0, 0]) * (self.grids[0][1, 0] - self.grids[0][0, 1])
+        else:
+            return 1/(self.nbpts[0] * self.nbpts[1]*self.rotate_diff_current)
+        
+        
     def get_num_rotations(self):
         return self.num_tor_symmetry * self.rotate_diff_current
 
@@ -66,13 +79,15 @@ class RotatedSurface(CoilSurface):
         """compute surface elements used in the shape optimization up
         to degree deg
         deg is 0,1 or 2"""
-        gridu, gridv = self.grids
-        gridu = np.concatenate([gridu]*self.rotate_diff_current, axis=1)
-        rd = self.rotate_diff_current
-        gridv = np.concatenate([(i+gridv)/rd for i in range(rd)], axis=1)
-        self.surface.compute_surface_attributes(grids=(gridu, gridv), deg=deg)
-
-        num_rot = self.get_num_rotations()
+        # gridu, gridv = self.surface.grids
+        # gridu = np.concatenate([gridu]*self.rotate_diff_current, axis=1)
+        # rd = self.rotate_diff_current
+        # gridv = np.concatenate([(i+gridv)/rd for i in range(rd)], axis=1)
+        # self.surface.compute_surface_attributes(grids=(gridu, gridv), deg=deg)
+        self.surface.compute_surface_attributes(deg=deg)
+        # import pdb;pdb.set_trace()
+        # num_rot = self.num_tor_symmetry #
+        num_rot=self.get_num_rotations()
         rot_tensor = tools.get_rot_tensor(num_rot)
 
         self.grids = self.surface.grids
@@ -108,11 +123,11 @@ class RotatedSurface(CoilSurface):
                 ),
             )
 
-            # # This is clearly wrong!!
-            # # and the result should not depend on the parametrization
-            # self.jac_xyz = self.jac_xyz.at[..., 1].set(self.jac_xyz[..., 1]*self.rotate_diff_current)
-            # self.normal = self.normal*self.rotate_diff_current
-            # self.ds = self.ds*self.rotate_diff_current
+            # This is clearly wrong!!
+            # and the result should not depend on the parametrization
+            self.jac_xyz = self.jac_xyz.at[..., 1].set(self.jac_xyz[..., 1]*self.rotate_diff_current)
+            self.normal = self.normal*self.rotate_diff_current
+            self.ds = self.ds*self.rotate_diff_current
 
         if deg >= 2:
             self.principles = [np.concatenate([p] * num_rot, axis=1) for p in self.surface.principles]
