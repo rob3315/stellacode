@@ -66,7 +66,11 @@ class RotatedSurface(CoilSurface):
         """compute surface elements used in the shape optimization up
         to degree deg
         deg is 0,1 or 2"""
-        self.surface.compute_surface_attributes(deg=deg)
+        gridu, gridv = self.grids
+        gridu = np.concatenate([gridu]*self.rotate_diff_current, axis=1)
+        rd = self.rotate_diff_current
+        gridv = np.concatenate([(i+gridv)/rd for i in range(rd)], axis=1)
+        self.surface.compute_surface_attributes(grids=(gridu, gridv), deg=deg)
 
         num_rot = self.get_num_rotations()
         rot_tensor = tools.get_rot_tensor(num_rot)
@@ -104,11 +108,11 @@ class RotatedSurface(CoilSurface):
                 ),
             )
 
-            # This is clearly wrong!!
-            # and the result should not depend on the parametrization
-            self.jac_xyz = self.jac_xyz.at[..., 1].set(self.jac_xyz[..., 1]*self.rotate_diff_current)
-            self.normal = self.normal*self.rotate_diff_current
-            self.ds = self.ds*self.rotate_diff_current
+            # # This is clearly wrong!!
+            # # and the result should not depend on the parametrization
+            # self.jac_xyz = self.jac_xyz.at[..., 1].set(self.jac_xyz[..., 1]*self.rotate_diff_current)
+            # self.normal = self.normal*self.rotate_diff_current
+            # self.ds = self.ds*self.rotate_diff_current
 
         if deg >= 2:
             self.principles = [np.concatenate([p] * num_rot, axis=1) for p in self.surface.principles]

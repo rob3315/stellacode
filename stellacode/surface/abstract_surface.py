@@ -96,11 +96,14 @@ class AbstractSurface(BaseModel):
         hess_surf_res = hess_surf_vmap(grid_)
         return np.reshape(hess_surf_res, (3, 2, 2, lu, lv))
 
-    def compute_surface_attributes(self, deg: int = 2):
+    def compute_surface_attributes(self, grids=None, deg: int = 2):
         """compute surface elements used in the shape optimization up
         to degree deg
         deg is 0,1 or 2"""
-
+        if grids is not None:
+            self.grids = grids
+            self.nbpts = grids[0].shape
+            
         uv_grid = np.stack(self.grids, axis=0)
 
         self.xyz = self.get_xyz_on_grid(uv_grid)
