@@ -24,8 +24,7 @@ class RotatedSurface(CoilSurface):
 
     @property
     def npts(self):
-        # This is wrong, there should be num_tor_symmetry
-        return self.nbpts[0] * self.nbpts[1]*self.rotate_diff_current
+        return self.nbpts[0] * self.nbpts[1]*self.get_num_rotations()
     
     def get_num_rotations(self):
         return self.num_tor_symmetry * self.rotate_diff_current

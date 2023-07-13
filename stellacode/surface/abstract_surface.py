@@ -42,6 +42,10 @@ class AbstractSurface(BaseModel):
     def npts(self):
         return self.nbpts[0] * self.nbpts[1]
 
+    @property
+    def dudv(self):
+        return (self.grids[1][0, 1] - self.grids[1][0, 0]) * (self.grids[0][1, 0] - self.grids[0][0, 1])
+
     def get_xyz(self, uv):
         """return the point parametrized by uv in cartesian coordinate"""
         raise NotImplementedError
@@ -127,7 +131,7 @@ class AbstractSurface(BaseModel):
         P = np.array(self.xyz)
         return [np.concatenate((P, P[:1]), axis=0)]
 
-    def expand_for_plot_whole(self, detach_parts: bool=False):
+    def expand_for_plot_whole(self, detach_parts: bool = False):
         """Returns X, Y, Z arrays of the whole Stellarator."""
         import numpy as np
 
@@ -158,7 +162,7 @@ class AbstractSurface(BaseModel):
         representation: str = "surface",
         color: tp.Optional[str] = None,
         colormap: str = "Wistia",
-        detach_parts: bool=False
+        detach_parts: bool = False,
     ):
         """Plot the surface"""
         import numpy as np
