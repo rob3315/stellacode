@@ -33,10 +33,11 @@ class EMCost(AbstractCost):
     inverse_qj: bool = False
 
     @classmethod
-    def from_config(cls, config, use_mu_0_factor=True):
+    def from_config(cls, config, Sp=None, use_mu_0_factor=True):
         curpol = float(config["other"]["curpol"])
         num_tor_symmetry = int(config["geometry"]["Np"])
-        Sp = get_plasma_surface(config)
+        if Sp is None:
+            Sp = get_plasma_surface(config)
         bnorm_ = -curpol * bnorm.get_bnorm(str(config["other"]["path_bnorm"]), Sp)
         net_currents = np.array(
             [

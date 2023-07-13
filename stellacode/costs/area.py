@@ -10,7 +10,7 @@ class AreaCost(AbstractCost):
     c1: float
 
     @classmethod
-    def from_config(cls, config):
+    def from_config(cls, config, Sp=None):
         return cls(
             c0=float(config["optimization_parameters"]["perim_c0"]),
             c1=float(config["optimization_parameters"]["perim_c1"]),

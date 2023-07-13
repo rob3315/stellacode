@@ -18,9 +18,11 @@ class DistanceCost(AbstractCost):
     d_min_penalization: float
 
     @classmethod
-    def from_config(cls, config):
+    def from_config(cls, config, Sp=None,):
+        if Sp is None:
+            Sp = get_plasma_surface(config)
         return cls(
-            Sp=get_plasma_surface(config),
+            Sp=Sp,
             d_min_hard=float(config["optimization_parameters"]["d_min_hard"]),
             d_min_soft=float(config["optimization_parameters"]["d_min_soft"]),
             d_min_penalization=float(config["optimization_parameters"]["d_min_penalization"]),

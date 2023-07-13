@@ -16,6 +16,10 @@ class IntegrationParams(BaseModel):
     num_points_v: int
     max_val_v: float = 1.0
 
+    @classmethod
+    def from_current_potential(cls, current_pot):
+        return cls(current_pot.num_pol * 4, current_pot.num_tor * 4)
+
     def get_uvgrid(self, concat: bool = False):
         u = np.linspace(0, 1, self.num_points_u, endpoint=False)
         v = np.linspace(0, self.max_val_v, self.num_points_v, endpoint=False)

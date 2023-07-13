@@ -5,7 +5,7 @@ from stellacode.costs.area import AreaCost
 from stellacode.costs.curvature import CurvatureCost
 from stellacode.costs.distance import DistanceCost
 from stellacode.costs.em_cost import EMCost
-
+from stellacode.surface.imports import get_cws, get_plasma_surface
 from .abstract_cost import AbstractCost
 
 
@@ -15,14 +15,16 @@ class AggregateCost(AbstractCost):
     costs: list
 
     @classmethod
-    def from_config(cls, config):
-        costs = [EMCost.from_config(config)]
+    def from_config(cls, config, Sp=None):
+        if Sp is None:
+            Sp = get_plasma_surface(config)
+        costs = [EMCost.from_config(config, Sp=Sp)]
         if config["optimization_parameters"]["d_min"] == "True":
-            costs.append(DistanceCost.from_config(config))
+            costs.append(DistanceCost.from_config(config, Sp=Sp))
         if config["optimization_parameters"]["perim"] == "True":
-            costs.append(AreaCost.from_config(config))
+            costs.append(AreaCost.from_config(config, Sp=Sp))
         if config["optimization_parameters"]["curvature"] == "True":
-            costs.append(CurvatureCost.from_config(config))
+            costs.append(CurvatureCost.from_config(config, Sp=Sp))
         return cls(costs=costs)
 
     def cost(self, S):
