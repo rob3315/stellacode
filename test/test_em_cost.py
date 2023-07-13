@@ -15,7 +15,7 @@ from stellacode.surface.imports import (
     get_plasma_surface,
 )
 from stellacode.surface.rotated_surface import RotatedSurface
-from stellacode.surface.tore import ToroidalSurface
+from stellacode.surface import ToroidalSurface, IntegrationParams
 from stellacode.surface.utils import fit_to_surface
 
 
@@ -38,6 +38,7 @@ def test_compare_to_matlab_regcoil():
     metrics = em_cost.cost(cws)
     print(metrics)
     from stellacode.tools.vmec import VMECIO
+
     vmec = VMECIO("test/data/w7x/wout_d23p4_tm.nc")
     vmec.get_net_poloidal_current()
     # filename = "test/data/w7x/regcoil_out.w7x.nc"
@@ -102,7 +103,7 @@ def test_regcoil_with_axisymmetric():
         major_radius=major_radius,
         minor_radius=minor_radius + 0.2,
         params={},
-        nbpts=(32, 32),
+        integration_par=IntegrationParams(num_points_u=32, num_points_v=32),
     )
     S.get_min_distance(em_cost.Sp.xyz)
 
@@ -121,11 +122,11 @@ def test_pwc_fit():
     S = RotatedSurface(
         surface=CylindricalSurface(
             fourier_coeffs=fourier_coeffs,
-            nbpts=(32, 16),
+            integration_par=IntegrationParams(num_points_u=32, num_points_v=16),
             num_tor_symmetry=9,
             make_joints=True,
         ),
-        nbpts=(32, 16),
+        # nbpts=(32, 16),
         num_tor_symmetry=3,
         rotate_diff_current=3,
         current=get_current_potential(config),
@@ -158,13 +159,13 @@ def test_regcoil_with_pwc():
     S = RotatedSurface(
         surface=CylindricalSurface(
             fourier_coeffs=fourier_coeffs,
-            nbpts=(n_pol_coil, n_tor_coil),
+            integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
+            # nbpts=(n_pol_coil, n_tor_coil),
             num_tor_symmetry=9,
         ),
-        nbpts=(n_pol_coil, n_tor_coil),
+        # nbpts=(n_pol_coil, n_tor_coil),
         num_tor_symmetry=3,
         rotate_diff_current=3,
-        
         current=get_current_potential(config),
     )
 

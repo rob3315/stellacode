@@ -10,7 +10,7 @@ from scipy.spatial import ConvexHull
 from stellacode import np
 from stellacode.surface.utils import fourier_coefficients
 
-from .abstract_surface import AbstractSurface
+from .abstract_surface import AbstractSurface, IntegrationParams
 from .tore import ToroidalSurface
 from .utils import cartesian_to_cylindrical, cartesian_to_toroidal, from_polar, to_polar
 
@@ -81,7 +81,14 @@ class FourierSurface(AbstractSurface):
             adata = np.array(data, dtype="float64")
             m, n, Rmn, Zmn = adata[:, 0], adata[:, 1], adata[:, 2], adata[:, 3]
 
-        return cls(Rmn=Rmn, Zmn=Zmn, mf=m, nf=n, nbpts=(n_pol, n_tor), num_tor_symmetry=n_fp)
+        return cls(
+            Rmn=Rmn,
+            Zmn=Zmn,
+            mf=m,
+            nf=n,
+            integration_par=IntegrationParams(num_points_u=n_pol, num_points_v=n_tor),
+            num_tor_symmetry=n_fp,
+        )
 
     def get_xyz(self, uv):
         angle = 2 * np.pi * (uv[0] * self.mf + uv[1] * self.nf)
@@ -147,7 +154,7 @@ class FourierSurface(AbstractSurface):
     def get_toroidal_surface_convex_hull(self, num_coeff: int = 5):
         minor_radius, coefs = self.get_convex_hull_fourier_coeff(num_coeff=num_coeff)
         return ToroidalSurface(
-            nbpts=self.nbpts,
+            integration_par=self.integration_par,
             num_tor_symmetry=self.num_tor_symmetry,
             major_radius=self.get_major_radius(),
             minor_radius=minor_radius,

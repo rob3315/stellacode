@@ -20,7 +20,6 @@ def get_cws(config):
         surface=cws,
         current=get_current_potential(config),
         num_tor_symmetry=n_fp,
-        nbpts=(n_pol_coil, n_tor_coil),
     )
     return cws
 

@@ -11,6 +11,34 @@ from stellacode.tools.utils import get_min_dist
 from .utils import get_principles
 
 
+class IntegrationParams(BaseModel):
+    num_points_u: int
+    num_points_v: int
+    max_val_v: float = 1.0
+
+    def get_uvgrid(self, concat: bool = False):
+        u = np.linspace(0, 1, self.num_points_u, endpoint=False)
+        v = np.linspace(0, self.max_val_v, self.num_points_v, endpoint=False)
+
+        ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
+        if concat:
+            return np.stack((ugrid, vgrid), axis=0)
+        else:
+            return ugrid, vgrid
+
+    @property
+    def nbpts(self):
+        return (self.num_points_u, self.num_points_v)
+
+    @property
+    def npts(self):
+        return self.num_points_u * self.num_points_v
+
+    @property
+    def dudv(self):
+        return self.max_val_v / (self.num_points_u * self.num_points_v)
+
+
 class AbstractSurface(BaseModel):
     """A class used to:
     * represent an abstract surfaces
@@ -18,7 +46,7 @@ class AbstractSurface(BaseModel):
     * visualize surfaces
     """
 
-    nbpts: tp.Tuple[int, int]
+    integration_par: IntegrationParams
     grids: tp.Optional[ArrayLike] = None
     num_tor_symmetry: int = 1
     trainable_params: tp.List[str] = []
@@ -28,6 +56,7 @@ class AbstractSurface(BaseModel):
     normal_unit: tp.Optional[ArrayLike] = None
     ds: tp.Optional[ArrayLike] = None
     principles: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
+    max_val_v: float = 1.0
 
     class Config:
         arbitrary_types_allowed = True
@@ -35,21 +64,20 @@ class AbstractSurface(BaseModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
-        self.grids = self.get_uvgrid(*self.nbpts)
         self.compute_surface_attributes()
 
     @property
+    def nbpts(self):
+        return self.integration_par.nbpts
+
+    @property
     def npts(self):
-        return self.nbpts[0] * self.nbpts[1]
+        return self.integration_par.npts
 
     @property
     def dudv(self):
-        if self.grids[1].shape[1]>1:
-            return (self.grids[1][0, 1] - self.grids[1][0, 0]) * (self.grids[0][1, 0] - self.grids[0][0, 1])
-        else:
-            return 1/(self.nbpts[0] * self.nbpts[1])
-        
+        return self.integration_par.dudv
+
     def get_xyz(self, uv):
         """return the point parametrized by uv in cartesian coordinate"""
         raise NotImplementedError
@@ -61,16 +89,6 @@ class AbstractSurface(BaseModel):
         for k, v in kwargs.items():
             setattr(self, k, v)
         self.compute_surface_attributes(deg=2)
-
-    @staticmethod
-    def get_uvgrid(lu, lv, concat: bool = False):
-        u, v = np.linspace(0, 1, lu, endpoint=False), np.linspace(0, 1, lv, endpoint=False)
-
-        ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
-        if concat:
-            return np.stack((ugrid, vgrid), axis=0)
-        else:
-            return ugrid, vgrid
 
     def get_xyz_on_grid(self, grid):
         grid_ = np.reshape(grid, (2, -1))
@@ -100,14 +118,11 @@ class AbstractSurface(BaseModel):
         hess_surf_res = hess_surf_vmap(grid_)
         return np.reshape(hess_surf_res, (3, 2, 2, lu, lv))
 
-    def compute_surface_attributes(self, grids=None, deg: int = 2):
+    def compute_surface_attributes(self, deg: int = 2):
         """compute surface elements used in the shape optimization up
         to degree deg
         deg is 0,1 or 2"""
-        if grids is not None:
-            self.grids = grids
-            self.nbpts = grids[0].shape
-            
+        self.grids = self.integration_par.get_uvgrid()
         uv_grid = np.stack(self.grids, axis=0)
 
         self.xyz = self.get_xyz_on_grid(uv_grid)
