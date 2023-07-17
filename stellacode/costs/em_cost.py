@@ -8,8 +8,10 @@ import stellacode.tools as tools
 import stellacode.tools.bnorm as bnorm
 from stellacode import mu_0_fac, np
 from stellacode.costs.abstract_cost import AbstractCost
-from stellacode.surface.abstract_surface import AbstractSurface
+from stellacode.surface import AbstractSurface, IntegrationParams, FourierSurface
 from stellacode.surface.imports import get_cws, get_plasma_surface
+from stellacode.definitions import PlasmaConfig
+from stellacode.tools.vmec import VMECIO
 
 
 class EMCost(AbstractCost):
@@ -28,7 +30,7 @@ class EMCost(AbstractCost):
     num_tor_symmetry: int
     net_currents: Optional[ArrayLike]
     Sp: AbstractSurface
-    bnorm: ArrayLike
+    bnorm: ArrayLike = 0.0
     use_mu_0_factor: bool = False
     inverse_qj: bool = False
 
@@ -51,6 +53,45 @@ class EMCost(AbstractCost):
 
         return cls(
             lamb=float(config["other"]["lamb"]),
+            num_tor_symmetry=num_tor_symmetry,
+            net_currents=net_currents,
+            bnorm=bnorm_,
+            Sp=Sp,
+            use_mu_0_factor=use_mu_0_factor,
+        )
+
+    @classmethod
+    def from_plasma_config(
+        cls,
+        plasma_config: PlasmaConfig,
+        integration_par: IntegrationParams,
+        Sp=None,
+        use_mu_0_factor: bool = True,
+        lamb: float = 0.1,
+    ):
+        if Sp is None:
+            Sp = FourierSurface.from_file(plasma_config.path_plasma, integration_par=integration_par)
+
+        vmec = VMECIO(plasma_config.path_plasma)
+
+        num_tor_symmetry = vmec.nfp
+
+        net_currents = np.array(
+            [
+                vmec.net_poloidal_current / num_tor_symmetry,
+                0.0,
+            ]
+        )
+        if plasma_config.path_bnorm is not None:
+            bnorm_ = -vmec.scale_bnorm(bnorm.get_bnorm(plasma_config.path_bnorm, Sp))
+            if not use_mu_0_factor:
+                bnorm_ /= mu_0_fac
+                # net_currents /= mu_0_fac
+        else:
+            bnorm_ = 0.0
+
+        return cls(
+            lamb=lamb,
             num_tor_symmetry=num_tor_symmetry,
             net_currents=net_currents,
             bnorm=bnorm_,

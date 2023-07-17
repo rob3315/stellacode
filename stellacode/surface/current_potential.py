@@ -1,5 +1,6 @@
 import numpy as np
 from pydantic import BaseModel, Extra
+from .abstract_surface import IntegrationParams
 
 
 def _stack(a, b):
@@ -7,7 +8,6 @@ def _stack(a, b):
 
 
 class AbstractCurrentPotential(BaseModel):
-
     def _get_coeffs(self):
         raise NotImplementedError
 
@@ -16,7 +16,7 @@ class AbstractCurrentPotential(BaseModel):
 
     def _get_grad_phi(self):
         raise NotImplementedError
-    
+
     def get_matrix_from_grid(self, grids):
         # ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
         # lu, lv = ugrid.shape
@@ -27,7 +27,7 @@ class AbstractCurrentPotential(BaseModel):
         dphi = []
         assert self.sin_basis or self.cos_basis
 
-        dphi= self.get_grad_phi(*grids)
+        dphi = self.get_grad_phi(*grids)
 
         dphi = np.concatenate(dphi, axis=0)
         dphi = np.concatenate((np.zeros((2, *grids[0].shape, 2)), dphi), axis=0)
@@ -37,11 +37,15 @@ class AbstractCurrentPotential(BaseModel):
 
         return dphi
 
+
 class CurrentPotential(BaseModel):
     num_pol: int
     num_tor: int
     sin_basis: bool = True
     cos_basis: bool = False
+
+    def get_integration_params(self, factor: float = 4):
+        return IntegrationParams(num_points_u=self.num_pol * factor, num_points_v=self.num_tor * factor)
 
     def get_coeffs(self):
         grid = np.mgrid[1 : (self.num_pol + 1), -self.num_tor : (self.num_tor + 1)].reshape((2, -1))

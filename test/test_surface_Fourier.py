@@ -10,7 +10,11 @@ from stellacode.surface.fourier import *
 def test_normal_derivative():
     lu, lv = 128, 128
     logging.basicConfig(level="DEBUG")
-    S = FourierSurface.from_file("data/li383/cws.txt", 3, lu, lv)
+    S = FourierSurface.from_file(
+        "data/li383/cws.txt",
+        integration_par=IntegrationParams(num_points_u=lu, num_points_v=lv),
+        n_fp=3,
+    )
 
     import matplotlib.pyplot as plt
 

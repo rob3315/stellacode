@@ -3,7 +3,7 @@ Imports for the surface module.
 """
 from stellacode import np
 
-from .abstract_surface import AbstractSurface
+from .abstract_surface import AbstractSurface, IntegrationParams
 from .current_potential import CurrentPotential
 from .fourier import FourierSurface
 from .rotated_surface import RotatedSurface
@@ -14,7 +14,9 @@ def get_cws(config):
     n_pol_coil = int(config["geometry"]["ntheta_coil"])
     n_tor_coil = int(config["geometry"]["nzeta_coil"])
     path_cws = str(config["geometry"]["path_cws"])
-    cws = FourierSurface.from_file(path_cws, n_fp, n_pol_coil, n_tor_coil)
+    cws = FourierSurface.from_file(
+        path_cws, integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil), n_fp=n_fp
+    )
 
     cws = RotatedSurface(
         surface=cws,
@@ -38,11 +40,14 @@ def get_current_potential(config):
 
 
 def get_plasma_surface(config):
-    n_fp = int(config["geometry"]["Np"])
     n_pol_plasma = int(config["geometry"]["ntheta_plasma"])
     n_tor_plasma = int(config["geometry"]["nzeta_plasma"])
     path_plasma = str(config["geometry"]["path_plasma"])
-    plasma = FourierSurface.from_file(path_plasma, n_fp, n_pol_plasma, n_tor_plasma)
+
+    plasma = FourierSurface.from_file(
+        path_plasma, integration_par=IntegrationParams(num_points_u=n_pol_plasma, num_points_v=n_tor_plasma),
+        n_fp=int(config["geometry"]["Np"])
+    )
     return plasma
 
 

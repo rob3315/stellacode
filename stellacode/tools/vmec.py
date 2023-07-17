@@ -14,6 +14,9 @@ class VMECIO:
     def __init__(self, vmec_file: str):
         self.file = netcdf_file(vmec_file)
 
+    def get_var(self, key: str, cast_type=float):
+        return self.file.variables[key][()].astype(cast_type)
+
     def get_val(
         self,
         key: str,
@@ -22,14 +25,14 @@ class VMECIO:
         surf_labels: tp.Optional[tp.List[int]] = None,
         diff: tp.Optional[str] = None,
     ):
-        xm = self.file.variables["xm_nyq"][()].astype(int)
+        xm = self.get_var("xm_nyq", int)
 
-        xn = self.file.variables["xn_nyq"][()].astype(int)
+        xn = self.get_var("xn_nyq", int)
         angle = theta[..., None] * xm - zeta[..., None] * xn
 
         val = 0.0
         if f"{key}mnc" in self.file.variables.keys():
-            mnc = self.file.variables[f"{key}mnc"][()].astype(float)
+            mnc = self.get_var(f"{key}mnc", float)
             if surf_labels is not None:
                 mnc = mnc[surf_labels]
             if diff == "theta":
@@ -40,7 +43,7 @@ class VMECIO:
                 val += _dot(mnc, np.cos(angle))
 
         if f"{key}mns" in self.file.variables.keys():
-            mns = self.file.variables[f"{key}mns"][()].astype(float)
+            mns = self.get_var(f"{key}mns", float)
             if surf_labels is not None:
                 mns = mns[surf_labels]
             if diff == "theta":
@@ -128,15 +131,16 @@ class VMECIO:
             axis=-1,
         )
 
-    def get_nfp(self):
-        return self.file.variables["nfp"][()].astype(int)
+    @property
+    def nfp(self):
+        return self.get_var("nfp", int)
 
-    def get_curpol(self):
-        nfp = self.get_nfp()
-        bsubvmnc = self.file.variables["bsubvmnc"][()].astype(float).T
+    @property
+    def curpol(self):
+        bsubvmnc = self.get_var("bsubvmnc", float).T
 
         bsubv00 = 1.5 * bsubvmnc[0, -1] - 0.5 * bsubvmnc[0, -2]
-        curpol = 2 * np.pi / nfp * bsubv00
+        curpol = 2 * np.pi / self.nfp * bsubv00
         return curpol
 
     def scale_bnorm(self, b_norm):
@@ -146,9 +150,10 @@ class VMECIO:
         where bsubv is the extrapolation to the last full mesh point of
         bsubvmnc.  Let's undo this scaling now.
         """
-        return b_norm * self.get_curpol()
+        return b_norm * self.curpol
 
-    def get_net_poloidal_current(self):
+    @property
+    def net_poloidal_current(self):
         """
         From regcoil:
         bvco seems related to the covariant components of B bsubvmnc/s
@@ -156,5 +161,5 @@ class VMECIO:
         2pi/mu_0*integral_zeta(B(theta=interior, radius=last_radius))
         """
 
-        bvco = self.file.variables["bvco"][()].astype(float)
+        bvco = self.get_var("bvco", float)
         return 2 * np.pi / mu_0 * (1.5 * bvco[-1] - 0.5 * bvco[-2])

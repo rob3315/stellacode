@@ -16,8 +16,9 @@ from stellacode.surface.imports import (
 )
 from stellacode.tools.vmec import VMECIO
 from stellacode.surface.rotated_surface import RotatedSurface
-from stellacode.surface import ToroidalSurface, IntegrationParams
+from stellacode.surface import ToroidalSurface, IntegrationParams, CurrentPotential
 from stellacode.surface.utils import fit_to_surface
+from stellacode.definitions import w7x_plasma
 
 
 def test_no_dimension_error():
@@ -29,11 +30,9 @@ def test_no_dimension_error():
 
 
 def test_reproduce_regcoil_axisym():
-    path_config_file = "test/data/w7x/config_axis.ini"
-    config = configparser.ConfigParser()
-    config.read(path_config_file)
     major_radius = 5.5
     minor_radius = 1.404687741189692  # 0.9364584941264614*(1+0.5)
+    current = CurrentPotential(num_pol=8, num_tor=8)
 
     cws = RotatedSurface(
         surface=ToroidalSurface(
@@ -41,13 +40,16 @@ def test_reproduce_regcoil_axisym():
             major_radius=major_radius,
             minor_radius=minor_radius,
             params={},
-            integration_par=IntegrationParams(num_points_u=32, num_points_v=32),
+            integration_par=current.get_integration_params(),
         ),
         num_tor_symmetry=5,
         rotate_diff_current=1,
-        current=get_current_potential(config),
+        current=current,
     )
-    em_cost = EMCost.from_config(config=config, use_mu_0_factor=True)
+
+    em_cost = EMCost.from_plasma_config(
+        plasma_config=w7x_plasma, integration_par=IntegrationParams(num_points_u=32, num_points_v=32)
+    )
 
     filename = "test/data/w7x/regcoil_out.w7x_axis.nc"
     file_ = netcdf_file(filename, "r", mmap=False)
@@ -61,11 +63,9 @@ def test_reproduce_regcoil_axisym():
     assert np.all((np.abs(chi_j - metrics.cost_J.values)) / chi_j < 5e-3)
 
     vmec = VMECIO("test/data/w7x/wout_d23p4_tm.nc")
-    vmec.get_net_poloidal_current()
-
-    assert np.abs(file_.variables["curpol"][()].astype(float) - vmec.get_curpol()) < 1e-19
+    assert np.abs(file_.variables["curpol"][()].astype(float) - vmec.curpol) < 1e-19
     pol_cur = file_.variables["net_poloidal_current_Amperes"][()].astype(float)
-    assert np.abs(pol_cur - vmec.get_net_poloidal_current()) / pol_cur < 1e-9
+    assert np.abs(pol_cur - vmec.net_poloidal_current) / pol_cur < 1e-9
 
 
 @pytest.mark.parametrize("use_mu_0_factor", [False, True])
@@ -218,5 +218,5 @@ def test_plot_plasma_cross_sections():
     surf = get_plasma_surface(config)
 
     surf.plot_cross_sections()
-    import matplotlib.pyplot as plt
-    plt.show()
+    # import matplotlib.pyplot as plt
+    # plt.show()
