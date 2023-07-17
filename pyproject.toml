@@ -25,7 +25,8 @@ dependencies = [
     "scipy",
     "jax",
     "jaxlib",
-    "pydantic"
+    "pydantic",
+    "concave_hull"
 ]
 
 [tool.setuptools]

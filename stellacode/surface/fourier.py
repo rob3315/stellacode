@@ -9,7 +9,7 @@ from scipy.spatial import ConvexHull
 
 from stellacode import np
 from stellacode.surface.utils import fourier_coefficients
-
+from concave_hull import concave_hull
 from .abstract_surface import AbstractSurface, IntegrationParams
 from .tore import ToroidalSurface
 from .utils import cartesian_to_cylindrical, cartesian_to_toroidal, from_polar, to_polar
@@ -114,7 +114,7 @@ class FourierSurface(AbstractSurface):
             height=self.Zmn[0],
         )
 
-    def get_axisymmetric_convex_hull(self, polar_coords: bool = True):
+    def get_axisymmetric_envelope(self, polar_coords: bool = True, convex: bool = True):
         # Could also find the concave hull as shown here:
         # https://stackoverflow.com/questions/57260352/python-concave-hull-polygon-of-a-set-of-lines
 
@@ -122,8 +122,13 @@ class FourierSurface(AbstractSurface):
 
         points = np.reshape(rtphi[..., :2], (-1, 2))
         xy_points = np.stack(from_polar(points[:, 0], points[:, 1])).T
-        hull = ConvexHull(xy_points)
-        sel_xy_points = xy_points[hull.vertices, :]
+        if convex:
+            hull = ConvexHull(xy_points)
+            sel_xy_points = xy_points[hull.vertices, :]
+        else:
+            sel_xy_points = concave_hull(xy_points, length_threshold=0.2)
+            sel_xy_points = np.stack(sel_xy_points)
+
         if not polar_coords:
             return sel_xy_points
         else:
@@ -132,8 +137,8 @@ class FourierSurface(AbstractSurface):
             rth = rth[rth[:, 1].argsort()]
             return np.concatenate((rth, rth[:1]))
 
-    def get_convex_hull_fourier_coeff(self, num_coeff: int = 5):
-        xy = self.get_axisymmetric_convex_hull(polar_coords=False)
+    def get_axisymmetric_evelope_fourier_coeff(self, num_coeff: int = 5, convex: bool = False):
+        xy = self.get_axisymmetric_envelope(polar_coords=False, convex=convex)
         r, th = to_polar(xy[:, 0], xy[:, 1])
         xy = xy[th.argsort()]
         th = th[th.argsort()]
@@ -151,8 +156,8 @@ class FourierSurface(AbstractSurface):
 
         return fourier_coefficients(th.min(), th.min() + 2 * np.pi, num_coeff, fun)
 
-    def get_toroidal_surface_convex_hull(self, num_coeff: int = 5):
-        minor_radius, coefs = self.get_convex_hull_fourier_coeff(num_coeff=num_coeff)
+    def get_axisymmetric_surface_envelope(self, num_coeff: int = 5, convex: bool = False):
+        minor_radius, coefs = self.get_axisymmetric_evelope_fourier_coeff(num_coeff=num_coeff, convex=convex)
         return ToroidalSurface(
             integration_par=self.integration_par,
             num_tor_symmetry=self.num_tor_symmetry,
@@ -161,7 +166,7 @@ class FourierSurface(AbstractSurface):
             fourier_coeffs=coefs / minor_radius,
         )
 
-    def plot_cross_sections(self, num: int = 10, ax=None):
+    def plot_cross_sections(self, num: int = 5, ax=None):
         import matplotlib.pyplot as plt
 
         if ax is None:
@@ -170,10 +175,11 @@ class FourierSurface(AbstractSurface):
 
         num_phi_s = rtphi.shape[1]
         for i in range(0, num_phi_s, num_phi_s // num):
-            rphi = rtphi[:, i, :]
-            # rphi = np.concatenate([rphi, rphi[:,:1]], axis=1)
-            ax.plot(rphi[:, 1], rphi[:, 0])
+            rphi = np.concatenate((rtphi[:, i, :], rtphi[:1, i, :]), axis=0)
+            ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] + [i / num_phi_s])
 
-        env = self.get_axisymmetric_convex_hull()
-        ax.plot(env[:, 1], env[:, 0], c="k")
+        env = self.get_axisymmetric_envelope(convex=True)
+        ax.plot(env[:, 1], env[:, 0], c="r", linewidth=3)
+        env = self.get_axisymmetric_envelope(convex=False)
+        ax.plot(env[:, 1], env[:, 0], c="g", linewidth=3)
         return ax

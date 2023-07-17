@@ -25,7 +25,7 @@ def test_convex_hull_fourier_series():
     config.read(path_config_file)
     surf = get_plasma_surface(config)
 
-    tor_surf = surf.get_toroidal_surface_convex_hull(num_coeff=10)
+    tor_surf = surf.get_axisymmetric_surface_envelope(num_coeff=10)
     ax = surf.plot_cross_sections()
     tor_surf.plot_cross_section(ax=ax)
     # import matplotlib.pyplot as plt

@@ -218,3 +218,5 @@ def test_plot_plasma_cross_sections():
     surf = get_plasma_surface(config)
 
     surf.plot_cross_sections()
+    import matplotlib.pyplot as plt
+    plt.show()
