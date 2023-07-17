@@ -1,0 +1,29 @@
+! For documentation of these input parameters and their default values, see the README.
+
+&regcoil_nml
+  nlambda = 30
+  lambda_min = 1e-30
+  lambda_max = 1
+
+  ntheta_plasma = 32
+  ntheta_coil   = 32
+  nzeta_plasma  = 32
+  nzeta_coil    = 32
+  mpol_potential = 8
+  ntor_potential = 8
+
+  geometry_option_plasma = 2
+
+  wout_filename = '../../data/w7x/wout_d23p4_tm.nc'
+
+  geometry_option_coil=1
+  a_coil=1.404687741189692
+  R0_coil=5.5
+  net_poloidal_current_Amperes = 77831194.1415080
+  net_toroidal_current_Amperes = 0.
+
+  load_bnorm=.t.
+  bnorm_filename='../../data/w7x/bnorm.d23p4_tm'
+
+  symmetry_option = 1
+/

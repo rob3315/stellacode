@@ -14,6 +14,7 @@ from stellacode.surface.imports import (
     get_cws,
     get_plasma_surface,
 )
+from stellacode.tools.vmec import VMECIO
 from stellacode.surface.rotated_surface import RotatedSurface
 from stellacode.surface import ToroidalSurface, IntegrationParams
 from stellacode.surface.utils import fit_to_surface
@@ -27,28 +28,44 @@ def test_no_dimension_error():
     EMCost.from_config_file(path_config_file)
 
 
-def test_compare_to_matlab_regcoil():
-    path_config_file = "test/data/w7x/config.ini"
+def test_reproduce_regcoil_axisym():
+    path_config_file = "test/data/w7x/config_axis.ini"
     config = configparser.ConfigParser()
     config.read(path_config_file)
+    major_radius = 5.5
+    minor_radius = 1.404687741189692  # 0.9364584941264614*(1+0.5)
 
-    cws = get_cws(config)
+    cws = RotatedSurface(
+        surface=ToroidalSurface(
+            num_tor_symmetry=5,
+            major_radius=major_radius,
+            minor_radius=minor_radius,
+            params={},
+            integration_par=IntegrationParams(num_points_u=32, num_points_v=32),
+        ),
+        num_tor_symmetry=5,
+        rotate_diff_current=1,
+        current=get_current_potential(config),
+    )
     em_cost = EMCost.from_config(config=config, use_mu_0_factor=True)
 
-    metrics = em_cost.cost(cws)
-    print(metrics)
-    from stellacode.tools.vmec import VMECIO
+    filename = "test/data/w7x/regcoil_out.w7x_axis.nc"
+    file_ = netcdf_file(filename, "r", mmap=False)
+    lambdas = file_.variables["lambda"][()].astype(float)
+    metrics = em_cost.cost_multiple_lambdas(cws, lambdas)
+
+    # the agreement is not perfect for very low lambdas
+    chi_b = file_.variables["chi2_B"][()].astype(float)
+    assert np.all((np.abs(chi_b - metrics.cost_B.values)) / chi_b < 5e-3)
+    chi_j = file_.variables["chi2_K"][()].astype(float)
+    assert np.all((np.abs(chi_j - metrics.cost_J.values)) / chi_j < 5e-3)
 
     vmec = VMECIO("test/data/w7x/wout_d23p4_tm.nc")
     vmec.get_net_poloidal_current()
-    # filename = "test/data/w7x/regcoil_out.w7x.nc"
-    # file_ = netcdf_file(filename, "r", mmap=False)
-    # chi2_b = file_.variables["chi2_B"][()].astype(float)
-    # print(chi2_b)
-    # import pdb;pdb.set_trace()
-    # xm, xn = cws.current.get_coeffs().T
-    # assert np.all(file_.variables["xm_coil"][()]- xm[:-1])
-    # assert np.all(file_.variables["xn_coil"][()][1:] // 5 == xn)
+
+    assert np.abs(file_.variables["curpol"][()].astype(float) - vmec.get_curpol()) < 1e-19
+    pol_cur = file_.variables["net_poloidal_current_Amperes"][()].astype(float)
+    assert np.abs(pol_cur - vmec.get_net_poloidal_current()) / pol_cur < 1e-9
 
 
 @pytest.mark.parametrize("use_mu_0_factor", [False, True])
@@ -71,12 +88,12 @@ def test_compare_to_regcoil(use_mu_0_factor):
 
     metrics = em_cost.cost_multiple_lambdas(cws, lambdas)
 
-    chi2_b = file_.variables["chi2_B"][()].astype(float)
-    assert np.max(np.abs(metrics.cost_B.values - chi2_b) / np.max(chi2_b)) < 5e-5
-    chi_j = file_.variables["chi2_K"][()].astype(float)
-
     # for some reason chi_j is not well reproduced for low lambdas
-    assert np.max(np.abs(metrics.cost_J.values[1:] - chi_j[1:]) / np.max(chi_j[1:])) < 5e-6
+    chi2_b = file_.variables["chi2_B"][()].astype(float)
+    assert np.all((np.abs(metrics.cost_B.values - chi2_b) / chi2_b)[1:] < 5e-5)
+    chi_j = file_.variables["chi2_K"][()].astype(float)
+    assert np.all(np.abs(metrics.cost_J.values[1:] - chi_j[1:]) / chi_j[1:] < 5e-6)
+
     em_cost.lamb = lambdas[-1]
     j_s = em_cost.get_current_result(cws)
     js_reg = file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]

@@ -131,6 +131,14 @@ class VMECIO:
     def get_nfp(self):
         return self.file.variables["nfp"][()].astype(int)
 
+    def get_curpol(self):
+        nfp = self.get_nfp()
+        bsubvmnc = self.file.variables["bsubvmnc"][()].astype(float).T
+
+        bsubv00 = 1.5 * bsubvmnc[0, -1] - 0.5 * bsubvmnc[0, -2]
+        curpol = 2 * np.pi / nfp * bsubv00
+        return curpol
+
     def scale_bnorm(self, b_norm):
         """
         From regcoil:
@@ -138,12 +146,7 @@ class VMECIO:
         where bsubv is the extrapolation to the last full mesh point of
         bsubvmnc.  Let's undo this scaling now.
         """
-        nfp = self.get_nfp()
-        bsubvmnc = self.file.variables["bsubvmnc"][()].astype(float)
-
-        bsubv00 = 1.5 * bsubvmnc[0, -1] - 0.5 * bsubvmnc[0, -2]
-        curpol = 2 * np.pi / nfp * bsubv00
-        return b_norm * curpol
+        return b_norm * self.get_curpol()
 
     def get_net_poloidal_current(self):
         """
