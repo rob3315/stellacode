@@ -1,7 +1,7 @@
 import configparser
 import numpy as np
 from stellacode.costs.em_cost import EMCost
-from stellacode.surface import ToroidalSurface, RotatedSurface, CylindricalSurface, CurrentPotential
+from stellacode.surface import ToroidalSurface, RotatedSurface, CylindricalSurface, Current
 from stellacode.surface.cylindrical import CylindricalSurface
 from stellacode.surface.tore import ToroidalSurface
 import configparser
@@ -19,7 +19,7 @@ def test_compare_axisymmetric_toroidal():
     rotate_diff_current = 32
     major_radius = 5.5
     minor_radius = 1.036458468437195
-    current = CurrentPotential(num_pol=8, num_tor=8)
+    current = Current(num_pol=8, num_tor=8)
     n_pol_coil = 32
     n_tor_coil = 32
 

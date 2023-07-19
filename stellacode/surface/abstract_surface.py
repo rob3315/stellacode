@@ -203,6 +203,7 @@ class AbstractSurface(BaseModel):
         if scalar is not None:
             kwargs["scalars"] = np.concatenate((scalar, scalar[0:1]), axis=0)
 
+        index = 0
         for xyz_ in xyz:
             surf = mlab.mesh(
                 xyz_[..., 0],
@@ -213,19 +214,21 @@ class AbstractSurface(BaseModel):
                 color=color,
                 **kwargs,
             )
-        if vector_field is not None:
-            vector_field = vector_field / np.max(vector_field)
-            max_tor = xyz.shape[1]
-            mlab.quiver3d(
-                xyz[:-1, :, 0],
-                xyz[:-1, :, 1],
-                xyz[:-1, :, 2],
-                vector_field[:, :max_tor, 0],
-                vector_field[:, :max_tor, 1],
-                vector_field[:, :max_tor, 3],
-                line_width=0.5,
-                scale_factor=0.3,
-            )
+            if vector_field is not None:
+                vector_field = vector_field / np.max(vector_field)
+                max_tor = xyz_.shape[1]
+
+                mlab.quiver3d(
+                    xyz_[:-1, :, 0],
+                    xyz_[:-1, :, 1],
+                    xyz_[:-1, :, 2],
+                    vector_field[:, index : (index + max_tor), 0],
+                    vector_field[:, index : (index + max_tor), 1],
+                    vector_field[:, index : (index + max_tor), 3],
+                    line_width=0.5,
+                    scale_factor=0.3,
+                )
+                index += max_tor
 
         mlab.plot3d(np.linspace(0, 10, 100), np.zeros(100), np.zeros(100), color=(1, 0, 0))
         mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100), np.zeros(100), color=(0, 1, 0))

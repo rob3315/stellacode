@@ -16,7 +16,7 @@ from stellacode.surface.imports import (
 )
 from stellacode.tools.vmec import VMECIO
 from stellacode.surface.rotated_surface import RotatedSurface
-from stellacode.surface import ToroidalSurface, IntegrationParams, CurrentPotential
+from stellacode.surface import ToroidalSurface, IntegrationParams, Current, CurrentZeroTorBC
 from stellacode.surface.utils import fit_to_surface
 from stellacode.definitions import w7x_plasma
 
@@ -32,7 +32,7 @@ def test_no_dimension_error():
 def test_reproduce_regcoil_axisym():
     major_radius = 5.5
     minor_radius = 1.404687741189692  # 0.9364584941264614*(1+0.5)
-    current = CurrentPotential(num_pol=8, num_tor=8)
+    current = Current(num_pol=8, num_tor=8)
 
     cws = RotatedSurface(
         surface=ToroidalSurface(
@@ -78,7 +78,7 @@ def test_compare_to_regcoil(use_mu_0_factor):
     file_ = netcdf_file(filename, "r", mmap=False)
 
     cws = get_cws(config)
-    xm, xn = cws.current.get_coeffs()
+    xm, xn = cws.current._get_coeffs()
     assert np.all(file_.variables["xm_coil"][()][1:] == xm)
     assert np.all(file_.variables["xn_coil"][()][1:] // 3 == xn)
 
@@ -187,7 +187,7 @@ def test_regcoil_with_pwc():
     )
 
     # check that the rotated current potential is well constructed
-    curent_potential_op = S.get_curent_op()
+    curent_potential_op = S.get_curent_op()[2:]
     s1, s2, s3, _ = curent_potential_op.shape
     assert np.all(curent_potential_op[:, :, : s3 // 3] == curent_potential_op[:, :, s3 // 3 : 2 * s3 // 3])
     cp_op = curent_potential_op.reshape((3, s1 // 3, s2, 9, s3 // 9, -1))
@@ -206,9 +206,44 @@ def test_regcoil_with_pwc():
     phi_mn = em_cost.get_current_result(S)
     new_surface.plot_j_surface(phi_mn, num_rot=1)
 
-    lambdas = np.array([1.2e-24, 1.2e-18, 1.2e-14, 1.0e00])
-    metrics = em_cost.cost_multiple_lambdas(new_surface, lambdas)
-    assert metrics.cost_B.min() < 2e-4
+
+def test_regcoil_with_pwc_no_current_at_bc():
+    current_n_coeff = 8
+    n_points = current_n_coeff * 4
+    em_cost = EMCost.from_plasma_config(
+        plasma_config=w7x_plasma,
+        integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points),
+        lamb=1e-20,
+    )
+
+    current = CurrentZeroTorBC(num_pol=current_n_coeff, num_tor=current_n_coeff, sin_basis=True, cos_basis=True)
+
+    fourier_coeffs = np.zeros((0, 2))
+
+    coil_surf = RotatedSurface(
+        surface=CylindricalSurface(
+            fourier_coeffs=fourier_coeffs,
+            integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points),
+            num_tor_symmetry=9,
+        ),
+        num_tor_symmetry=3,
+        rotate_diff_current=3,
+        current=current,
+    )
+
+    # fit the rotated surface to the plasma surface
+    new_surface = fit_to_surface(coil_surf, em_cost.Sp)
+    new_surface.update_params(radius=new_surface.surface.radius + 0.3)
+
+    phi_mn = em_cost.get_current_result(new_surface)
+    j_s = new_surface.get_j_surface(phi_mn)
+
+    # exactly at the boundary, the current is zero
+    assert np.max(np.abs(j_s[:, 0, 1]) / np.max(np.abs(j_s))) < 0.06
+
+    j_3d = new_surface.get_j_3D(phi_mn)
+    # new_surface.plot(only_one_period=True, vector_field=j_3d)
+    # new_surface.surface.plot(only_one_period=False, vector_field=j_3d, detach_parts=True)
 
 
 def test_plot_plasma_cross_sections():

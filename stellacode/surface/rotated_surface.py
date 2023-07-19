@@ -48,17 +48,21 @@ class RotatedSurface(CoilSurface):
             blocks = self.current.get_matrix_from_grid((gridu, gridv))
         else:
             curent_op = super().get_curent_op()
+            current_op_ = curent_op[2:]
 
-            inner_blocks = collections.deque([curent_op] + [np.zeros_like(curent_op)] * (self.rotate_diff_current - 1))
+            inner_blocks = collections.deque([current_op_] + [np.zeros_like(current_op_)] * (self.rotate_diff_current - 1))
             blocks = []
             for _ in range(len(inner_blocks)):
                 blocks.append(np.concatenate(inner_blocks, axis=0))
                 inner_blocks.rotate(1)
 
+            # This is a hack because the status of the first two coefficients is 
+            # special (constant currents not regressed)
             blocks = np.concatenate(
                 blocks,
                 axis=2,
             )
+            blocks = np.concatenate((np.concatenate([curent_op[:2]]*len(inner_blocks), axis=2), blocks), axis=0)
 
         return np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
 
@@ -119,6 +123,7 @@ class RotatedSurface(CoilSurface):
             self.principles = [np.concatenate([p] * num_rot, axis=1) for p in self.surface.principles]
 
         self.nbpts = self.surface.nbpts
+
         self.current_op = self.get_curent_op()
 
     def cartesian_to_toroidal(self):

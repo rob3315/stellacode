@@ -1,36 +1,48 @@
 import pytest
+from stellacode.tools.vmec import VMECIO
+import numpy as np
 
 
-@pytest.mark.skip("Missing dependency")
+# @pytest.mark.skip("Missing dependency")
 def test_vmec():
-    import numpy as np
     import utilitiesRF as urf
+    ntheta = 4
+    nzeta = 4
 
-    from stellacode.tools.vmec import VMECIO
-
-    vmec = VMECIO("data/w7x/wout_d23p4_tm.nc")
+    vmec = VMECIO("data/w7x/wout_d23p4_tm.nc", ntheta=ntheta, nzeta=nzeta)
     vmec2 = urf.VmecIO()
     vmec2.read_wout("data/w7x/wout_d23p4_tm.nc")
-    vmec2.fields(nradius=200, ntheta=10, nzeta=10)
-    import pdb;pdb.set_trace()
 
-    bvec = np.stack((vmec2.Bx, vmec2.By, vmec2.BZ), axis=-1)
-    bnorm = np.linalg.norm(bvec, axis=-1)
-    np.sqrt(vmec2.Bx**2+ vmec2.By**2+ vmec2.BZ**2)
 
-    vmec2.B
+    vmec2.flux_surf(nradius=vmec2.ns, ntheta=ntheta, nzeta=nzeta)
+    vmec2.fields(nradius=vmec2.ns, ntheta=ntheta, nzeta=nzeta)
 
-    theta = np.linspace(0, 2 * np.pi, num=10)
-    zeta = np.linspace(0, 2 * np.pi, num=10)
-    zeta2D, theta2D = np.meshgrid(zeta, theta)
+    # grid = vmec.get_grid(ntheta, nzeta)
 
-    irad0 = np.linspace(0, 200, num=200, endpoint=True).round()
-    irad = [int(i) for i in irad0]
+    pos = vmec.rphiz
+    assert np.allclose(vmec2.R, pos[..., 0])
+    assert np.allclose(vmec2.Z, pos[..., -1])
 
-    bvmec = vmec.get_b_vmec(zeta2D, theta2D, surf_labels=irad)
-    assert np.abs(np.transpose(bvmec[..., 0], (2, 1, 0)) - vmec2.B_s).max() < 1e-5
-    assert np.abs(np.transpose(bvmec[..., 1], (2, 1, 0)) - vmec2.B_u).max() < 1e-6
-    assert np.abs(np.transpose(bvmec[..., 2], (2, 1, 0)) - vmec2.B_v).max() < 5e-5
+    bvmec = vmec.get_b_vmec()
+    bvmec_gt = np.stack((vmec2.B_u, vmec2.B_v, vmec2.B_s), axis=-1)
+    assert np.allclose(bvmec_gt, bvmec)
 
-    b_cart = vmec.get_b_cartesian(zeta2D, theta2D, surf_labels=irad)
-    b_val = vmec.get_val("b", zeta2D, theta2D)
+    R_grad = vmec.get_val_grad("r", nyq=False)
+    R_grad_gt = np.stack((vmec2.drdu, vmec2.drdv), axis=-1)
+    assert np.allclose(R_grad, R_grad_gt)
+
+    Z_grad = vmec.get_val_grad("z", nyq=False)
+    Z_grad_gt = np.stack((vmec2.dzdu, vmec2.dzdv), axis=-1)
+    assert np.allclose(Z_grad, Z_grad_gt)
+
+    bcyl = vmec.b_cylindrical
+    bcyl_gt = np.stack((vmec2.BR, vmec2.Bphi, vmec2.BZ), axis=-1)
+    assert np.allclose(bcyl_gt, bcyl)
+
+    b_cart = vmec.b_cartesian
+    b_cart_gt = np.stack((vmec2.Bx, vmec2.By, vmec2.BZ), axis=-1)
+    assert np.allclose(b_cart_gt, b_cart)
+
+    # jvmec = vmec.j_vmec
+    # jvmec_gt = np.stack((vmec2.Ju, vmec2.Jv), axis=-1)
+    # assert np.allclose(jvmec_gt, jvmec)

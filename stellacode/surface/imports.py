@@ -4,7 +4,7 @@ Imports for the surface module.
 from stellacode import np
 
 from .abstract_surface import AbstractSurface, IntegrationParams
-from .current_potential import CurrentPotential
+from .current import Current
 from .fourier import FourierSurface
 from .rotated_surface import RotatedSurface
 
@@ -36,7 +36,7 @@ def get_cws_grid(config):
 def get_current_potential(config):
     mpol_coil = int(config["geometry"]["mpol_coil"])
     ntor_coil = int(config["geometry"]["ntor_coil"])
-    return CurrentPotential(num_pol=mpol_coil, num_tor=ntor_coil)
+    return Current(num_pol=mpol_coil, num_tor=ntor_coil)
 
 
 def get_plasma_surface(config):

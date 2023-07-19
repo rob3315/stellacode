@@ -3,7 +3,7 @@ import typing as tp
 from stellacode import np
 from jax.typing import ArrayLike
 from .abstract_surface import AbstractSurface
-from .current_potential import CurrentPotential
+from .current import AbstractCurrent
 from stellacode.tools.utils import get_min_dist
 
 
@@ -15,7 +15,7 @@ class CoilSurface(BaseModel):
     """
 
     surface: AbstractSurface
-    current: CurrentPotential
+    current: AbstractCurrent
     current_op: tp.Optional[ArrayLike] = None
     xyz: tp.Optional[ArrayLike] = None
     jac_xyz: tp.Optional[ArrayLike] = None
@@ -104,8 +104,8 @@ class CoilSurface(BaseModel):
                 j_norm[:, id1:id2],
                 units="width",
             )
-            plt.xlabel("Toroidal angle")
-            plt.ylabel("Poloidal angle")
+            plt.xlabel("Poloidal angle")
+            plt.ylabel("Toroidal angle")
 
 
 def compute_Qj(matrixd_phi, dpsi, dS):
