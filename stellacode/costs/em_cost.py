@@ -192,6 +192,10 @@ class EMCost(AbstractCost):
         metrics["cost_B"] = self.num_tor_symmetry * np.sum(B_err**2 * self.Sp.ds) / self.Sp.npts * fac**2
 
         metrics["cost_J"] = self.num_tor_symmetry * np.einsum("i,ij,j->", j_S, Qj, j_S)
+
+        j_2D = S.get_j_surface(j_S)
+        metrics["min_j_pol"] = j_2D[:,:,0].min()
+
         metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
         return metrics["cost"], metrics
@@ -200,7 +204,7 @@ class EMCost(AbstractCost):
         if not self.use_mu_0_factor:
             lamb /= mu_0_fac**2
 
-        if self.net_currents is not None:
+        if rhs_reg is not None:
             rhs = rhs - lamb * rhs_reg
 
         j_S_R = np.linalg.solve(matrix + lamb * matrix_reg, rhs)
