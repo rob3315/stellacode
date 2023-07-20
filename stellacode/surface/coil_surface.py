@@ -75,11 +75,18 @@ class CoilSurface(BaseModel):
 
     def get_min_distance(self, xyz):
         return get_min_dist(self.xyz, xyz)
-    
+
     def get_j_3D(self, phi_mn):
         # phi_mn is a vector containing the components of the best scalar current potential.
         # The real surface current is given by :
         return np.einsum("oijk,ijdk,ij,o->ijd", self.current_op, self.jac_xyz, 1 / self.ds, phi_mn)
+
+    def imshow_j(self, phi_mn):
+        import matplotlib.pyplot as plt
+
+        j_3d = self.get_j_3D(phi_mn)
+        norm_j = np.linalg.norm(j_3d, axis=-1)
+        plt.imshow(norm_j, cmap="seismic")
 
     def get_j_surface(self, phi_mn):
         return np.einsum("oijk,ij,o->ijk", self.current_op, 1 / self.ds, phi_mn)
