@@ -189,6 +189,10 @@ class AbstractSurface(BaseModel):
         color: tp.Optional[str] = None,
         colormap: str = "Wistia",
         detach_parts: bool = False,
+        quiver_kwargs: dict=dict(
+            line_width=0.5,
+            scale_factor=0.1,
+        ),
     ):
         """Plot the surface"""
         import numpy as np
@@ -217,17 +221,21 @@ class AbstractSurface(BaseModel):
             if vector_field is not None:
                 vector_field = vector_field / np.max(vector_field)
                 max_tor = xyz_.shape[1]
+                if detach_parts:
+                    xyz_c = xyz_[:-1]
+                else:
+                    xyz_c = xyz_[:-1, :-1]
 
                 mlab.quiver3d(
-                    xyz_[:-1, :, 0],
-                    xyz_[:-1, :, 1],
-                    xyz_[:-1, :, 2],
+                    xyz_c[:, :, 0],
+                    xyz_c[:, :, 1],
+                    xyz_c[:, :, 2],
                     vector_field[:, index : (index + max_tor), 0],
                     vector_field[:, index : (index + max_tor), 1],
-                    vector_field[:, index : (index + max_tor), 3],
-                    line_width=0.5,
-                    scale_factor=0.3,
+                    vector_field[:, index : (index + max_tor), 2],
+                    **quiver_kwargs
                 )
+
                 index += max_tor
 
         mlab.plot3d(np.linspace(0, 10, 100), np.zeros(100), np.zeros(100), color=(1, 0, 0))
