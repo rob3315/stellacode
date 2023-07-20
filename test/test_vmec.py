@@ -3,7 +3,7 @@ from stellacode.tools.vmec import VMECIO
 import numpy as np
 
 
-# @pytest.mark.skip("Missing dependency")
+@pytest.mark.skip("Missing dependency")
 def test_vmec():
     import utilitiesRF as urf
     ntheta = 4
