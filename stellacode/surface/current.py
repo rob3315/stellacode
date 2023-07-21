@@ -80,6 +80,18 @@ class Current(AbstractCurrent):
 
         return dphi
 
+    def plot_phi_mn(self, phi_mn):
+        shape = (self.num_pol, self.num_tor * 2 + 1)
+        ph_sin = np.reshape(phi_mn[self.num_tor + 2 : self.num_tor + 2 + np.prod(shape)], shape)
+        ph_cos = np.reshape(phi_mn[self.num_tor * 2 + 2 + np.prod(shape) :], shape)
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+
+        ax = plt.subplot(211, title="sin coeffs")
+        sns.heatmap(ph_sin, cmap="seismic", center=0, ax=ax)
+        ax = plt.subplot(212, title="cos coeffs")
+        sns.heatmap(ph_cos, cmap="seismic", center=0, ax=ax)
+
 
 class CurrentZeroTorBC(AbstractCurrent):
     num_pol: int
