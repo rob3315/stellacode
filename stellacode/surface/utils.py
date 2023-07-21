@@ -56,7 +56,7 @@ def fourier_coefficients(li, lf, n, f):
     return a0 / 2.0, np.stack(coefs, axis=0)
 
 
-def fit_to_surface(fitted_surface, surface):
+def fit_to_surface(fitted_surface, surface, distance: float = 0.0):
     # Tries to find approximately the smallest fitted_surface enclosing surface
     # assuming surface has get_major_radius and get_minor_radius methods
 
@@ -71,7 +71,7 @@ def fit_to_surface(fitted_surface, surface):
     min_dist = new_surf.get_min_distance(surface.xyz)
 
     new_surf.update_params(
-        radius=minor_radius + major_radius / 3 - min_dist,
+        radius=minor_radius + major_radius / 3 - min_dist + distance,
         distance=major_radius,
     )
 
