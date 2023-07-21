@@ -50,19 +50,18 @@ class RotatedSurface(CoilSurface):
             curent_op = super().get_curent_op()
             current_op_ = curent_op[2:]
 
-            inner_blocks = collections.deque([current_op_] + [np.zeros_like(current_op_)] * (self.rotate_diff_current - 1))
+            inner_blocks = collections.deque(
+                [current_op_] + [np.zeros_like(current_op_)] * (self.rotate_diff_current - 1)
+            )
             blocks = []
             for _ in range(len(inner_blocks)):
                 blocks.append(np.concatenate(inner_blocks, axis=0))
                 inner_blocks.rotate(1)
 
-            # This is a hack because the status of the first two coefficients is 
+            # This is a hack because the status of the first two coefficients is
             # special (constant currents not regressed)
-            blocks = np.concatenate(
-                blocks,
-                axis=2,
-            )
-            blocks = np.concatenate((np.concatenate([curent_op[:2]]*len(inner_blocks), axis=2), blocks), axis=0)
+            blocks = np.concatenate(blocks, axis=2)
+            blocks = np.concatenate((np.concatenate([curent_op[:2]] * len(inner_blocks), axis=2), blocks), axis=0)
 
         return np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
 

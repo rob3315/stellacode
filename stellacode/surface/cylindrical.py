@@ -16,7 +16,6 @@ class CylindricalSurface(AbstractSurface):
     scale_length: float = 1.0  # The cylinder is scaled by the scale_length factor
     distance: float = 3  # distance between the center of the cylinder and the coordinate center
     make_joints: bool = True
-    align_to_tore: bool = True
     trainable_params: tp.List[str] = [
         "fourier_coeffs",
         "axis_angle",
@@ -29,10 +28,7 @@ class CylindricalSurface(AbstractSurface):
         u_ = 2 * np.pi * uv[0]  # poloidal variable
         v_ = uv[1] - 0.5 + 0.5 / self.nbpts[1]  # length variable
 
-        if self.align_to_tore:
-            axis_a = np.pi / 2 + np.pi / self.num_tor_symmetry
-        else:
-            axis_a = self.axis_angle
+        axis_a = np.pi / 2 + np.pi / self.num_tor_symmetry + self.axis_angle
 
         # rotate along the cylinder base
         axis_orth = np.array([np.sin(axis_a), -np.cos(axis_a), 0.0])
