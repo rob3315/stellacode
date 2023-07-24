@@ -21,10 +21,50 @@ class BiotSavartOperator(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
-        extra = Extra.allow  # allow extra fields
+        # extra = Extra.allow  # allow extra fields
 
-    bs_tensor: ArrayLike
-    Qj: ArrayLike
+    bs: ArrayLike
+    use_mu_0_factor: bool = False
+
+    def get_b_field(self, phi_mn):
+        if len(self.bs.shape) == 4:
+            b_field = np.einsum("hpqd,h", self.bs, phi_mn)
+        else:
+            b_field = np.einsum("hpq,h", self.bs, phi_mn)
+        if not self.use_mu_0_factor:
+            b_field *= mu_0_fac
+        return b_field
+
+
+class RegCoilSolver(BaseModel):
+    """Interface for any cost"""
+
+    class Config:
+        arbitrary_types_allowed = True
+        # extra = Extra.allow  # allow extra fields
+
+    current_cov: ArrayLike
+    matrix: ArrayLike
+    matrix_reg: ArrayLike
+    rhs: ArrayLike
+    rhs_reg: ArrayLike
+    net_currents: ArrayLike
+    use_mu_0_factor: bool = False
+
+    def solve_lambda(self, lamb: float = 0.0):
+        if not self.use_mu_0_factor:
+            lamb /= mu_0_fac**2
+        if self.rhs_reg is not None:
+            rhs = self.rhs - lamb * self.rhs_reg
+        else:
+            rhs = self.rhs
+
+        phi_mn = np.linalg.solve(self.matrix + lamb * self.matrix_reg, rhs)
+
+        if self.net_currents is not None:
+            return np.concatenate((self.net_currents, phi_mn))
+        else:
+            return phi_mn
 
 
 class EMCost(AbstractCost):
@@ -113,15 +153,15 @@ class EMCost(AbstractCost):
         )
 
     def cost(self, S):
-        BS = self.get_BS_norm(S)
-        j_S, Qj = self.get_current(BS=BS, S=S, lamb=self.lamb)
-        return self.get_results(BS=BS, j_S=j_S, S=S, Qj=Qj, lamb=self.lamb)
+        solver, bs = self.get_regcoil_solver(S=S)
+        phi_mn = solver.solve_lambda(lamb=lamb)
+        return self.get_results(bs=bs, solver=solver, phi_mn=phi_mn, S=S, lamb=self.lamb)
 
     def get_current_result(self, S):
         BS = self.get_BS_norm(S)
         return self.get_current(BS=BS, S=S, lamb=self.lamb)[0]
 
-    def get_BS_norm(self, S, normal_b_field: bool = True):
+    def get_bs_operator(self, S, normal_b_field: bool = True):
         Sp = self.Sp
 
         BS = biot_et_savart(Sp.xyz, S.xyz, S.current_op, S.jac_xyz, dudv=S.dudv)
@@ -129,15 +169,14 @@ class EMCost(AbstractCost):
             BS = np.einsum("tpqd,dpq->tpq", BS, Sp.normal_unit)
         if self.use_mu_0_factor:
             BS *= mu_0_fac
-        return BS
+        return BiotSavartOperator(
+            bs=BS,
+            use_mu_0_factor=self.use_mu_0_factor,
+        )
 
-    def get_b_field(self, BS, j_S):
-        b_field = np.einsum("hpqd,h", BS, j_S)
-        if not self.use_mu_0_factor:
-            b_field *= mu_0_fac
-        return b_field
-
-    def get_current(self, BS, S, lamb: float = 0.0):
+    def get_regcoil_solver(self, S):
+        bs = self.get_bs_operator(S)
+        BS = bs.bs
         Sp = self.Sp
 
         # Now we have to compute the best current components.
@@ -178,63 +217,50 @@ class EMCost(AbstractCost):
         else:
             matrix_reg = Qj[2:, 2:]
 
-        j_S = self.solve_lambda(
-            matrix=matrix,
-            matrix_reg=matrix_reg,
-            rhs=RHS,
-            rhs_reg=RHS_lamb,
-            lamb=lamb,
+        return (
+            RegCoilSolver(
+                current_cov=tools.compute_Qj(S.current_op, S.jac_xyz, S.ds),
+                matrix=matrix,
+                matrix_reg=matrix_reg,
+                rhs=RHS,
+                rhs_reg=RHS_lamb,
+                net_currents=self.net_currents,
+                use_mu_0_factor=self.use_mu_0_factor,
+            ),
+            bs,
         )
-        # if not self.use_mu_0_factor:
-        #     j_S *= mu_0_fac
-        return j_S, Qj
 
-    def get_results(self, BS, j_S, S, Qj, lamb: float = 0.0):
+    def get_results(self, bs, solver, phi_mn, S, lamb: float = 0.0):
         if self.use_mu_0_factor:
             fac = 1
         else:
             fac = mu_0_fac
         lamb /= fac**2
 
-        j_3D = S.get_j_3D(j_S)
+        j_3D = S.get_j_3D(phi_mn)
         metrics = {}
-        bnorm_pred = self.get_b_field(BS[:, :, :, None], j_S)[0]
+        bnorm_pred = bs.get_b_field(phi_mn)
+
         B_err = bnorm_pred - self.bnorm * fac
         metrics["err_max_B"] = np.max(np.abs(B_err))
         metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
         metrics["cost_B"] = self.num_tor_symmetry * np.sum(B_err**2 * self.Sp.ds) / self.Sp.npts
 
-        metrics["cost_J"] = self.num_tor_symmetry * np.einsum("i,ij,j->", j_S, Qj, j_S)
+        metrics["cost_J"] = self.num_tor_symmetry * np.einsum("i,ij,j->", phi_mn, solver.current_cov, phi_mn)
 
-        j_2D = S.get_j_surface(j_S)
+        j_2D = S.get_j_surface(phi_mn)
         metrics["min_j_pol"] = j_2D[:, :, 0].min()
 
         metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
         return metrics["cost"], metrics
 
-    def solve_lambda(self, matrix, matrix_reg, rhs, rhs_reg=None, lamb: float = 0.0):
-        if not self.use_mu_0_factor:
-            lamb /= mu_0_fac**2
-
-        if rhs_reg is not None:
-            rhs = rhs - lamb * rhs_reg
-
-        j_S_R = np.linalg.solve(matrix + lamb * matrix_reg, rhs)
-
-        if self.net_currents is not None:
-            j_S = np.concatenate((self.net_currents, j_S_R))
-        else:
-            j_S = j_S_R
-
-        return j_S
-
     def cost_multiple_lambdas(self, S, lambdas):
-        BS = self.get_BS_norm(S)
+        solver, bs = self.get_regcoil_solver(S=S)
         results = {}
         for lamb in lambdas:
-            j_S, Qj = self.get_current(BS=BS, S=S, lamb=lamb)
-            results[float(lamb)] = to_float(self.get_results(BS=BS, j_S=j_S, S=S, Qj=Qj, lamb=lamb)[1])
+            phi_mn = solver.solve_lambda(lamb=lamb)
+            results[float(lamb)] = to_float(self.get_results(bs=bs, solver=solver, phi_mn=phi_mn, S=S, lamb=lamb)[1])
 
         return pd.DataFrame(results).T
 

@@ -95,22 +95,20 @@ def test_compare_to_regcoil(use_mu_0_factor):
     assert np.all(np.abs(metrics.cost_J.values[1:] - chi_j[1:]) / chi_j[1:] < 5e-6)
 
     em_cost.lamb = lambdas[-1]
-    j_s = em_cost.get_current_result(cws)
+    solver = em_cost.get_regcoil_solver(cws)[0]
+    phi_mn = solver.solve_lambda(lambdas[-1])
     js_reg = file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]
-    assert np.abs(js_reg - j_s[2:]).max() / js_reg.max() < 1e-14
+    assert np.abs(js_reg - phi_mn[2:]).max() / js_reg.max() < 1e-14
 
     # however the result is no more the same for very low lambdas
-    em_cost.lamb = lambdas[2]
-    j_s = em_cost.get_current_result(cws)
+    phi_mn = solver.solve_lambda(lambdas[2])
     js_reg = file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]
-    assert np.abs(js_reg - j_s[2:]).max() / js_reg.max() < 2e-4
-    j_3d = cws.get_j_3D(j_s)
+    assert np.abs(js_reg - phi_mn[2:]).max() / js_reg.max() < 2e-4
+    j_3d = cws.get_j_3D(phi_mn)
 
-    em_cost.lamb = 1e-30
-    em_cost.cost(cws)
-    j_s = em_cost.get_current_result(cws)
-    BS = em_cost.get_BS_norm(cws, normal_b_field=False)
-    b_field = em_cost.get_b_field(BS, j_s)
+    phi_mn = solver.solve_lambda(1e-30)
+    bs = em_cost.get_bs_operator(cws, normal_b_field=False)
+    b_field = bs.get_b_field(phi_mn)
     from stellacode.tools.vmec import VMECIO
 
     vmec = VMECIO(str(config["geometry"]["path_plasma"]), ntheta=32, nzeta=34 * 3)
