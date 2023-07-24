@@ -120,16 +120,12 @@ class EMCost(AbstractCost):
         BS = self.get_BS_norm(S)
         return self.get_current(BS=BS, S=S, lamb=self.lamb)[0]
 
-    def get_BS_norm(self, S):
+    def get_BS_norm(self, S, normal_b_field: bool=True):
         Sp = self.Sp
-        r_plasma = Sp.xyz
 
-        xyz_coil = S.xyz
-        jac_xyz = S.jac_xyz
-
-        BS = biot_et_savart(r_plasma, xyz_coil, S.current_op, jac_xyz, dudv=S.dudv)
-
-        BS = np.einsum("tpqd,dpq->tpq", BS, Sp.normal_unit)
+        BS = biot_et_savart(Sp.xyz, S.xyz, S.current_op, S.jac_xyz, dudv=S.dudv)
+        if normal_b_field:
+            BS = np.einsum("tpqd,dpq->tpq", BS, Sp.normal_unit)
         if self.use_mu_0_factor:
             BS *= mu_0_fac
         return BS
