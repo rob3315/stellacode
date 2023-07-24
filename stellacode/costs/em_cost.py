@@ -125,7 +125,7 @@ class EMCost(AbstractCost):
         if Sp is None:
             Sp = FourierSurface.from_file(plasma_config.path_plasma, integration_par=integration_par)
 
-        vmec = VMECIO(plasma_config.path_plasma)
+        vmec = VMECIO.from_grid(plasma_config.path_plasma)
 
         num_tor_symmetry = vmec.nfp
 
@@ -154,12 +154,8 @@ class EMCost(AbstractCost):
 
     def cost(self, S):
         solver, bs = self.get_regcoil_solver(S=S)
-        phi_mn = solver.solve_lambda(lamb=lamb)
+        phi_mn = solver.solve_lambda(lamb=self.lamb)
         return self.get_results(bs=bs, solver=solver, phi_mn=phi_mn, S=S, lamb=self.lamb)
-
-    def get_current_result(self, S):
-        BS = self.get_BS_norm(S)
-        return self.get_current(BS=BS, S=S, lamb=self.lamb)[0]
 
     def get_bs_operator(self, S, normal_b_field: bool = True):
         Sp = self.Sp
@@ -244,7 +240,7 @@ class EMCost(AbstractCost):
         B_err = bnorm_pred - self.bnorm * fac
         metrics["err_max_B"] = np.max(np.abs(B_err))
         metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
-        metrics["cost_B"] = self.num_tor_symmetry * np.sum(B_err**2 * self.Sp.ds) / self.Sp.npts
+        metrics["cost_B"] = self.Sp.integrate(B_err**2)
 
         metrics["cost_J"] = self.num_tor_symmetry * np.einsum("i,ij,j->", phi_mn, solver.current_cov, phi_mn)
 
@@ -263,6 +259,16 @@ class EMCost(AbstractCost):
             results[float(lamb)] = to_float(self.get_results(bs=bs, solver=solver, phi_mn=phi_mn, S=S, lamb=lamb)[1])
 
         return pd.DataFrame(results).T
+
+    def get_current_weights(self, S):
+        solver, bs = self.get_regcoil_solver(S=S)
+        return solver.solve_lambda(lamb=self.lamb)
+
+    def get_b_field(self, coil_surf):
+        solver = self.get_regcoil_solver(coil_surf)[0]
+        phi_mn = solver.solve_lambda(self.lamb)
+        bs = self.get_bs_operator(coil_surf, normal_b_field=False)
+        return bs.get_b_field(phi_mn)
 
 
 def to_float(dict_):
@@ -287,3 +293,18 @@ def biot_et_savart(
     B = np.einsum("ijpqa,ijbt, dab->tpqd", K, sc_jac, tools.eijk)
 
     return B * dudv
+
+
+def get_b_field_err(em_cost, coil_surf, err: str = "rmse_n"):
+    b_field = em_cost.get_b_field(coil_surf)
+    vmec = VMECIO.from_grid(
+        em_cost.Sp.file_path,
+        ntheta=em_cost.Sp.integration_par.num_points_u,
+        nzeta=em_cost.Sp.integration_par.num_points_v * em_cost.Sp.num_tor_symmetry,
+        surface_label=-1,
+    )
+    b_field_gt = np.transpose(vmec.b_cartesian[-1, :, : em_cost.Sp.integration_par.num_points_v], (2, 0, 1))
+    if err == "rmse_n":
+        return np.sqrt(em_cost.Sp.integrate((b_field - b_field_gt) ** 2) / em_cost.Sp.area)
+    elif err == "max":
+        return np.max(np.linalg.norm(b_field_gt - b_field, axis=0))

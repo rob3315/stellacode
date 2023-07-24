@@ -1,13 +1,13 @@
 import typing as tp
 
+import numpy as np
+from pydantic import BaseModel
 from scipy.constants import mu_0
 from scipy.io import netcdf_file
 
-from stellacode import np
-from pydantic import BaseModel, Extra
-from jax import Array
-from jax.typing import ArrayLike
-from functools import cache
+from .coordinates import cylindrical_to_cartesian, vmec_to_cylindrical
+
+# from functools import cache
 
 
 def _dot(coeff, cossin):
@@ -15,9 +15,9 @@ def _dot(coeff, cossin):
 
 
 class Grid(BaseModel):
-    theta: ArrayLike
-    zeta: ArrayLike
-    surf_labels: tp.Optional[ArrayLike] = None
+    theta: np.ndarray
+    zeta: np.ndarray
+    surf_labels: tp.Optional[np.ndarray] = None
 
     class Config:
         arbitrary_types_allowed = True
@@ -26,14 +26,14 @@ class Grid(BaseModel):
 
 
 class VMECIO:
-    def __init__(self, vmec_file: str, ntheta: int = 10, nzeta: int = 10, n_surf_label: tp.Optional[int] = None):
+    def __init__(self, vmec_file: str, grid: Grid):
         self.file = netcdf_file(vmec_file)
-        self.grid = get_grid(self.file, ntheta=ntheta, nzeta=nzeta, n_surf_label=n_surf_label)
+        self.grid = grid
 
     def get_var(self, key: str, cast_type=float):
         return self.file.variables[key][()].astype(cast_type)
 
-    @cache
+    # @cache
     def get_val(
         self,
         key: str,
@@ -94,14 +94,13 @@ class VMECIO:
     ):
         if covariant:
             prefix = "bsub"
+            bs = self.get_val(f"bsubs")
         else:
             prefix = "bsup"
+            lt, lz = self.grid.theta.shape
+            bs = np.zeros((self.grid.surf_labels.shape[0], lt, lz))
         return np.stack(
-            (
-                self.get_val(f"{prefix}u"),
-                self.get_val(f"{prefix}v"),
-                self.get_val(f"bsubs"),
-            ),
+            (self.get_val(f"{prefix}u"), self.get_val(f"{prefix}v"), bs),
             axis=-1,
         )
 
@@ -189,40 +188,24 @@ class VMECIO:
         bvco = self.get_var("bvco", float)
         return 2 * np.pi / mu_0 * (1.5 * bvco[-1] - 0.5 * bvco[-2])
 
-
-def cylindrical_to_cartesian(vector_field: Array, phi: Array):
-    vr, vphi, vz = vector_field[..., 0], vector_field[..., 1], vector_field[..., 2]
-    return np.stack(
-        (
-            vr * np.cos(phi) - vphi * np.sin(phi),
-            vr * np.sin(phi) + vphi * np.cos(phi),
-            vz,
-        ),
-        axis=-1,
-    )
-
-
-def vmec_to_cylindrical(vector_field: Array, rphiz: Array, grad_rphiz: Array):
-    r_grad = grad_rphiz[..., 0, :]
-    z_grad = grad_rphiz[..., 2, :]
-    radius = rphiz[..., 0]
-
-    return np.stack(
-        (
-            np.einsum("tzmc,tzmc->tzm", vector_field[..., :2], r_grad),
-            radius * vector_field[..., 1],
-            np.einsum("tzmc,tzmc->tzm", vector_field[..., :2], z_grad),
-        ),
-        axis=-1,
-    )
-
-
-def get_grid(file_, ntheta: int, nzeta: int, n_surf_label: tp.Optional[int] = None):
-    theta_ = np.linspace(0, 2 * np.pi, num=ntheta)
-    zeta_ = np.linspace(0, 2 * np.pi, num=nzeta)
-    zeta, theta = np.meshgrid(zeta_, theta_)
-    ns = file_.variables["ns"][()].astype(int)
-    if n_surf_label is None:
-        n_surf_label = ns
-    surf_labels = np.linspace(0, ns - 1, num=n_surf_label, endpoint=True).round().astype(int)
-    return Grid(theta=theta, zeta=zeta, surf_labels=surf_labels)
+    @classmethod
+    def from_grid(
+        cls,
+        file_path,
+        ntheta: int=10,
+        nzeta: int=10,
+        n_surf_label: tp.Optional[int] = None,
+        surface_label: tp.Optional[int] = None,
+    ):
+        file_ = netcdf_file(file_path)
+        theta_ = np.linspace(0, 2 * np.pi, num=ntheta)
+        zeta_ = np.linspace(0, 2 * np.pi, num=nzeta)
+        zeta, theta = np.meshgrid(zeta_, theta_)
+        ns = file_.variables["ns"][()].astype(int)
+        if surface_label is None:
+            if n_surf_label is None:
+                n_surf_label = ns
+            surf_labels = np.linspace(0, ns - 1, num=n_surf_label, endpoint=True).round().astype(int)
+        else:
+            surf_labels = np.array([surface_label])
+        return cls(file_path, grid=Grid(theta=theta, zeta=zeta, surf_labels=surf_labels))

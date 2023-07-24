@@ -7,7 +7,7 @@ import pytest
 from scipy.io import netcdf_file
 
 from stellacode import np
-from stellacode.costs.em_cost import EMCost
+from stellacode.costs.em_cost import EMCost, get_b_field_err
 from stellacode.surface.cylindrical import CylindricalSurface
 from stellacode.surface.imports import (
     get_current_potential,
@@ -62,7 +62,7 @@ def test_reproduce_regcoil_axisym():
     chi_j = file_.variables["chi2_K"][()].astype(float)
     assert np.all((np.abs(chi_j - metrics.cost_J.values)) / chi_j < 5e-3)
 
-    vmec = VMECIO("test/data/w7x/wout_d23p4_tm.nc")
+    vmec = VMECIO.from_grid("test/data/w7x/wout_d23p4_tm.nc")
     assert np.abs(file_.variables["curpol"][()].astype(float) - vmec.curpol) < 1e-19
     pol_cur = file_.variables["net_poloidal_current_Amperes"][()].astype(float)
     assert np.abs(pol_cur - vmec.net_poloidal_current) / pol_cur < 1e-9
@@ -109,12 +109,19 @@ def test_compare_to_regcoil(use_mu_0_factor):
     phi_mn = solver.solve_lambda(1e-30)
     bs = em_cost.get_bs_operator(cws, normal_b_field=False)
     b_field = bs.get_b_field(phi_mn)
-    from stellacode.tools.vmec import VMECIO
 
-    vmec = VMECIO(str(config["geometry"]["path_plasma"]), ntheta=32, nzeta=34 * 3)
-    b_field_gt = vmec.b_cartesian[-1, :, :34]
-    # the vectorial b field is roughly reproduced
-    assert np.max(np.linalg.norm(b_field_gt - np.transpose(b_field, (1, 2, 0)), axis=-1)) < 0.27
+    em_cost.lamb = 1e-30
+    assert get_b_field_err(em_cost, cws) < 0.15
+
+    # # for comparing the errors
+    # b_err = np.linalg.norm(b_field_gt - np.transpose(b_field, (1, 2, 0)), axis=-1)
+    # import matplotlib.pyplot as plt
+    # import seaborn as sns
+    # f, axes=plt.subplots(3,1)
+    # sns.heatmap(b_err, ax=axes[0])
+    # sns.heatmap(np.linalg.norm(b_field_gt, axis=-1), ax=axes[1])
+    # sns.heatmap(np.linalg.norm(np.transpose(b_field, (1, 2, 0)), axis=-1), ax=axes[2])
+    # plt.show()
 
 
 def test_regcoil_with_axisymmetric():
@@ -162,7 +169,7 @@ def test_pwc_fit():
 
     new_surface = fit_to_surface(S, em_cost.Sp)
 
-    # phi_mn = em_cost.get_current_result(new_surface)
+    # phi_mn = em_cost.get_current_weights(new_surface)
     # j_3d = new_surface.get_j_3D(phi_mn)
     # S.plot(only_one_period=True, vector_field=j_3d)
     # new_surface.surface.plot(only_one_period=True,vector_field=j_3d)
@@ -214,7 +221,7 @@ def test_regcoil_with_pwc():
     assert abs(new_surface.get_min_distance(surf.xyz) - 0.1) < 1e-2
 
     # compute regcoil metrics
-    phi_mn = em_cost.get_current_result(S)
+    phi_mn = em_cost.get_current_weights(S)
     new_surface.plot_j_surface(phi_mn, num_rot=1)
 
 
@@ -246,7 +253,7 @@ def test_regcoil_with_pwc_no_current_at_bc():
     new_surface = fit_to_surface(coil_surf, em_cost.Sp)
     new_surface.update_params(radius=new_surface.surface.radius + 0.3)
 
-    phi_mn = em_cost.get_current_result(new_surface)
+    phi_mn = em_cost.get_current_weights(new_surface)
     j_s = new_surface.get_j_surface(phi_mn)
 
     # exactly at the boundary, the current is zero

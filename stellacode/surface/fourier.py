@@ -31,6 +31,7 @@ class FourierSurface(AbstractSurface):
     nf: ArrayLike
     Rmn: ArrayLike
     Zmn: ArrayLike
+    file_path: str
 
     trainable_params: tp.List[str] = [
         "Rmn",
@@ -48,7 +49,7 @@ class FourierSurface(AbstractSurface):
         load file with the format m,n,Rmn,Zmn"""
 
         if path_surf[-3::] == ".nc":
-            vmec = VMECIO(path_surf)
+            vmec = VMECIO.from_grid(path_surf)
             m = vmec.get_var("xm", int)
             n = -vmec.get_var("xn", int) / vmec.nfp
             Rmn = vmec.get_var("rmnc", float)[-1]
@@ -89,6 +90,7 @@ class FourierSurface(AbstractSurface):
             nf=n,
             integration_par=integration_par,
             num_tor_symmetry=n_fp,
+            file_path=path_surf,
         )
 
     def get_xyz(self, uv):

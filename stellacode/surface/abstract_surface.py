@@ -150,6 +150,13 @@ class AbstractSurface(BaseModel):
     def get_min_distance(self, xyz):
         return get_min_dist(self.xyz, xyz)
 
+    def integrate(self, field):
+        return np.sum(self.ds * field) * self.dudv * self.num_tor_symmetry
+
+    @property
+    def area(self):
+        return np.sum(self.ds) * self.dudv * self.num_tor_symmetry
+
     def expand_for_plot_part(self):
         """Returns X, Y, Z arrays of one field period, adding redundancy of first column."""
         import numpy as np
@@ -175,7 +182,7 @@ class AbstractSurface(BaseModel):
             )
             points_.append(np.einsum("ij,uvj->uvi", rotation_matrix, points))
         # import pdb;pdb.set_trace()
-        # from stellacode.tools import get_rot_tensor 
+        # from stellacode.tools import get_rot_tensor
         # rot_tensor = get_rot_tensor(self.num_tor_symmetry)
         # points_2 = np.reshape(np.einsum("opq,ijq->iojp", rot_tensor, points), (49, -1, 3),)
 
@@ -194,7 +201,7 @@ class AbstractSurface(BaseModel):
         color: tp.Optional[str] = None,
         colormap: str = "Wistia",
         detach_parts: bool = False,
-        quiver_kwargs: dict=dict(
+        quiver_kwargs: dict = dict(
             line_width=0.5,
             scale_factor=0.1,
         ),
@@ -238,7 +245,7 @@ class AbstractSurface(BaseModel):
                     vector_field[:, index : (index + max_tor), 0],
                     vector_field[:, index : (index + max_tor), 1],
                     vector_field[:, index : (index + max_tor), 2],
-                    **quiver_kwargs
+                    **quiver_kwargs,
                 )
 
                 index += max_tor
