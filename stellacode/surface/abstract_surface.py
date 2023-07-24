@@ -174,6 +174,11 @@ class AbstractSurface(BaseModel):
                 ]
             )
             points_.append(np.einsum("ij,uvj->uvi", rotation_matrix, points))
+        # import pdb;pdb.set_trace()
+        # from stellacode.tools import get_rot_tensor 
+        # rot_tensor = get_rot_tensor(self.num_tor_symmetry)
+        # points_2 = np.reshape(np.einsum("opq,ijq->iojp", rot_tensor, points), (49, -1, 3),)
+
         if detach_parts:
             return points_
         else:

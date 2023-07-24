@@ -13,6 +13,18 @@ from stellacode.surface.imports import get_cws, get_plasma_surface
 from stellacode.definitions import PlasmaConfig
 from stellacode.tools.vmec import VMECIO
 
+from pydantic import BaseModel, Extra
+
+
+class BiotSavartOperator(BaseModel):
+    """Interface for any cost"""
+
+    class Config:
+        arbitrary_types_allowed = True
+        extra = Extra.allow  # allow extra fields
+
+    bs_tensor: ArrayLike
+    Qj: ArrayLike
 
 class EMCost(AbstractCost):
     """Main cost coming from the inverse problem
