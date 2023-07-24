@@ -9,7 +9,7 @@ from stellacode.costs.em_cost import EMCost
 from stellacode.surface import IntegrationParams
 
 
-def test_compare_axisymmetric_toroidal():
+def test_compare_axisymmetric_vs_cylindrical():
     path_config = "test/data/w7x/config.ini"
     config = configparser.ConfigParser()
     config.read(path_config)
@@ -22,15 +22,15 @@ def test_compare_axisymmetric_toroidal():
     current = Current(num_pol=8, num_tor=8)
     n_pol_coil = 32
     n_tor_coil = 32
-
+    num_tor_symmetry = em_cost.Sp.num_tor_symmetry * rotate_diff_current
     surf_pwc = RotatedSurface(
         surface=CylindricalSurface(
             integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil // rotate_diff_current),
-            num_tor_symmetry=em_cost.Sp.num_tor_symmetry * rotate_diff_current,
+            num_tor_symmetry=num_tor_symmetry,
             make_joints=False,
             distance=major_radius,
             radius=minor_radius,
-            axis_angle=1.57079631,
+            axis_angle=1.57079631-(np.pi / 2 + np.pi / num_tor_symmetry),
         ),
         num_tor_symmetry=em_cost.Sp.num_tor_symmetry,
         rotate_diff_current=rotate_diff_current,
