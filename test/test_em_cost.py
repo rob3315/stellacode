@@ -104,6 +104,19 @@ def test_compare_to_regcoil(use_mu_0_factor):
     j_s = em_cost.get_current_result(cws)
     js_reg = file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]
     assert np.abs(js_reg - j_s[2:]).max() / js_reg.max() < 2e-4
+    j_3d = cws.get_j_3D(j_s)
+
+    em_cost.lamb = 1e-30
+    em_cost.cost(cws)
+    j_s = em_cost.get_current_result(cws)
+    BS = em_cost.get_BS_norm(cws, normal_b_field=False)
+    b_field = em_cost.get_b_field(BS, j_s)
+    from stellacode.tools.vmec import VMECIO
+
+    vmec = VMECIO(str(config["geometry"]["path_plasma"]), ntheta=32, nzeta=34 * 3)
+    b_field_gt = vmec.b_cartesian[-1, :, :34]
+    # the vectorial b field is roughly reproduced
+    assert np.max(np.linalg.norm(b_field_gt - np.transpose(b_field, (1, 2, 0)), axis=-1)) < 0.27
 
 
 def test_regcoil_with_axisymmetric():

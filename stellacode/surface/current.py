@@ -1,6 +1,7 @@
 import numpy as np
 from pydantic import BaseModel, Extra
 from .abstract_surface import IntegrationParams
+import pandas as pd
 
 
 def _stack(a, b):
@@ -82,15 +83,27 @@ class Current(AbstractCurrent):
 
     def plot_phi_mn(self, phi_mn):
         shape = (self.num_pol, self.num_tor * 2 + 1)
-        ph_sin = np.reshape(phi_mn[self.num_tor + 2 : self.num_tor + 2 + np.prod(shape)], shape)
-        ph_cos = np.reshape(phi_mn[self.num_tor * 2 + 2 + np.prod(shape) :], shape)
+        col = pd.Index(np.arange(-self.num_tor, (self.num_tor + 1)), name="toroidal")
+        ind = pd.Index(np.arange(1, self.num_pol + 1), name="poloidal")
+        ph_sin = pd.DataFrame(
+            np.reshape(phi_mn[self.num_tor + 2 : self.num_tor + 2 + np.prod(shape)], shape),
+            columns=col,
+            index=ind,
+        )
+        ph_cos = pd.DataFrame(
+            np.reshape(phi_mn[self.num_tor * 2 + 2 + np.prod(shape) :], shape),
+            columns=col,
+            index=ind,
+        )
+
         import matplotlib.pyplot as plt
         import seaborn as sns
 
-        ax = plt.subplot(211, title="sin coeffs")
-        sns.heatmap(ph_sin, cmap="seismic", center=0, ax=ax)
-        ax = plt.subplot(212, title="cos coeffs")
-        sns.heatmap(ph_cos, cmap="seismic", center=0, ax=ax)
+        f, axs = plt.subplots(2, 1, figsize=(8, 8))
+        sns.heatmap(ph_sin, cmap="seismic", center=0, ax=axs[0])
+        axs[0].set_title("sin coefficients")
+        sns.heatmap(ph_cos, cmap="seismic", center=0, ax=axs[1])
+        axs[0].set_title("cos coefficients")
 
 
 class CurrentZeroTorBC(AbstractCurrent):

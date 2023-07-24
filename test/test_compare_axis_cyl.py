@@ -60,4 +60,4 @@ def test_compare_axisymmetric_vs_cylindrical():
     # print(np.abs(surf_pwc.normal_unit - surf_axi.normal_unit).max() / np.abs(surf_axi.normal_unit).mean())
     # print(np.abs(surf_pwc.npts - surf_axi.npts))
 
-    assert np.abs(em_cost.cost(surf_pwc)[1]["cost_B"] - em_cost.cost(surf_axi)[1]["cost_B"]) < 1e-11
+    np.testing.assert_allclose(em_cost.cost(surf_pwc)[1]["cost_B"], em_cost.cost(surf_axi)[1]["cost_B"])

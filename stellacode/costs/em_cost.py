@@ -26,6 +26,7 @@ class BiotSavartOperator(BaseModel):
     bs_tensor: ArrayLike
     Qj: ArrayLike
 
+
 class EMCost(AbstractCost):
     """Main cost coming from the inverse problem
 
@@ -120,7 +121,7 @@ class EMCost(AbstractCost):
         BS = self.get_BS_norm(S)
         return self.get_current(BS=BS, S=S, lamb=self.lamb)[0]
 
-    def get_BS_norm(self, S, normal_b_field: bool=True):
+    def get_BS_norm(self, S, normal_b_field: bool = True):
         Sp = self.Sp
 
         BS = biot_et_savart(Sp.xyz, S.xyz, S.current_op, S.jac_xyz, dudv=S.dudv)
@@ -131,7 +132,10 @@ class EMCost(AbstractCost):
         return BS
 
     def get_b_field(self, BS, j_S):
-        return np.einsum("hpqd,h", BS, j_S)
+        b_field = np.einsum("hpqd,h", BS, j_S)
+        if not self.use_mu_0_factor:
+            b_field *= mu_0_fac
+        return b_field
 
     def get_current(self, BS, S, lamb: float = 0.0):
         Sp = self.Sp
@@ -181,7 +185,8 @@ class EMCost(AbstractCost):
             rhs_reg=RHS_lamb,
             lamb=lamb,
         )
-
+        # if not self.use_mu_0_factor:
+        #     j_S *= mu_0_fac
         return j_S, Qj
 
     def get_results(self, BS, j_S, S, Qj, lamb: float = 0.0):
@@ -193,16 +198,16 @@ class EMCost(AbstractCost):
 
         j_3D = S.get_j_3D(j_S)
         metrics = {}
-        bnorm_pred = np.einsum("hpq,h", BS, j_S)
-        B_err = bnorm_pred - self.bnorm
-        metrics["err_max_B"] = np.max(np.abs(B_err)) * fac
-        metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2)) * fac
-        metrics["cost_B"] = self.num_tor_symmetry * np.sum(B_err**2 * self.Sp.ds) / self.Sp.npts * fac**2
+        bnorm_pred = self.get_b_field(BS[:, :, :, None], j_S)[0]
+        B_err = bnorm_pred - self.bnorm * fac
+        metrics["err_max_B"] = np.max(np.abs(B_err))
+        metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
+        metrics["cost_B"] = self.num_tor_symmetry * np.sum(B_err**2 * self.Sp.ds) / self.Sp.npts
 
         metrics["cost_J"] = self.num_tor_symmetry * np.einsum("i,ij,j->", j_S, Qj, j_S)
 
         j_2D = S.get_j_surface(j_S)
-        metrics["min_j_pol"] = j_2D[:,:,0].min()
+        metrics["min_j_pol"] = j_2D[:, :, 0].min()
 
         metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
