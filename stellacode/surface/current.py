@@ -137,14 +137,14 @@ class CurrentZeroTorBC(AbstractCurrent):
         # to ensure proper BC
         if self.sin_basis:
             # current for Phi=sin(2*np.pi*xn*v)
-            cosu0 = np.cos(np.pi * xn0 * vgrid)
+            cosu0 = np.cos(2*np.pi * xn0 * vgrid)
             dphi.append(_stack(xn0 * cosu0, np.zeros_like(xn0 * cosu0)))
             # current for Phi=sin(2*np.pi*xm*u)*sin(2*np.pi*xn*v)
             dphi.append(_stack(xn * sinu * cosv, -xm * cosu * sinv))
 
         if self.cos_basis:
             # current for Phi=cos(2*np.pi*xn*v)
-            sinu0 = np.sin(np.pi * xn0 * vgrid)
+            sinu0 = np.sin(2*np.pi * xn0 * vgrid)
             dphi.append(_stack(-xn0 * sinu0, np.zeros_like(xn0 * sinu0)))
             # current for Phi=cos(2*np.pi*xm*u)*sin(2*np.pi*xn*v)
             dphi.append(_stack(xn * cosu * cosv, xm * sinu * sinv))
