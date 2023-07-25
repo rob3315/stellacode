@@ -149,12 +149,11 @@ class FourierSurface(AbstractSurface):
         th = np.concatenate((th, th[:1] + 2 * np.pi))
         # rth_s = rth_s.at[-1, 1].set(rth_s[-1, 1] + 2 * np.pi)
         # interp = CubicSpline(th, xy, bc_type="periodic")
-        interp = interp1d(th, xy, kind="linear", axis=0)
-
+        # interp = interp1d(th, xy, kind="linear", axis=0)
+        interp = CubicSpline(th, xy, bc_type="periodic")
         def fun(theta):
             return to_polar(*interp(theta))[0]
-
-        # fun = CubicSpline(rth_s[:, 1], rth_s[:, 0], bc_type="periodic")
+        
         # fun = lambda x: onp.interp(x, rth_s[:, 1], rth_s[:, 0], period=2*np.pi)
 
         return fourier_coefficients(th.min(), th.min() + 2 * np.pi, num_coeff, fun)
@@ -169,7 +168,13 @@ class FourierSurface(AbstractSurface):
             fourier_coeffs=coefs / minor_radius,
         )
 
-    def plot_cross_sections(self, num: int = 5, ax=None):
+    def plot_cross_sections(
+        self,
+        num: int = 5,
+        convex_envelope: bool = True,
+        concave_envelope: bool = False,
+        ax=None,
+    ):
         import matplotlib.pyplot as plt
 
         if ax is None:
@@ -180,9 +185,10 @@ class FourierSurface(AbstractSurface):
         for i in range(0, num_phi_s, num_phi_s // num):
             rphi = np.concatenate((rtphi[:, i, :], rtphi[:1, i, :]), axis=0)
             ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] + [i / num_phi_s])
-
-        env = self.get_axisymmetric_envelope(convex=True)
-        ax.plot(env[:, 1], env[:, 0], c="r", linewidth=3)
-        env = self.get_axisymmetric_envelope(convex=False)
-        ax.plot(env[:, 1], env[:, 0], c="g", linewidth=3)
+        if convex_envelope:
+            env = self.get_axisymmetric_envelope(convex=True)
+            ax.plot(env[:, 1], env[:, 0], c="r", linewidth=3)
+        if concave_envelope:
+            env = self.get_axisymmetric_envelope(convex=False)
+            ax.plot(env[:, 1], env[:, 0], c="g", linewidth=3)
         return ax

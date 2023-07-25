@@ -21,6 +21,13 @@ def cartesian_to_toroidal(xyz, tore_radius: float, height: float = 0.0):
     return np.stack((r_tor, theta, rphiz[..., 1]), axis=-1)
 
 
+def cartesian_to_shifted_cylindrical(xyz, angle: float, distance: float = 0.0):
+    x_shift, y_shift = from_polar(distance, angle)
+    x, y, z = xyz[..., 0] - x_shift, xyz[..., 1] - y_shift, xyz[..., 2]
+    r, phi = to_polar(x, y)
+    return np.stack((r, phi, z), axis=-1)
+
+
 def cartesian_to_cylindrical(xyz):
     x, y, z = xyz[..., 0], xyz[..., 1], xyz[..., 2]
     r, phi = to_polar(x, y)
