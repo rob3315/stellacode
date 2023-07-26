@@ -97,10 +97,11 @@ class AbstractSurface(BaseModel):
     def get_xyz_on_grid(self, grid):
         grid_ = np.reshape(grid, (2, -1))
         _, lu, lv = grid.shape
-        surf = jax.vmap(self.get_xyz, in_axes=1, out_axes=-1)
+        surf = jax.vmap(self.get_xyz, in_axes=1, out_axes=0)
         surf_res = surf(grid_)
         lu, lv = self.nbpts
-        xyz = np.transpose(np.reshape(surf_res, (3, lu, lv)), (1, 2, 0))
+        xyz = np.reshape(surf_res, (lu, lv, 3))
+
         return xyz
 
     def get_jac_xyz_on_grid(self, grid):
@@ -108,9 +109,10 @@ class AbstractSurface(BaseModel):
         _, lu, lv = grid.shape
 
         jac_surf = jax.jacobian(self.get_xyz, argnums=0)
-        jac_surf_vmap = jax.vmap(jac_surf, in_axes=1, out_axes=-1)
+        jac_surf_vmap = jax.vmap(jac_surf, in_axes=1, out_axes=0)
         jac_surf_res = jac_surf_vmap(grid_)
-        jac_xyz = np.reshape(np.transpose(jac_surf_res, (1, 0, 2)), (2, 3, lu, lv))
+        jac_xyz = np.reshape(jac_surf_res, (lu, lv, 3, 2))
+
         return jac_xyz
 
     def get_hess_xyz_on_grid(self, grid):
@@ -118,9 +120,10 @@ class AbstractSurface(BaseModel):
         _, lu, lv = grid.shape
 
         hess_surf = jax.hessian(self.get_xyz, argnums=0, holomorphic=False)
-        hess_surf_vmap = jax.vmap(hess_surf, in_axes=1, out_axes=-1)
+        hess_surf_vmap = jax.vmap(hess_surf, in_axes=1, out_axes=0)
         hess_surf_res = hess_surf_vmap(grid_)
-        return np.reshape(hess_surf_res, (3, 2, 2, lu, lv))
+
+        return np.reshape(hess_surf_res, (lu, lv, 3, 2, 2))
 
     def compute_surface_attributes(self, deg: int = 2):
         """compute surface elements used in the shape optimization up
@@ -134,14 +137,17 @@ class AbstractSurface(BaseModel):
         # We also compute surface element dS and derivatives dS_u and dS_v:
         if deg >= 1:
             self.jac_xyz = self.get_jac_xyz_on_grid(uv_grid)
-
-            N = np.cross(self.jac_xyz[0], self.jac_xyz[1], 0, 0, 0)
-            self.normal = N
-            self.ds = np.linalg.norm(N, axis=0)
-            self.normal_unit = N / self.ds  # normal inward unit vector
+            self.normal = np.cross(self.jac_xyz[..., 0], self.jac_xyz[..., 1], -1, -1, -1)
+            self.ds = np.linalg.norm(self.normal, axis=-1)
+            self.normal_unit = self.normal / self.ds[:, :, None]  # normal inward unit vector
 
         if deg >= 2:
             hess = self.get_hess_xyz_on_grid(uv_grid)
+            # self.principles = get_principles(
+            #     hess_xyz=np.transpose(hess, (2, 3, 4, 0, 1)),
+            #     jac_xyz=np.transpose(self.jac_xyz, (2, 3, 0, 1)),
+            #     normal_unit=np.transpose(self.normal_unit, (2, 0, 1)),
+            # )
             self.principles = get_principles(hess_xyz=hess, jac_xyz=self.jac_xyz, normal_unit=self.normal_unit)
 
     def get_distance(self, xyz):

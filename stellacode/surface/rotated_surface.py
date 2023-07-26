@@ -87,12 +87,12 @@ class RotatedSurface(CoilSurface):
         # We also compute surface element dS and derivatives dS_u and dS_v:
         if deg >= 1:
             self.jac_xyz = np.reshape(
-                np.einsum("opq,aqij->iojpa", rot_tensor, self.surface.jac_xyz),
+                np.einsum("opq,ijqa->iojpa", rot_tensor, self.surface.jac_xyz),
                 (self.surface.nbpts[0], -1, 3, 2),
             )
 
             self.normal = np.reshape(
-                np.einsum("opq,qij->pioj", rot_tensor, self.surface.normal),
+                np.einsum("opq,ijq->iojp", rot_tensor, self.surface.normal),
                 (
                     3,
                     self.surface.nbpts[0],
@@ -103,11 +103,12 @@ class RotatedSurface(CoilSurface):
             self.ds = np.concatenate([self.surface.ds] * num_rot, axis=1)
 
             self.normal_unit = np.reshape(
-                np.einsum("opq,qij->pioj", rot_tensor, self.surface.normal_unit),
+                np.einsum("opq,ijq->iojp", rot_tensor, self.surface.normal_unit),
                 (
-                    3,
+                    
                     self.surface.nbpts[0],
                     -1,
+                    3
                 ),
             )
 
