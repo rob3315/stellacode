@@ -160,7 +160,13 @@ class EMCost(AbstractCost):
     def get_bs_operator(self, S, normal_b_field: bool = True):
         Sp = self.Sp
 
-        BS = biot_et_savart(Sp.xyz, S.xyz, S.current_op, S.jac_xyz, dudv=S.dudv)
+        BS = biot_et_savart(
+            xyz_plasma=Sp.xyz,
+            xyz_coil=S.xyz,
+            surface_current=S.current_op,
+            jac_xyz_coil=S.jac_xyz,
+            dudv=S.dudv,
+        )
         if normal_b_field:
             BS = np.einsum("tpqd,dpq->tpq", BS, Sp.normal_unit)
         if self.use_mu_0_factor:
@@ -276,20 +282,24 @@ def to_float(dict_):
 
 
 def biot_et_savart(
-    xyz_plasma: ArrayLike, xyz_coil: ArrayLike, surface_current: ArrayLike, jac_xyz_plasma: ArrayLike, dudv: float
+    xyz_plasma: ArrayLike,
+    xyz_coil: ArrayLike,
+    surface_current: ArrayLike,
+    jac_xyz_coil: ArrayLike,
+    dudv: float,
 ) -> Array:
     """
     Args:
      * xyz_plasma: dims = up x vp x 3
      * xyz_coil: dims = uc x vc x 3
      * surface_current: dims = uc x vc x 3 or current_basis x uc x vc x 3
-     * jac_xyz_plasma: dims = uc x vc x 3 x 2
+     * jac_xyz_coils: dims = uc x vc x 3 x 2
     """
 
     T = xyz_plasma[None, None, ...] - xyz_coil[:, :, None, None]
     K = T / (np.linalg.norm(T, axis=-1) ** 3)[..., np.newaxis]
 
-    sc_jac = np.einsum("tijh,ijah->ijat", surface_current, jac_xyz_plasma)
+    sc_jac = np.einsum("tijh,ijah->ijat", surface_current, jac_xyz_coil)
     B = np.einsum("ijpqa,ijbt, dab->tpqd", K, sc_jac, tools.eijk)
 
     return B * dudv

@@ -113,6 +113,16 @@ def test_compare_to_regcoil(use_mu_0_factor):
     em_cost.lamb = 1e-30
     assert get_b_field_err(em_cost, cws) < 0.15
 
+    # Plot regcoil vs stellacode
+    # import pandas as pd 
+    # import matplotlib.pyplot as plt;import seaborn as sns;import matplotlib;matplotlib.use('TkAgg')
+    # from coil_optim.plots import format_axis
+    # df = pd.concat({"regcoil": pd.Series(chi2_b, index=chi_j),"stellacode": pd.Series(metrics.cost_B.values, index=chi_j),}, axis=1)
+    # ax=df.iloc[11:].plot(marker='.', linestyle='dashed')
+    # ax.set_xlabel( r"$\chi^2_K$")
+    # ax.set_ylabel(r"$\chi^2_B$")
+    # format_axis(ax)
+    # plt.show()
     # # for comparing the errors
     # b_err = np.linalg.norm(b_field_gt - np.transpose(b_field, (1, 2, 0)), axis=-1)
     # import matplotlib.pyplot as plt

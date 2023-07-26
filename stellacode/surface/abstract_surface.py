@@ -170,21 +170,22 @@ class AbstractSurface(BaseModel):
 
         points = self.expand_for_plot_part()[0]
 
-        points_ = [points]
-        for i in range(1, self.num_tor_symmetry):
-            angle = 2 * i * np.pi / self.num_tor_symmetry
-            rotation_matrix = np.array(
-                [
-                    [np.cos(angle), -np.sin(angle), 0],
-                    [np.sin(angle), np.cos(angle), 0],
-                    [0, 0, 1],
-                ]
-            )
-            points_.append(np.einsum("ij,uvj->uvi", rotation_matrix, points))
-        # import pdb;pdb.set_trace()
-        # from stellacode.tools import get_rot_tensor
-        # rot_tensor = get_rot_tensor(self.num_tor_symmetry)
-        # points_2 = np.reshape(np.einsum("opq,ijq->iojp", rot_tensor, points), (49, -1, 3),)
+        # points_ = [points]
+        # for i in range(1, self.num_tor_symmetry):
+        #     angle = 2 * i * np.pi / self.num_tor_symmetry
+        #     rotation_matrix = np.array(
+        #         [
+        #             [np.cos(angle), -np.sin(angle), 0],
+        #             [np.sin(angle), np.cos(angle), 0],
+        #             [0, 0, 1],
+        #         ]
+        #     )
+        #     points_.append(np.einsum("ij,uvj->uvi", rotation_matrix, points))
+
+        from stellacode.tools import get_rot_tensor
+
+        rot_tensor = get_rot_tensor(self.num_tor_symmetry)
+        points_ = [np.einsum("opq,ijq->iojp", rot_tensor, points)[:, i] for i in range(self.num_tor_symmetry)]
 
         if detach_parts:
             return points_
@@ -233,7 +234,7 @@ class AbstractSurface(BaseModel):
             if vector_field is not None:
                 vector_field = vector_field / np.max(vector_field)
                 max_tor = xyz_.shape[1]
-                if detach_parts:
+                if detach_parts or only_one_period:
                     xyz_c = xyz_[:-1]
                 else:
                     xyz_c = xyz_[:-1, :-1]
