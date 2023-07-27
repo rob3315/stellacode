@@ -169,7 +169,7 @@ class EMCost(AbstractCost):
             dudv=S.dudv,
         )
         if normal_b_field:
-            BS = np.einsum("tpqd,dpq->tpq", BS, Sp.normal_unit)
+            BS = np.einsum("tpqd,pqd->tpq", BS, Sp.normal_unit)
         if self.use_mu_0_factor:
             BS *= mu_0_fac
         return BiotSavartOperator(

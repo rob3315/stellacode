@@ -86,9 +86,9 @@ def fit_to_surface(fitted_surface, surface, distance: float = 0.0):
 
 
 def get_principles(hess_xyz, jac_xyz, normal_unit):
-    dpsi_uu = hess_xyz[:, 0, 0, ...]
-    dpsi_uv = hess_xyz[:, 1, 1, ...]
-    dpsi_vv = hess_xyz[:, 0, 1, ...]
+    dpsi_uu = hess_xyz[..., 0, 0]
+    dpsi_uv = hess_xyz[..., 1, 1]
+    dpsi_vv = hess_xyz[..., 0, 1]
 
     # dNdu = np.cross(dpsi_uu, jac_xyz[1], 0, 0, 0) + np.cross(jac_xyz[0], dpsi_uv, 0, 0, 0)
     # dNdv = np.cross(dpsi_uv, jac_xyz[1], 0, 0, 0) + np.cross(jac_xyz[0], dpsi_vv, 0, 0, 0)
@@ -99,14 +99,14 @@ def get_principles(hess_xyz, jac_xyz, normal_unit):
 
     # curvature computations :
     # First fundamental form of the surface (E,F,G)
-    E = np.einsum("lij,lij->ij", jac_xyz[0], jac_xyz[0])
-    F = np.einsum("lij,lij->ij", jac_xyz[0], jac_xyz[1])
-    G = np.einsum("lij,lij->ij", jac_xyz[1], jac_xyz[1])
+    E = np.einsum("ijl,ijl->ij", jac_xyz[..., 0], jac_xyz[..., 0])
+    F = np.einsum("ijl,ijl->ij", jac_xyz[..., 0], jac_xyz[..., 1])
+    G = np.einsum("ijl,ijl->ij", jac_xyz[..., 1], jac_xyz[..., 1])
 
     # Second fundamental of the surface (L,M,N)
-    L = np.einsum("lij,lij->ij", dpsi_uu, normal_unit)  # e
-    M = np.einsum("lij,lij->ij", dpsi_uv, normal_unit)  # f
-    N = np.einsum("lij,lij->ij", dpsi_vv, normal_unit)  # g
+    L = np.einsum("ijl,ijl->ij", dpsi_uu, normal_unit)  # e
+    M = np.einsum("ijl,ijl->ij", dpsi_uv, normal_unit)  # f
+    N = np.einsum("ijl,ijl->ij", dpsi_vv, normal_unit)  # g
 
     # K = det(second fundamental) / det(first fundamental)
     # Gaussian Curvature
