@@ -86,6 +86,7 @@ class EMCost(AbstractCost):
     bnorm: ArrayLike = 0.0
     use_mu_0_factor: bool = False
     inverse_qj: bool = False
+    slow_metrics: bool = True
 
     @classmethod
     def from_config(cls, config, Sp=None, use_mu_0_factor=True):
@@ -221,7 +222,7 @@ class EMCost(AbstractCost):
 
         return (
             RegCoilSolver(
-                current_cov=tools.compute_Qj(S.current_op, S.jac_xyz, S.ds),
+                current_cov=Qj,
                 matrix=matrix,
                 matrix_reg=matrix_reg,
                 rhs=RHS,
@@ -239,19 +240,22 @@ class EMCost(AbstractCost):
             fac = mu_0_fac
         lamb /= fac**2
 
-        j_3D = S.get_j_3D(phi_mn)
         metrics = {}
         bnorm_pred = bs.get_b_field(phi_mn)
 
         B_err = bnorm_pred - self.bnorm * fac
         metrics["err_max_B"] = np.max(np.abs(B_err))
-        metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
+
         metrics["cost_B"] = self.Sp.integrate(B_err**2)
 
         metrics["cost_J"] = self.num_tor_symmetry * np.einsum("i,ij,j->", phi_mn, solver.current_cov, phi_mn)
 
-        j_2D = S.get_j_surface(phi_mn)
-        metrics["min_j_pol"] = j_2D[:, :, 0].min()
+        if self.slow_metrics:
+            j_3D = S.get_j_3D(phi_mn)
+            metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
+
+            j_2D = S.get_j_surface(phi_mn)
+            metrics["min_j_pol"] = j_2D[:, :, 0].min()
 
         metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
@@ -287,6 +291,7 @@ def biot_et_savart(
     surface_current: ArrayLike,
     jac_xyz_coil: ArrayLike,
     dudv: float,
+    plasma_normal: Optional[ArrayLike] = None,
 ) -> Array:
     """
     Args:
@@ -299,9 +304,18 @@ def biot_et_savart(
     T = xyz_plasma[None, None, ...] - xyz_coil[:, :, None, None]
     K = T / (np.linalg.norm(T, axis=-1) ** 3)[..., np.newaxis]
 
-    sc_jac = np.einsum("tijh,ijah->ijat", surface_current, jac_xyz_coil)
-    B = np.einsum("ijpqa,ijbt, dab->tpqd", K, sc_jac, tools.eijk)
-
+    if plasma_normal is not None:
+        B = np.einsum(
+            "ijpqa,tijh,ijbh, dab,dpq->tpq",
+            K,
+            surface_current,
+            jac_xyz_coil,
+            tools.eijk,
+            plasma_normal,
+        )
+    else:
+        sc_jac = np.einsum("tijh,ijah->ijat", surface_current, jac_xyz_coil)
+        B = np.einsum("ijpqa,ijbt, dab->tpqd", K, sc_jac, tools.eijk)
     return B * dudv
 
 
