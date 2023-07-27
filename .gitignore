@@ -13,3 +13,4 @@ public/
 *.egg
 MANIFEST
 .pytest_cache/
+*.egg-info
