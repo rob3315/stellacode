@@ -44,8 +44,14 @@ class RotatedSurface(CoilSurface):
             gridu, gridv = self.grids
             gridu = np.concatenate([gridu] * self.rotate_diff_current, axis=1)
             rd = self.rotate_diff_current
+            # this scaling is necessary because the Current class expect the grid to
+            # always be from 0 to 1.
             gridv = np.concatenate([(i + gridv) / rd for i in range(rd)], axis=1)
             blocks = self.current.get_matrix_from_grid((gridu, gridv))
+            # this is because the current potential derivative vs v is scaled by rd
+            # when v is scaled by 1/rd
+            blocks[..., -1] *= rd
+
         else:
             curent_op = super().get_curent_op()
             current_op_ = curent_op[2:]
@@ -104,20 +110,15 @@ class RotatedSurface(CoilSurface):
 
             self.normal_unit = np.reshape(
                 np.einsum("opq,ijq->iojp", rot_tensor, self.surface.normal_unit),
-                (
-                    
-                    self.surface.nbpts[0],
-                    -1,
-                    3
-                ),
+                (self.surface.nbpts[0], -1, 3),
             )
 
-            # This is clearly wrong!!
-            # and the result should not depend on the parametrization
-            if self.common_current_on_each_rot:
-                self.jac_xyz = self.jac_xyz.at[..., 1].set(self.jac_xyz[..., 1] * self.rotate_diff_current)
-                self.normal = self.normal * self.rotate_diff_current
-                self.ds = self.ds * self.rotate_diff_current
+            # # This is clearly wrong!!
+            # # and the result should not depend on the parametrization
+            # if self.common_current_on_each_rot:
+            #     self.jac_xyz = self.jac_xyz.at[..., 1].set(self.jac_xyz[..., 1] * self.rotate_diff_current)
+            #     self.normal = self.normal * self.rotate_diff_current
+            #     self.ds = self.ds * self.rotate_diff_current
 
         if deg >= 2:
             self.principles = [np.concatenate([p] * num_rot, axis=1) for p in self.surface.principles]
