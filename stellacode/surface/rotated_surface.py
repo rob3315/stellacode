@@ -28,6 +28,10 @@ class RotatedSurface(CoilSurface):
         else:
             return self.surface.dudv
 
+    @property
+    def area(self):
+        return self.surface.area
+
     def get_num_rotations(self):
         return self.num_tor_symmetry * self.rotate_diff_current
 

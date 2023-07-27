@@ -35,6 +35,6 @@ class AggregateCost(AbstractCost):
             new_cost, metrics = elt.cost(S)
             metrics_d = {**metrics_d, **metrics}
             cost += new_cost
-            print(elt.__class__.__name__, time() - tic)
+            print(elt.__class__.__name__, time() - tic, new_cost)
 
         return cost, metrics_d
