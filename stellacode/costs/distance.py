@@ -4,7 +4,7 @@ from jax.typing import ArrayLike
 
 import stellacode.tools as tools
 from stellacode import np
-from stellacode.costs.abstract_cost import AbstractCost
+from stellacode.costs.abstract_cost import AbstractCost, Results
 from stellacode.costs.utils import inverse_barrier
 from stellacode.surface.imports import get_plasma_surface
 
@@ -34,9 +34,9 @@ class DistanceCost(AbstractCost):
             weight=float(config["optimization_parameters"]["d_min_penalization"]),
         )
 
-    def cost(self, S):
+    def cost(self, S, results: Results = Results()):
         dist_min = S.get_distance(self.Sp.xyz).min((-1, -2))
         loss = inverse_barrier(dist_min, self.min_val, self.distance, self.weight)
         cost = np.einsum("ij,ij->", loss, S.ds / S.npts)
 
-        return cost, {"min_distance": np.min(dist_min)}
+        return cost, {"min_distance": np.min(dist_min)}, results

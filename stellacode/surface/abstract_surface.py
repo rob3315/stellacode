@@ -142,13 +142,17 @@ class AbstractSurface(BaseModel):
             self.normal_unit = self.normal / self.ds[:, :, None]  # normal inward unit vector
 
         if deg >= 2:
-            hess = self.get_hess_xyz_on_grid(uv_grid)
+            self.hess_xyz = self.get_hess_xyz_on_grid(uv_grid)
             # self.principles = get_principles(
             #     hess_xyz=np.transpose(hess, (2, 3, 4, 0, 1)),
             #     jac_xyz=np.transpose(self.jac_xyz, (2, 3, 0, 1)),
             #     normal_unit=np.transpose(self.normal_unit, (2, 0, 1)),
             # )
-            self.principles = get_principles(hess_xyz=hess, jac_xyz=self.jac_xyz, normal_unit=self.normal_unit)
+            self.principles = get_principles(
+                hess_xyz=self.hess_xyz,
+                jac_xyz=self.jac_xyz,
+                normal_unit=self.normal_unit,
+            )
 
     def get_distance(self, xyz):
         return np.linalg.norm(self.xyz[..., None, None, :] - xyz[None, None, ...], axis=-1)

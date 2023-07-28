@@ -10,6 +10,7 @@ from pydantic import BaseModel, Extra
 
 from stellacode import np
 from stellacode.costs.aggregate_cost import AggregateCost
+from stellacode.costs.abstract_cost import Results
 from stellacode.surface.coil_surface import CoilSurface
 from stellacode.surface.imports import get_cws
 from stellacode.tools.concat_dict import ConcatDictArray
@@ -84,14 +85,15 @@ class Optimizer(BaseModel):
             coil_surface.update_params(**kwargs_)
             # print("Surface", time() - tic)
 
-            res, metrics = cost.cost(coil_surface)
-            #     log_info(
-            #         info,
-            #         res,
-            #         freq_save=freq_save,
-            #         save_res=save_res,
-            #         output_folder_name=output_folder_name,
-            #     )
+            res, metrics, results = cost.cost(coil_surface, results=Results())
+            print(metrics)
+            # log_info(
+            #     info,
+            #     res,
+            #     freq_save=freq_save,
+            #     save_res=save_res,
+            #     output_folder_name=output_folder_name,
+            # )
             return res
 
         return cls(

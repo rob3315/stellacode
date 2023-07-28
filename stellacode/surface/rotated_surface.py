@@ -4,6 +4,7 @@ import stellacode.tools as tools
 from stellacode import np
 from .utils import cartesian_to_toroidal
 from .coil_surface import CoilSurface
+from stellacode.tools.rotate_n_times import RotateNTimes
 
 
 class RotatedSurface(CoilSurface):
@@ -16,9 +17,12 @@ class RotatedSurface(CoilSurface):
     num_tor_symmetry: int = 1
     rotate_diff_current: int = 1
     common_current_on_each_rot: bool = False
+    # rotate_n: RotateNTimes = RotateNTimes(1)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.rotate_n = RotateNTimes(self.num_tor_symmetry * self.rotate_diff_current)
+        self.compute_surface_attributes()
         assert self.num_tor_symmetry * self.rotate_diff_current == self.surface.num_tor_symmetry
 
     @property
@@ -81,51 +85,15 @@ class RotatedSurface(CoilSurface):
         deg is 0,1 or 2"""
 
         self.grids = self.surface.grids
-        # if self.common_current_on_each_rot:
-        #     self.surface.integration_par.max_val_v = 1./self.rotate_diff_current
-
         self.surface.compute_surface_attributes(deg=deg)
 
-        num_rot = self.get_num_rotations()
-        rot_tensor = tools.get_rot_tensor(num_rot)
-
-        self.xyz = np.reshape(
-            np.einsum("opq,ijq->iojp", rot_tensor, self.surface.xyz),
-            (self.surface.nbpts[0], -1, 3),
-        )
-
-        # We also compute surface element dS and derivatives dS_u and dS_v:
-        if deg >= 1:
-            self.jac_xyz = np.reshape(
-                np.einsum("opq,ijqa->iojpa", rot_tensor, self.surface.jac_xyz),
-                (self.surface.nbpts[0], -1, 3, 2),
-            )
-
-            self.normal = np.reshape(
-                np.einsum("opq,ijq->iojp", rot_tensor, self.surface.normal),
-                (
-                    3,
-                    self.surface.nbpts[0],
-                    -1,
-                ),
-            )
-
-            self.ds = np.concatenate([self.surface.ds] * num_rot, axis=1)
-
-            self.normal_unit = np.reshape(
-                np.einsum("opq,ijq->iojp", rot_tensor, self.surface.normal_unit),
-                (self.surface.nbpts[0], -1, 3),
-            )
-
-            # # This is clearly wrong!!
-            # # and the result should not depend on the parametrization
-            # if self.common_current_on_each_rot:
-            #     self.jac_xyz = self.jac_xyz.at[..., 1].set(self.jac_xyz[..., 1] * self.rotate_diff_current)
-            #     self.normal = self.normal * self.rotate_diff_current
-            #     self.ds = self.ds * self.rotate_diff_current
+        for k in ["xyz", "jac_xyz", "normal", "ds", "normal_unit", "hess_xyz"]:
+            val = getattr(self.surface, k)
+            if val is not None:
+                setattr(self, k, self.rotate_n(val))
 
         if deg >= 2:
-            self.principles = [np.concatenate([p] * num_rot, axis=1) for p in self.surface.principles]
+            self.principles = [self.rotate_n(val) for val in self.surface.principles]
 
         self.nbpts = self.surface.nbpts
 

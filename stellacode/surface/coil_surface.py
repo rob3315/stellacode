@@ -30,14 +30,7 @@ class CoilSurface(BaseModel):
         extra = Extra.allow  # allow extra fields
 
     def __init__(self, **kwargs):
-        # if self.mult_current_grid is not None:
-        #     self.surface.nbpts = (
-        #         self.mult_current_grid * self.current.num_pol,
-        #         self.mult_current_grid * self.current.num_tor,
-        #     )
         super().__init__(**kwargs)
-        self.compute_surface_attributes()
-        # self.current_op = self.current.get_matrix_from_grid(self.grids)
 
     @classmethod
     def from_config(cls, config):

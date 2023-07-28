@@ -1,5 +1,5 @@
 from stellacode import np
-from stellacode.costs.abstract_cost import AbstractCost
+from stellacode.costs.abstract_cost import AbstractCost, Results
 from stellacode.costs.utils import inverse_barrier
 
 
@@ -19,10 +19,10 @@ class AreaCost(AbstractCost):
             max_val=c1,
         )
 
-    def cost(self, S):
+    def cost(self, S, results: Results = Results()):
         area = S.area
         area_cost = inverse_barrier(val=-area, min_val=-self.max_val, distance=self.distance, weight=self.weight)
 
         aux_dic = {}
         aux_dic["area"] = area
-        return area_cost, aux_dic
+        return area_cost, aux_dic, results

@@ -6,7 +6,8 @@ from stellacode.costs.curvature import CurvatureCost
 from stellacode.costs.distance import DistanceCost
 from stellacode.costs.em_cost import EMCost
 from stellacode.surface.imports import get_cws, get_plasma_surface
-from .abstract_cost import AbstractCost
+from .abstract_cost import AbstractCost, Results
+from .utils import merge_dataclasses
 
 
 class AggregateCost(AbstractCost):
@@ -27,14 +28,16 @@ class AggregateCost(AbstractCost):
             costs.append(CurvatureCost.from_config(config, Sp=Sp))
         return cls(costs=costs)
 
-    def cost(self, S):
+    def cost(self, S, results: Results = Results()):
         cost = 0.0
-        metrics_d = {}
+        metrics_d: dict = {}
         for elt in self.costs:
             tic = time()
-            new_cost, metrics = elt.cost(S)
+            new_cost, metrics, results_ = elt.cost(S, results=results)
             metrics_d = {**metrics_d, **metrics}
-            cost += new_cost
-            print(elt.__class__.__name__, time() - tic, new_cost)
+            merge_dataclasses(results, results_)
 
-        return cost, metrics_d
+            cost += new_cost
+            print(elt.__class__.__name__, time() - tic)
+
+        return cost, metrics_d, results

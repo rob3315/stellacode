@@ -7,11 +7,12 @@ from jax.typing import ArrayLike
 import stellacode.tools as tools
 import stellacode.tools.bnorm as bnorm
 from stellacode import mu_0_fac, np
-from stellacode.costs.abstract_cost import AbstractCost
+from stellacode.costs.abstract_cost import AbstractCost, Results
 from stellacode.surface import AbstractSurface, IntegrationParams, FourierSurface
 from stellacode.surface.imports import get_cws, get_plasma_surface
 from stellacode.definitions import PlasmaConfig
 from stellacode.tools.vmec import VMECIO
+from .utils import merge_dataclasses
 
 from pydantic import BaseModel, Extra
 
@@ -80,7 +81,6 @@ class EMCost(AbstractCost):
     """
 
     lamb: float
-    num_tor_symmetry: int
     net_currents: Optional[ArrayLike]
     Sp: AbstractSurface
     bnorm: ArrayLike = 0.0
@@ -107,7 +107,6 @@ class EMCost(AbstractCost):
 
         return cls(
             lamb=float(config["other"]["lamb"]),
-            num_tor_symmetry=num_tor_symmetry,
             net_currents=net_currents,
             bnorm=bnorm_,
             Sp=Sp,
@@ -146,17 +145,26 @@ class EMCost(AbstractCost):
 
         return cls(
             lamb=lamb,
-            num_tor_symmetry=num_tor_symmetry,
             net_currents=net_currents,
             bnorm=bnorm_,
             Sp=Sp,
             use_mu_0_factor=use_mu_0_factor,
         )
 
-    def cost(self, S):
-        solver, bs = self.get_regcoil_solver(S=S)
-        phi_mn = solver.solve_lambda(lamb=self.lamb)
-        return self.get_results(bs=bs, solver=solver, phi_mn=phi_mn, S=S, lamb=self.lamb)
+    def cost(self, S, results: Results = Results()):
+        if results.phi_mn is None:
+            solver, bs = self.get_regcoil_solver(S=S)
+            phi_mn = solver.solve_lambda(lamb=self.lamb)
+        else:
+            bs = self.get_bs_operator(S=S)
+            if self.net_currents is not None:
+                phi_mn = np.concatenate((self.net_currents, results.phi_mn))
+            else:
+                phi_mn = results.phi_mn
+            solver = None
+
+        cost, metrics, results_ = self.get_results(bs=bs, solver=solver, phi_mn=phi_mn, S=S, lamb=self.lamb)
+        return cost, metrics, merge_dataclasses(results, results_)
 
     def get_bs_operator(self, S, normal_b_field: bool = True):
         Sp = self.Sp
@@ -233,7 +241,7 @@ class EMCost(AbstractCost):
             bs,
         )
 
-    def get_results(self, bs, solver, phi_mn, S, lamb: float = 0.0):
+    def get_results(self, bs, phi_mn, S, solver=None, lamb: float = 0.0):
         if self.use_mu_0_factor:
             fac = 1
         else:
@@ -242,24 +250,27 @@ class EMCost(AbstractCost):
 
         metrics = {}
         bnorm_pred = bs.get_b_field(phi_mn)
-
+        results = Results(bnorm_plasma_surface=bnorm_pred, phi_mn_wnet_cur=phi_mn)
         B_err = bnorm_pred - self.bnorm * fac
         metrics["err_max_B"] = np.max(np.abs(B_err))
 
         metrics["cost_B"] = self.Sp.integrate(B_err**2)
-
-        metrics["cost_J"] = self.num_tor_symmetry * np.einsum("i,ij,j->", phi_mn, solver.current_cov, phi_mn)
+        if solver is not None:
+            metrics["cost_J"] = S.num_tor_symmetry * np.einsum("i,ij,j->", phi_mn, solver.current_cov, phi_mn)
+            metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
+        else:
+            metrics["cost"] = metrics["cost_B"]
 
         if self.slow_metrics:
             j_3D = S.get_j_3D(phi_mn)
             metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
+            results.j_3d = j_3D
 
             j_2D = S.get_j_surface(phi_mn)
             metrics["min_j_pol"] = j_2D[:, :, 0].min()
+            results.j_s = j_2D
 
-        metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
-
-        return metrics["cost"], metrics
+        return metrics["cost"], metrics, results
 
     def cost_multiple_lambdas(self, S, lambdas):
         solver, bs = self.get_regcoil_solver(S=S)
