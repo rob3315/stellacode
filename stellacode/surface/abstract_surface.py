@@ -51,11 +51,12 @@ class AbstractSurface(BaseModel):
     """
 
     integration_par: IntegrationParams
-    grids: tp.Optional[ArrayLike] = None
+    grids: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
     num_tor_symmetry: int = 1
     trainable_params: tp.List[str] = []
     xyz: tp.Optional[ArrayLike] = None
     jac_xyz: tp.Optional[ArrayLike] = None
+    hess_xyz: tp.Optional[ArrayLike] = None
     normal: tp.Optional[ArrayLike] = None
     normal_unit: tp.Optional[ArrayLike] = None
     ds: tp.Optional[ArrayLike] = None
@@ -64,7 +65,6 @@ class AbstractSurface(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
-        extra = Extra.allow  # allow extra fields
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

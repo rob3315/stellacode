@@ -17,7 +17,7 @@ class RotatedSurface(CoilSurface):
     num_tor_symmetry: int = 1
     rotate_diff_current: int = 1
     common_current_on_each_rot: bool = False
-    # rotate_n: RotateNTimes = RotateNTimes(1)
+    rotate_n: RotateNTimes = RotateNTimes(1)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -94,8 +94,6 @@ class RotatedSurface(CoilSurface):
 
         if deg >= 2:
             self.principles = [self.rotate_n(val) for val in self.surface.principles]
-
-        self.nbpts = self.surface.nbpts
 
         self.current_op = self.get_curent_op()
 

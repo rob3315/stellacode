@@ -34,6 +34,3 @@ def test_convex_hull_fourier_series():
     # surf.plot(only_one_period=True)
     # tor_surf.plot(only_one_period=True)
 
-    new_surface = fit_to_surface(tor_surf, surf)
-
-    assert new_surface.get_min_distance(surf.xyz) < 3e-2

@@ -16,9 +16,11 @@ class CoilSurface(BaseModel):
 
     surface: AbstractSurface
     current: AbstractCurrent
+    grids: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
     current_op: tp.Optional[ArrayLike] = None
     xyz: tp.Optional[ArrayLike] = None
     jac_xyz: tp.Optional[ArrayLike] = None
+    hess_xyz: tp.Optional[ArrayLike] = None
     normal: tp.Optional[ArrayLike] = None
     normal_unit: tp.Optional[ArrayLike] = None
     ds: tp.Optional[ArrayLike] = None
@@ -27,7 +29,7 @@ class CoilSurface(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
-        extra = Extra.allow  # allow extra fields
+        # extra = Extra.allow  # allow extra fields
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
