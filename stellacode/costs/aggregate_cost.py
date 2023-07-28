@@ -38,6 +38,6 @@ class AggregateCost(AbstractCost):
             merge_dataclasses(results, results_)
 
             cost += new_cost
-            print(elt.__class__.__name__, time() - tic)
+            # print(elt.__class__.__name__, time() - tic)
 
         return cost, metrics_d, results
