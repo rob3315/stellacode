@@ -11,7 +11,7 @@ from .utils import cartesian_to_toroidal, fourier_transform
 class ToroidalSurface(AbstractSurface):
     major_radius: float = 5.0
     minor_radius: float = 1.0
-    fourier_coeffs: ArrayLike = np.zeros((1, 2))
+    fourier_coeffs: ArrayLike = np.zeros((4, 2))
     axis_angle: float = 0.0
 
     trainable_params: tp.List[str] = ["major_radius", "minor_radius", "fourier_coeffs"]

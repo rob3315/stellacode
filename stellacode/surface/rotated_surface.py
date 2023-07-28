@@ -40,14 +40,21 @@ class RotatedSurface(CoilSurface):
         return self.num_tor_symmetry * self.rotate_diff_current
 
     def get_trainable_params(self):
-        return self.surface.get_trainable_params()
+        return {**self.current.get_trainable_params(), **self.surface.get_trainable_params()}
 
     def update_params(self, **kwargs):
         for k, v in kwargs.items():
-            setattr(self.surface, k, v)
-        self.compute_surface_attributes(deg=2)
+            if k in type(self.surface).__fields__:
+                setattr(self.surface, k, v)
+            elif k in type(self.current).__fields__:
+                setattr(self.current, k, v)
 
+        self.compute_surface_attributes(deg=2)
     def get_curent_op(self):
+        return self.current_op
+
+    def set_curent_op(self):
+        self.current.set_current_op(self.grids)
         if self.common_current_on_each_rot:
             gridu, gridv = self.grids
             gridu = np.concatenate([gridu] * self.rotate_diff_current, axis=1)
@@ -77,7 +84,7 @@ class RotatedSurface(CoilSurface):
             blocks = np.concatenate(blocks, axis=2)
             blocks = np.concatenate((np.concatenate([curent_op[:2]] * len(inner_blocks), axis=2), blocks), axis=0)
 
-        return np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
+        self.current_op = np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
 
     def compute_surface_attributes(self, deg=2):
         """compute surface elements used in the shape optimization up
@@ -94,8 +101,8 @@ class RotatedSurface(CoilSurface):
 
         if deg >= 2:
             self.principles = [self.rotate_n(val) for val in self.surface.principles]
+        self.set_curent_op()
 
-        self.current_op = self.get_curent_op()
 
     def cartesian_to_toroidal(self):
         try:

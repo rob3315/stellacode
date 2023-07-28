@@ -152,15 +152,15 @@ class EMCost(AbstractCost):
         )
 
     def cost(self, S, results: Results = Results()):
-        if results.phi_mn is None:
+        if "phi_mn" not in S.get_trainable_params().keys():
             solver, bs = self.get_regcoil_solver(S=S)
             phi_mn = solver.solve_lambda(lamb=self.lamb)
         else:
             bs = self.get_bs_operator(S=S)
             if self.net_currents is not None:
-                phi_mn = np.concatenate((self.net_currents, results.phi_mn))
+                phi_mn = np.concatenate((self.net_currents, S.current.get_phi_mn()))
             else:
-                phi_mn = results.phi_mn
+                phi_mn = S.current.get_phi_mn()
             solver = None
 
         cost, metrics, results_ = self.get_results(bs=bs, solver=solver, phi_mn=phi_mn, S=S, lamb=self.lamb)
