@@ -79,7 +79,7 @@ class Current(AbstractCurrent):
         return xm, xn
 
     def get_phi_mn(self):
-        return self.phi_mn * 1e5
+        return self.phi_mn * 1e8
 
     def get_j_surface(self, phi_mn=None):
         if phi_mn is None:
