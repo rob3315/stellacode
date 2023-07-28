@@ -25,7 +25,6 @@ class Optimizer(BaseModel):
     loss_and_grad: Any
     init_param: Any
     freq_save: int = 100
-    max_iter: int = 2000
     save_res: bool = False
     output_folder_name: Optional[str] = None
     info: dict = dict(Nfeval=0)
@@ -71,7 +70,7 @@ class Optimizer(BaseModel):
             info=info,
             save_res=save_res,
             freq_save=freq_save,
-            max_iter=max_iter,
+            options={"maxiter": max_iter},
         )
 
     @classmethod
@@ -86,7 +85,7 @@ class Optimizer(BaseModel):
             # print("Surface", time() - tic)
 
             res, metrics, results = cost.cost(coil_surface, results=Results())
-            print(metrics)
+            # print(metrics)
             # log_info(
             #     info,
             #     res,
@@ -112,7 +111,7 @@ class Optimizer(BaseModel):
             self.init_param,
             jac=True,
             method=self.method,
-            options={"maxiter": self.max_iter},
+            options=self.options,
         )
 
         if self.save_res:
@@ -124,8 +123,8 @@ class Optimizer(BaseModel):
         optimized_params = self.concater.unconcat(optimize_shape.x)
 
         self.coil_surface.update_params(**optimized_params)
-        metrics = self.cost.cost(self.coil_surface)
-        return metrics, optimized_params
+        cost, metrics, results = self.cost.cost(self.coil_surface)
+        return cost, metrics, results, optimized_params
 
 
 def log_info(info, res, freq_save=100, save_res=False, output_folder_name=""):
