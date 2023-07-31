@@ -17,6 +17,25 @@ from stellacode.tools.concat_dict import ConcatDictArray
 
 logger = logging.getLogger(__name__)
 
+def tostr(res_dict):
+    """transform a dict in a string"""
+    out_str = ""
+    for k, val in res_dict.items():
+        if isinstance(val, int):
+            out_str += f"{k}: {val}, "
+        else:
+            out_str += f"{k}: {val:.4f}, "
+    return out_str
+
+def tostr_jax(res_dict):
+    """transform a dict in a string"""
+    out_str = ""
+    for k, val in res_dict.items():
+        # if isinstance(val, int):
+        out_str += f"{k}: {{{k}}}, "
+        # else:
+        #     out_str += f"{k}: {{{k}:.4f}}, "
+    return out_str
 
 class Optimizer(BaseModel):
     cost: AggregateCost
@@ -85,6 +104,8 @@ class Optimizer(BaseModel):
             # print("Surface", time() - tic)
 
             res, metrics, results = cost.cost(coil_surface, results=Results())
+
+            jax.debug.print(tostr_jax(metrics), **metrics)
             # print(metrics)
             # log_info(
             #     info,
