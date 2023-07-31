@@ -43,7 +43,7 @@ class NegTorCurvatureCost(AbstractCost):
     def cost(self, S, results: Results = Results()):
         # get normalized curvature along the poloidal dimension
         curvature = self.get_toroidal_curvature(S)
-        loss = self.constraint.barrier(curvature)
+        loss = self.constraint.barrier(curvature).sum()
         # loss = inverse_barrier(
         #     self.get_toroidal_curvature(S),
         #     min_val=self.min_val,
@@ -51,7 +51,7 @@ class NegTorCurvatureCost(AbstractCost):
         #     weight=self.weight,
         # ).mean()
 
-        return loss.sum(), {"min_v_curvature": curvature.min()}, results
+        return loss, {"min_v_curvature": curvature.min(), "cost_neg_pol_curv": loss}, results
 
     def get_toroidal_curvature(self, S):
         # TODO: check these formulae

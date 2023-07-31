@@ -16,7 +16,7 @@ class DistanceCost(AbstractCost):
     # min_val: float
     # distance: float = 0.2
     # weight: float = 1.0
-    constraint: Constraint = Constraint(limit=0., distance=0.2, weight=1., minimum=True)
+    constraint: Constraint = Constraint(limit=0.0, distance=0.2, weight=1.0, minimum=True)
 
     @classmethod
     def from_config(
@@ -41,4 +41,4 @@ class DistanceCost(AbstractCost):
         loss = self.constraint.barrier(dist_min)
         cost = np.einsum("ij,ij->", loss, S.ds / S.npts)
 
-        return cost, {"min_distance": np.min(dist_min)}, results
+        return cost, {"min_distance": np.min(dist_min), "cost_distance": cost}, results

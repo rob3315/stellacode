@@ -24,4 +24,4 @@ class CurrentCtrCost(AbstractCost):
         #     weight=self.weight,
         # )
 
-        return loss, {}, results
+        return loss, {"cost_j_ctr": loss}, results
