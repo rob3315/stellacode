@@ -163,21 +163,33 @@ class EMCost(AbstractCost):
         if "phi_mn" not in S.get_trainable_params().keys():
             solver, bs = self.get_regcoil_solver(S=S)
             phi_mn = solver.solve_lambda(lamb=self.lamb)
+            bnorm_pred = bs.get_b_field(phi_mn)
         else:
-            bs = self.get_bs_operator(S=S)
-            if self.net_currents is not None:
-                phi_mn = np.concatenate((self.net_currents, S.current.get_phi_mn()))
-            else:
-                phi_mn = S.current.get_phi_mn()
-            solver = None
 
-        cost, metrics, results_ = self.get_results(bs=bs, solver=solver, phi_mn=phi_mn, S=S, lamb=self.lamb)
+            phi_mn = S.current.get_phi_mn()
+
+            # old way, much more memory intensive
+            # bs = self.get_bs_operator(S=S)
+            # bnorm_pred = bs.get_b_field(phi_mn)
+
+            bnorm_pred = biot_et_savart(
+                xyz_plasma=self.Sp.xyz,
+                xyz_coil=S.xyz,
+                j_3d=S.get_j_3D(scale_by_ds=False),
+                dudv=S.dudv,
+                plasma_normal=self.Sp.normal_unit
+            )
+
+            bnorm_pred *= mu_0_fac
+            solver = None
+        
+        cost, metrics, results_ = self.get_results(bnorm_pred=bnorm_pred, solver=solver, phi_mn=phi_mn, S=S, lamb=self.lamb)
         return cost, metrics, merge_dataclasses(results, results_)
 
     def get_bs_operator(self, S, normal_b_field: bool = True):
         Sp = self.Sp
 
-        BS = biot_et_savart(
+        BS = biot_et_savart_op(
             xyz_plasma=Sp.xyz,
             xyz_coil=S.xyz,
             surface_current=S.current_op,
@@ -249,7 +261,7 @@ class EMCost(AbstractCost):
             bs,
         )
 
-    def get_results(self, bs, phi_mn, S, solver=None, lamb: float = 0.0):
+    def get_results(self, bnorm_pred, phi_mn, S, solver=None, lamb: float = 0.0):
         if self.use_mu_0_factor:
             fac = 1
         else:
@@ -257,7 +269,6 @@ class EMCost(AbstractCost):
         lamb /= fac**2
 
         metrics = {}
-        bnorm_pred = bs.get_b_field(phi_mn)
         results = Results(bnorm_plasma_surface=bnorm_pred, phi_mn_wnet_cur=phi_mn)
         B_err = bnorm_pred - self.bnorm * fac
         metrics["err_max_B"] = np.max(np.abs(B_err))
@@ -285,7 +296,8 @@ class EMCost(AbstractCost):
         results = {}
         for lamb in lambdas:
             phi_mn = solver.solve_lambda(lamb=lamb)
-            results[float(lamb)] = to_float(self.get_results(bs=bs, solver=solver, phi_mn=phi_mn, S=S, lamb=lamb)[1])
+            bnorm_pred = bs.get_b_field(phi_mn)
+            results[float(lamb)] = to_float(self.get_results(bnorm_pred=bnorm_pred, solver=solver, phi_mn=phi_mn, S=S, lamb=lamb)[1])
 
         return pd.DataFrame(results).T
 
@@ -304,7 +316,7 @@ def to_float(dict_):
     return {k: float(v) for k, v in dict_.items()}
 
 
-def biot_et_savart(
+def biot_et_savart_op(
     xyz_plasma: ArrayLike,
     xyz_coil: ArrayLike,
     surface_current: ArrayLike,
@@ -335,6 +347,30 @@ def biot_et_savart(
     else:
         sc_jac = np.einsum("tijh,ijah->ijat", surface_current, jac_xyz_coil)
         B = np.einsum("ijpqa,ijbt, dab->tpqd", K, sc_jac, tools.eijk)
+    return B * dudv
+
+
+def biot_et_savart(
+    xyz_plasma: ArrayLike,
+    xyz_coil: ArrayLike,
+    j_3d: ArrayLike,
+    dudv: float,
+        plasma_normal: Optional[ArrayLike] = None,
+) -> Array:
+    """
+    Args:
+     * xyz_plasma: dims = up x vp x 3
+     * xyz_coil: dims = uc x vc x 3
+     * surface_current: dims = uc x vc x 3 or current_basis x uc x vc x 3
+     * jac_xyz_coils: dims = uc x vc x 3 x 2
+    """
+
+    T = xyz_plasma[None, None, ...] - xyz_coil[:, :, None, None]
+    K = T / (np.linalg.norm(T, axis=-1) ** 3)[..., np.newaxis]
+
+    B = np.einsum("ijpqa,ijb,dab->pqd", K, j_3d, tools.eijk)
+    if plasma_normal is not None:
+        B = np.einsum("pqd,pqd->pq", B, plasma_normal)
     return B * dudv
 
 

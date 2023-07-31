@@ -71,10 +71,15 @@ class CoilSurface(BaseModel):
     def get_min_distance(self, xyz):
         return get_min_dist(self.xyz, xyz)
 
-    def get_j_3D(self, phi_mn):
+    def get_j_3D(self, phi_mn=None, scale_by_ds: bool = True):
         # phi_mn is a vector containing the components of the best scalar current potential.
         # The real surface current is given by :
-        return np.einsum("oijk,ijdk,ij,o->ijd", self.current_op, self.jac_xyz, 1 / self.ds, phi_mn)
+        if phi_mn is None:
+            phi_mn = self.current.get_phi_mn()
+        if scale_by_ds:
+            return np.einsum("oijk,ijdk,ij,o->ijd", self.current_op, self.jac_xyz, 1 / self.ds, phi_mn)
+        else:
+            return np.einsum("oijk,ijdk,o->ijd", self.current_op, self.jac_xyz, phi_mn)
 
     def imshow_j(self, phi_mn):
         import matplotlib.pyplot as plt

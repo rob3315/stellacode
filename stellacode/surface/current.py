@@ -59,6 +59,7 @@ class Current(AbstractCurrent):
     cos_basis: bool = False
     trainable_params: tp.List[str] = []
     phi_mn: tp.Optional[ArrayLike] = None
+    net_currents: tp.Optional[ArrayLike] = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -79,7 +80,10 @@ class Current(AbstractCurrent):
         return xm, xn
 
     def get_phi_mn(self):
-        return self.phi_mn * 1e8
+        phi_mn = self.phi_mn * 1e8
+        if self.net_currents is not None:
+            phi_mn = np.concatenate((self.net_currents, phi_mn))
+        return phi_mn
 
     def get_j_surface(self, phi_mn=None):
         if phi_mn is None:
