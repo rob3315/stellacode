@@ -22,6 +22,6 @@ ncsx_plasma = PlasmaConfig(
 )
 hsx_plasma = PlasmaConfig(
     path_plasma=f"{configs_folder}HSX_QHS_vac_ns201_fixed/wout_HSX_QHS_vacuum_ns201.nc",
-    # path_bnorm=f"{configs_folder}HSX_QHS_vac_ns201_fixed/bnorm.HSX_QHS_vacuum_ns201",
-    # path_cws=f"{configs_folder}HSX_QHS_vac_ns201_fixed/nescin.HSX_QHS_vacuum_ns201",
+    path_bnorm=f"{configs_folder}HSX_QHS_vac_ns201_fixed/bnorm.HSX_QHS_vacuum_ns201",
+    path_cws=f"{configs_folder}HSX_QHS_vac_ns201_fixed/nescin.HSX_QHS_vacuum_ns201",
 )
