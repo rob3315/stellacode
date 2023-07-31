@@ -18,7 +18,7 @@ class Constraint(BaseModel):
     def barrier(self, val):
         ctr = self.constraint(val)
         if self.method == "quadratic":
-            return np.maximum(-ctr, 0) ** 2
+            return (np.maximum(-ctr, 0) / self.distance) ** 2
 
         clipped_dist = np.maximum(self.distance - ctr, 0)
         if self.method == "inverse":
