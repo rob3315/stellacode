@@ -118,6 +118,22 @@ class VMECIO:
         grad_rpz = np.stack((r_grad, np.zeros_like(r_grad), z_grad), axis=-1)
         return np.transpose(grad_rpz, (0, 1, 2, 4, 3))
 
+    @property
+    def grad_xyz(self):
+        grad_rphiz = self.grad_rphiz
+        rphiz = self.rphiz[..., None]
+        gr, gz = grad_rphiz[..., 0, :], grad_rphiz[..., 2, :]
+        r_, phi = rphiz[..., 0, :], rphiz[..., 1, :]
+
+        return np.stack(
+            (
+                gr * np.cos(phi) - r_ * np.sin(phi),
+                gr * np.sin(phi) + r_ * np.cos(phi),
+                gz,
+            ),
+            axis=-2,
+        )
+
     def vmec_to_cylindrical(self, vector_field):
         grad_rphiz = self.grad_rphiz
         rphiz = self.rphiz
@@ -188,12 +204,18 @@ class VMECIO:
         bvco = self.get_var("bvco", float)
         return 2 * np.pi / mu_0 * (1.5 * bvco[-1] - 0.5 * bvco[-2])
 
+    @property
+    def net_poloidal_current2(self):
+        np.sum(self.b_cylindrical[-1] * self.grad_rpz[-1][..., 1], axis=-1).sum(1) / mu_0
+        return np.sum(self.b_cartesian[-1] * self.grad_xyz[-1][..., 1], axis=-1).sum(1) / mu_0
+        # np.sum(b_cart[:, :48] * Sp.jac_xyz[..., 1], axis=-1).sum(1) / mu_0 / 48 * 5
+
     @classmethod
     def from_grid(
         cls,
         file_path,
-        ntheta: int=10,
-        nzeta: int=10,
+        ntheta: int = 10,
+        nzeta: int = 10,
         n_surf_label: tp.Optional[int] = None,
         surface_label: tp.Optional[int] = None,
     ):

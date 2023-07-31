@@ -135,6 +135,14 @@ class EMCost(AbstractCost):
                 0.0,
             ]
         )
+
+        # Checking the computation of net_poloidal_current
+        # np.sum(vmec.b_cylindrical[-1] * vmec.grad_rphiz[-1][..., 1], axis=-1).sum(1) / mu_0*(1/(2*np.pi*5*48))
+        # b_cart= vmec.b_cartesian[-1]
+        # from scipy.constants import mu_0
+        # np.sum(b_cart[:,:48]*Sp.jac_xyz[...,1], axis=-1).sum(1)/mu_0/48*num_tor_symmetry
+        # np.linalg.norm(vmec.b_cartesian[-1], axis=-1)
+
         if plasma_config.path_bnorm is not None:
             bnorm_ = -vmec.scale_bnorm(bnorm.get_bnorm(plasma_config.path_bnorm, Sp))
             if not use_mu_0_factor:

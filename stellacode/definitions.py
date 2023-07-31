@@ -21,7 +21,7 @@ ncsx_plasma = PlasmaConfig(
     path_cws=f"{configs_folder}li383/nescin.li383_realWindingSurface",
 )
 hsx_plasma = PlasmaConfig(
-    path_plasma=f"{configs_folder}HSX_QHS_vac_ns201_fixed/wout_HSX_QHS_vacuum_ns201.nc",
-    path_bnorm=f"{configs_folder}HSX_QHS_vac_ns201_fixed/bnorm.HSX_QHS_vacuum_ns201",
-    path_cws=f"{configs_folder}HSX_QHS_vac_ns201_fixed/nescin.HSX_QHS_vacuum_ns201",
+    path_plasma=f"{configs_folder}hsx/wout_HSX_QHS.nc",
+    path_bnorm=None,
+    path_cws=None,
 )
