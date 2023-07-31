@@ -20,7 +20,7 @@ class ToroidalSurface(AbstractSurface):
         u_ = 2 * np.pi * uv[0]  # poloidal angle
         v_ = 2 * np.pi * uv[1] / self.num_tor_symmetry + self.axis_angle  # toroidal angle
 
-        minor_radius = (fourier_transform(self.fourier_coeffs, u_) + 1) * self.minor_radius
+        minor_radius = (fourier_transform(self.fourier_coeffs*100, u_) + 1) * self.minor_radius
 
         x = (self.major_radius + minor_radius * np.cos(u_)) * np.cos(v_)
         y = (self.major_radius + minor_radius * np.cos(u_)) * np.sin(v_)
