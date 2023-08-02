@@ -5,6 +5,7 @@ from jax import Array
 from jax.typing import ArrayLike
 
 import stellacode.tools as tools
+from stellacode.tools import biot_et_savart, biot_et_savart_op
 import stellacode.tools.bnorm as bnorm
 from stellacode import mu_0_fac, np
 from stellacode.costs.abstract_cost import AbstractCost, Results
@@ -103,7 +104,6 @@ class EMCost(AbstractCost):
         )
         if not use_mu_0_factor:
             bnorm_ /= mu_0_fac
-            # net_currents /= mu_0_fac
 
         return cls(
             lamb=float(config["other"]["lamb"]),
@@ -165,45 +165,28 @@ class EMCost(AbstractCost):
             phi_mn = solver.solve_lambda(lamb=self.lamb)
             bnorm_pred = bs.get_b_field(phi_mn)
         else:
-
             phi_mn = S.current.get_phi_mn()
 
             # old way, much more memory intensive
             # bs = self.get_bs_operator(S=S)
             # bnorm_pred = bs.get_b_field(phi_mn)
+            bnorm_pred = S.get_b_field(xyz_plasma=self.Sp.xyz, plasma_normal=self.Sp.normal_unit)
 
-            bnorm_pred = biot_et_savart(
-                xyz_plasma=self.Sp.xyz,
-                xyz_coil=S.xyz,
-                j_3d=S.get_j_3D(scale_by_ds=False),
-                dudv=S.dudv,
-                plasma_normal=self.Sp.normal_unit
-            )
-
-            bnorm_pred *= mu_0_fac
             solver = None
-        
-        cost, metrics, results_ = self.get_results(bnorm_pred=bnorm_pred, solver=solver, phi_mn=phi_mn, S=S, lamb=self.lamb)
+
+        cost, metrics, results_ = self.get_results(
+            bnorm_pred=bnorm_pred, solver=solver, phi_mn=phi_mn, S=S, lamb=self.lamb
+        )
         return cost, metrics, merge_dataclasses(results, results_)
 
     def get_bs_operator(self, S, normal_b_field: bool = True):
-        Sp = self.Sp
-
-        BS = biot_et_savart_op(
-            xyz_plasma=Sp.xyz,
-            xyz_coil=S.xyz,
-            surface_current=S.current_op,
-            jac_xyz_coil=S.jac_xyz,
-            dudv=S.dudv,
-        )
         if normal_b_field:
-            BS = np.einsum("tpqd,pqd->tpq", BS, Sp.normal_unit)
-        if self.use_mu_0_factor:
-            BS *= mu_0_fac
-        return BiotSavartOperator(
-            bs=BS,
-            use_mu_0_factor=self.use_mu_0_factor,
-        )
+            kwargs = dict(plasma_normal=self.Sp.normal_unit)
+        else:
+            kwargs = {}
+        BS = S.get_b_field_op(xyz_plasma=self.Sp.xyz, **kwargs, scale_by_mu0=self.use_mu_0_factor)
+
+        return BiotSavartOperator(bs=BS, use_mu_0_factor=self.use_mu_0_factor)
 
     def get_regcoil_solver(self, S):
         bs = self.get_bs_operator(S)
@@ -297,7 +280,9 @@ class EMCost(AbstractCost):
         for lamb in lambdas:
             phi_mn = solver.solve_lambda(lamb=lamb)
             bnorm_pred = bs.get_b_field(phi_mn)
-            results[float(lamb)] = to_float(self.get_results(bnorm_pred=bnorm_pred, solver=solver, phi_mn=phi_mn, S=S, lamb=lamb)[1])
+            results[float(lamb)] = to_float(
+                self.get_results(bnorm_pred=bnorm_pred, solver=solver, phi_mn=phi_mn, S=S, lamb=lamb)[1]
+            )
 
         return pd.DataFrame(results).T
 
@@ -314,64 +299,6 @@ class EMCost(AbstractCost):
 
 def to_float(dict_):
     return {k: float(v) for k, v in dict_.items()}
-
-
-def biot_et_savart_op(
-    xyz_plasma: ArrayLike,
-    xyz_coil: ArrayLike,
-    surface_current: ArrayLike,
-    jac_xyz_coil: ArrayLike,
-    dudv: float,
-    plasma_normal: Optional[ArrayLike] = None,
-) -> Array:
-    """
-    Args:
-     * xyz_plasma: dims = up x vp x 3
-     * xyz_coil: dims = uc x vc x 3
-     * surface_current: dims = uc x vc x 3 or current_basis x uc x vc x 3
-     * jac_xyz_coils: dims = uc x vc x 3 x 2
-    """
-
-    T = xyz_plasma[None, None, ...] - xyz_coil[:, :, None, None]
-    K = T / (np.linalg.norm(T, axis=-1) ** 3)[..., np.newaxis]
-
-    if plasma_normal is not None:
-        B = np.einsum(
-            "ijpqa,tijh,ijbh, dab,dpq->tpq",
-            K,
-            surface_current,
-            jac_xyz_coil,
-            tools.eijk,
-            plasma_normal,
-        )
-    else:
-        sc_jac = np.einsum("tijh,ijah->ijat", surface_current, jac_xyz_coil)
-        B = np.einsum("ijpqa,ijbt, dab->tpqd", K, sc_jac, tools.eijk)
-    return B * dudv
-
-
-def biot_et_savart(
-    xyz_plasma: ArrayLike,
-    xyz_coil: ArrayLike,
-    j_3d: ArrayLike,
-    dudv: float,
-        plasma_normal: Optional[ArrayLike] = None,
-) -> Array:
-    """
-    Args:
-     * xyz_plasma: dims = up x vp x 3
-     * xyz_coil: dims = uc x vc x 3
-     * surface_current: dims = uc x vc x 3 or current_basis x uc x vc x 3
-     * jac_xyz_coils: dims = uc x vc x 3 x 2
-    """
-
-    T = xyz_plasma[None, None, ...] - xyz_coil[:, :, None, None]
-    K = T / (np.linalg.norm(T, axis=-1) ** 3)[..., np.newaxis]
-
-    B = np.einsum("ijpqa,ijb,dab->pqd", K, j_3d, tools.eijk)
-    if plasma_normal is not None:
-        B = np.einsum("pqd,pqd->pq", B, plasma_normal)
-    return B * dudv
 
 
 def get_b_field_err(em_cost, coil_surf, err: str = "rmse_n"):

@@ -5,6 +5,8 @@ from jax.typing import ArrayLike
 from .abstract_surface import AbstractSurface
 from .current import AbstractCurrent
 from stellacode.tools.utils import get_min_dist
+from stellacode.tools import biot_et_savart, biot_et_savart_op
+from stellacode import mu_0_fac
 
 
 class CoilSurface(BaseModel):
@@ -80,6 +82,37 @@ class CoilSurface(BaseModel):
             return np.einsum("oijk,ijdk,ij,o->ijd", self.current_op, self.jac_xyz, 1 / self.ds, phi_mn)
         else:
             return np.einsum("oijk,ijdk,o->ijd", self.current_op, self.jac_xyz, phi_mn)
+
+    def get_b_field(
+        self,
+        xyz_plasma: ArrayLike,
+        plasma_normal: tp.Optional[ArrayLike] = None,
+    ):
+        return mu_0_fac * biot_et_savart(
+            xyz_plasma=xyz_plasma,
+            xyz_coil=self.xyz,
+            j_3d=self.get_j_3D(scale_by_ds=False),
+            dudv=self.dudv,
+            plasma_normal=plasma_normal,
+        )
+
+    def get_b_field_op(
+        self, xyz_plasma: ArrayLike, 
+        plasma_normal: tp.Optional[ArrayLike] = None, 
+        scale_by_mu0: bool = False
+    ):
+        bs_op = biot_et_savart_op(
+            xyz_plasma=xyz_plasma,
+            xyz_coil=self.xyz,
+            surface_current=self.current_op,
+            jac_xyz_coil=self.jac_xyz,
+            dudv=self.dudv,
+            plasma_normal=plasma_normal,
+        )
+        if scale_by_mu0:
+            bs_op *= mu_0_fac
+
+        return bs_op
 
     def imshow_j(self, phi_mn):
         import matplotlib.pyplot as plt

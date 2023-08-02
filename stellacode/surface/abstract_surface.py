@@ -228,7 +228,8 @@ class AbstractSurface(BaseModel):
 
         kwargs = {}
         if scalar is not None:
-            kwargs["scalars"] = np.concatenate((scalar, scalar[0:1]), axis=0)
+            scalar_ = np.concatenate((scalar, scalar[0:1]), axis=0)
+            kwargs["scalars"] = np.concatenate((scalar_, scalar_[:,0:1]), axis=1)
 
         index = 0
         for xyz_ in xyz:
