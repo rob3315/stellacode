@@ -1,12 +1,14 @@
-from pydantic import BaseModel, Extra, Field
 import typing as tp
-from stellacode import np
+
 from jax.typing import ArrayLike
+from pydantic import BaseModel, Extra, Field
+
+from stellacode import mu_0_fac, np
+from stellacode.tools import biot_et_savart, biot_et_savart_op
+from stellacode.tools.utils import get_min_dist
+
 from .abstract_surface import AbstractSurface
 from .current import AbstractCurrent
-from stellacode.tools.utils import get_min_dist
-from stellacode.tools import biot_et_savart, biot_et_savart_op
-from stellacode import mu_0_fac
 
 
 class CoilSurface(BaseModel):
@@ -97,9 +99,7 @@ class CoilSurface(BaseModel):
         )
 
     def get_b_field_op(
-        self, xyz_plasma: ArrayLike, 
-        plasma_normal: tp.Optional[ArrayLike] = None, 
-        scale_by_mu0: bool = False
+        self, xyz_plasma: ArrayLike, plasma_normal: tp.Optional[ArrayLike] = None, scale_by_mu0: bool = False
     ):
         bs_op = biot_et_savart_op(
             xyz_plasma=xyz_plasma,

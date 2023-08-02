@@ -1,5 +1,6 @@
 import configparser
 import typing as tp
+
 from jax.typing import ArrayLike
 from pydantic import BaseModel, Extra
 

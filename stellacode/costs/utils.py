@@ -1,5 +1,6 @@
-from stellacode import np
 from pydantic import BaseModel
+
+from stellacode import np
 
 
 class Constraint(BaseModel):

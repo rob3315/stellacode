@@ -5,8 +5,7 @@ from jax.typing import ArrayLike
 from stellacode import np
 
 from .abstract_surface import AbstractSurface
-from .utils import fourier_transform
-from .utils import cartesian_to_toroidal
+from .utils import cartesian_to_toroidal, fourier_transform
 
 
 class CylindricalSurface(AbstractSurface):

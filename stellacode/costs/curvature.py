@@ -1,6 +1,6 @@
 from stellacode import np
 from stellacode.costs.abstract_cost import AbstractCost, Results
-from stellacode.costs.utils import inverse_barrier, Constraint
+from stellacode.costs.utils import Constraint, inverse_barrier
 
 
 class CurvatureCost(AbstractCost):

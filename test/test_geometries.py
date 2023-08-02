@@ -1,6 +1,5 @@
 from stellacode.surface import ToroidalSurface
 
-
 # def test_axisymmetric():
 #     surf = ToroidalSurface(nbpts=(16,16))
 

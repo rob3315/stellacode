@@ -1,18 +1,19 @@
-import pytest
-from stellacode.tools.vmec import VMECIO
 import numpy as np
+import pytest
+
+from stellacode.tools.vmec import VMECIO
 
 
 @pytest.mark.skip("Missing dependency")
 def test_vmec():
     import utilitiesRF as urf
+
     ntheta = 4
     nzeta = 4
 
     vmec = VMECIO("data/w7x/wout_d23p4_tm.nc", ntheta=ntheta, nzeta=nzeta)
     vmec2 = urf.VmecIO()
     vmec2.read_wout("data/w7x/wout_d23p4_tm.nc")
-
 
     vmec2.flux_surf(nradius=vmec2.ns, ntheta=ntheta, nzeta=nzeta)
     vmec2.fields(nradius=vmec2.ns, ntheta=ntheta, nzeta=nzeta)

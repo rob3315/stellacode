@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Extra
 import typing as tp
 from os.path import dirname, realpath
+
+from pydantic import BaseModel, Extra
 
 
 class PlasmaConfig(BaseModel):

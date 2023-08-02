@@ -2,6 +2,7 @@ import typing as tp
 from os import sep
 
 import numpy as onp
+from concave_hull import concave_hull
 from jax.typing import ArrayLike
 from scipy.interpolate import CubicSpline, interp1d
 from scipy.io import netcdf_file
@@ -9,11 +10,11 @@ from scipy.spatial import ConvexHull
 
 from stellacode import np
 from stellacode.surface.utils import fourier_coefficients
-from concave_hull import concave_hull
+from stellacode.tools.vmec import VMECIO
+
 from .abstract_surface import AbstractSurface, IntegrationParams
 from .tore import ToroidalSurface
 from .utils import cartesian_to_cylindrical, cartesian_to_toroidal, from_polar, to_polar
-from stellacode.tools.vmec import VMECIO
 
 
 class FourierSurface(AbstractSurface):
@@ -151,9 +152,10 @@ class FourierSurface(AbstractSurface):
         # interp = CubicSpline(th, xy, bc_type="periodic")
         # interp = interp1d(th, xy, kind="linear", axis=0)
         interp = CubicSpline(th, xy, bc_type="periodic")
+
         def fun(theta):
             return to_polar(*interp(theta))[0]
-        
+
         # fun = lambda x: onp.interp(x, rth_s[:, 1], rth_s[:, 0], period=2*np.pi)
 
         return fourier_coefficients(th.min(), th.min() + 2 * np.pi, num_coeff, fun)

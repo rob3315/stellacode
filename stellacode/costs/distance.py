@@ -5,7 +5,7 @@ from jax.typing import ArrayLike
 import stellacode.tools as tools
 from stellacode import np
 from stellacode.costs.abstract_cost import AbstractCost, Results
-from stellacode.costs.utils import inverse_barrier, Constraint
+from stellacode.costs.utils import Constraint, inverse_barrier
 from stellacode.surface.imports import get_plasma_surface
 
 

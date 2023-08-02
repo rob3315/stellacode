@@ -1,4 +1,5 @@
-import numpy as onp 
+import numpy as onp
+
 from stellacode import np
 
 

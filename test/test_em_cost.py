@@ -8,17 +8,22 @@ from scipy.io import netcdf_file
 
 from stellacode import np
 from stellacode.costs.em_cost import EMCost, get_b_field_err
+from stellacode.definitions import w7x_plasma
+from stellacode.surface import (
+    Current,
+    CurrentZeroTorBC,
+    IntegrationParams,
+    ToroidalSurface,
+)
 from stellacode.surface.cylindrical import CylindricalSurface
 from stellacode.surface.imports import (
     get_current_potential,
     get_cws,
     get_plasma_surface,
 )
-from stellacode.tools.vmec import VMECIO
 from stellacode.surface.rotated_surface import RotatedSurface
-from stellacode.surface import ToroidalSurface, IntegrationParams, Current, CurrentZeroTorBC
 from stellacode.surface.utils import fit_to_surface
-from stellacode.definitions import w7x_plasma
+from stellacode.tools.vmec import VMECIO
 
 
 def test_no_dimension_error():
@@ -32,7 +37,17 @@ def test_no_dimension_error():
 def test_reproduce_regcoil_axisym():
     major_radius = 5.5
     minor_radius = 1.404687741189692  # 0.9364584941264614*(1+0.5)
-    current = Current(num_pol=8, num_tor=8)
+    vmec = VMECIO.from_grid(w7x_plasma.path_plasma)
+
+    num_tor_symmetry = vmec.nfp
+
+    net_currents = np.array(
+        [
+            vmec.net_poloidal_current / num_tor_symmetry,
+            0.0,
+        ]
+    )
+    current = Current(num_pol=8, num_tor=8, net_currents=net_currents)
 
     cws = RotatedSurface(
         surface=ToroidalSurface(
@@ -114,7 +129,7 @@ def test_compare_to_regcoil(use_mu_0_factor):
     assert get_b_field_err(em_cost, cws) < 0.15
 
     # Plot regcoil vs stellacode
-    # import pandas as pd 
+    # import pandas as pd
     # import matplotlib.pyplot as plt;import seaborn as sns;import matplotlib;matplotlib.use('TkAgg')
     # from coil_optim.plots import format_axis
     # df = pd.concat({"regcoil": pd.Series(chi2_b, index=chi_j),"stellacode": pd.Series(metrics.cost_B.values, index=chi_j),}, axis=1)
@@ -244,7 +259,24 @@ def test_regcoil_with_pwc_no_current_at_bc():
         lamb=1e-20,
     )
 
-    current = CurrentZeroTorBC(num_pol=current_n_coeff, num_tor=current_n_coeff, sin_basis=True, cos_basis=True)
+    vmec = VMECIO.from_grid(w7x_plasma.path_plasma)
+
+    num_tor_symmetry = vmec.nfp
+
+    net_currents = np.array(
+        [
+            vmec.net_poloidal_current / num_tor_symmetry,
+            0.0,
+        ]
+    )
+
+    current = CurrentZeroTorBC(
+        num_pol=current_n_coeff,
+        num_tor=current_n_coeff,
+        sin_basis=True,
+        cos_basis=True,
+        net_currents=net_currents,
+    )
 
     fourier_coeffs = np.zeros((0, 2))
 

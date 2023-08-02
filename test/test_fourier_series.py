@@ -33,4 +33,3 @@ def test_convex_hull_fourier_series():
 
     # surf.plot(only_one_period=True)
     # tor_surf.plot(only_one_period=True)
-

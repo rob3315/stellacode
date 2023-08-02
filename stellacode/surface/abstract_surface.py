@@ -1,11 +1,11 @@
 import typing as tp
 
 import jax
+import numpy as onp
 from jax.typing import ArrayLike
 from pydantic import BaseModel, Extra
 
 from stellacode import np
-import numpy as onp
 from stellacode.tools.utils import get_min_dist
 
 from .utils import get_principles
@@ -229,7 +229,7 @@ class AbstractSurface(BaseModel):
         kwargs = {}
         if scalar is not None:
             scalar_ = np.concatenate((scalar, scalar[0:1]), axis=0)
-            kwargs["scalars"] = np.concatenate((scalar_, scalar_[:,0:1]), axis=1)
+            kwargs["scalars"] = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)
 
         index = 0
         for xyz_ in xyz:

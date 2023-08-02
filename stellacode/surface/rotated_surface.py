@@ -2,9 +2,10 @@ import collections
 
 import stellacode.tools as tools
 from stellacode import np
-from .utils import cartesian_to_toroidal
-from .coil_surface import CoilSurface
 from stellacode.tools.rotate_n_times import RotateNTimes
+
+from .coil_surface import CoilSurface
+from .utils import cartesian_to_toroidal
 
 
 class RotatedSurface(CoilSurface):
@@ -50,6 +51,7 @@ class RotatedSurface(CoilSurface):
                 setattr(self.current, k, v)
 
         self.compute_surface_attributes(deg=2)
+
     def get_curent_op(self):
         return self.current_op
 
@@ -102,7 +104,6 @@ class RotatedSurface(CoilSurface):
         if deg >= 2:
             self.principles = [self.rotate_n(val) for val in self.surface.principles]
         self.set_curent_op()
-
 
     def cartesian_to_toroidal(self):
         try:

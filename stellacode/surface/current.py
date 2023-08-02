@@ -1,10 +1,13 @@
-import numpy as onp
-from pydantic import BaseModel, Extra
-from .abstract_surface import IntegrationParams
-import pandas as pd
 import typing as tp
+
+import numpy as onp
+import pandas as pd
 from jax.typing import ArrayLike
+from pydantic import BaseModel, Extra
+
 from stellacode import np
+
+from .abstract_surface import IntegrationParams
 
 
 def _stack(a, b):
@@ -15,9 +18,16 @@ class AbstractCurrent(BaseModel):
     trainable_params: tp.List[str] = []
     current_op: tp.Optional[ArrayLike] = None
     grids: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
+    net_currents: tp.Optional[ArrayLike] = None
 
     class Config:
         arbitrary_types_allowed = True
+
+    def get_phi_mn(self):
+        phi_mn = self.phi_mn * 1e8
+        if self.net_currents is not None:
+            phi_mn = np.concatenate((self.net_currents, phi_mn))
+        return phi_mn
 
     def get_trainable_params(self):
         return {k: getattr(self, k) for k in self.trainable_params}
@@ -59,7 +69,6 @@ class Current(AbstractCurrent):
     cos_basis: bool = False
     trainable_params: tp.List[str] = []
     phi_mn: tp.Optional[ArrayLike] = None
-    net_currents: tp.Optional[ArrayLike] = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -78,12 +87,6 @@ class Current(AbstractCurrent):
         xn = onp.concatenate((-onp.arange(1, self.num_tor + 1), -grid[1]))
 
         return xm, xn
-
-    def get_phi_mn(self):
-        phi_mn = self.phi_mn * 1e8
-        if self.net_currents is not None:
-            phi_mn = np.concatenate((self.net_currents, phi_mn))
-        return phi_mn
 
     def get_j_surface(self, phi_mn=None):
         if phi_mn is None:

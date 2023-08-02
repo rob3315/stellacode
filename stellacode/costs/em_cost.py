@@ -3,19 +3,19 @@ from typing import Optional
 import pandas as pd
 from jax import Array
 from jax.typing import ArrayLike
+from pydantic import BaseModel, Extra
 
 import stellacode.tools as tools
-from stellacode.tools import biot_et_savart, biot_et_savart_op
 import stellacode.tools.bnorm as bnorm
 from stellacode import mu_0_fac, np
 from stellacode.costs.abstract_cost import AbstractCost, Results
-from stellacode.surface import AbstractSurface, IntegrationParams, FourierSurface
-from stellacode.surface.imports import get_cws, get_plasma_surface
 from stellacode.definitions import PlasmaConfig
+from stellacode.surface import AbstractSurface, FourierSurface, IntegrationParams
+from stellacode.surface.imports import get_cws, get_plasma_surface
+from stellacode.tools import biot_et_savart, biot_et_savart_op
 from stellacode.tools.vmec import VMECIO
-from .utils import merge_dataclasses
 
-from pydantic import BaseModel, Extra
+from .utils import merge_dataclasses
 
 
 class BiotSavartOperator(BaseModel):
@@ -82,7 +82,6 @@ class EMCost(AbstractCost):
     """
 
     lamb: float
-    net_currents: Optional[ArrayLike]
     Sp: AbstractSurface
     bnorm: ArrayLike = 0.0
     use_mu_0_factor: bool = False
@@ -92,22 +91,15 @@ class EMCost(AbstractCost):
     @classmethod
     def from_config(cls, config, Sp=None, use_mu_0_factor=True):
         curpol = float(config["other"]["curpol"])
-        num_tor_symmetry = int(config["geometry"]["Np"])
         if Sp is None:
             Sp = get_plasma_surface(config)
         bnorm_ = -curpol * bnorm.get_bnorm(str(config["other"]["path_bnorm"]), Sp)
-        net_currents = np.array(
-            [
-                float(config["other"]["net_poloidal_current_Amperes"]) / num_tor_symmetry,
-                float(config["other"]["net_toroidal_current_Amperes"]),
-            ]
-        )
+
         if not use_mu_0_factor:
             bnorm_ /= mu_0_fac
 
         return cls(
             lamb=float(config["other"]["lamb"]),
-            net_currents=net_currents,
             bnorm=bnorm_,
             Sp=Sp,
             use_mu_0_factor=use_mu_0_factor,
@@ -127,15 +119,6 @@ class EMCost(AbstractCost):
 
         vmec = VMECIO.from_grid(plasma_config.path_plasma)
 
-        num_tor_symmetry = vmec.nfp
-
-        net_currents = np.array(
-            [
-                vmec.net_poloidal_current / num_tor_symmetry,
-                0.0,
-            ]
-        )
-
         # Checking the computation of net_poloidal_current
         # np.sum(vmec.b_cylindrical[-1] * vmec.grad_rphiz[-1][..., 1], axis=-1).sum(1) / mu_0*(1/(2*np.pi*5*48))
         # b_cart= vmec.b_cartesian[-1]
@@ -147,13 +130,11 @@ class EMCost(AbstractCost):
             bnorm_ = -vmec.scale_bnorm(bnorm.get_bnorm(plasma_config.path_bnorm, Sp))
             if not use_mu_0_factor:
                 bnorm_ /= mu_0_fac
-                # net_currents /= mu_0_fac
         else:
             bnorm_ = 0.0
 
         return cls(
             lamb=lamb,
-            net_currents=net_currents,
             bnorm=bnorm_,
             Sp=Sp,
             use_mu_0_factor=use_mu_0_factor,
@@ -200,45 +181,32 @@ class EMCost(AbstractCost):
 
         Qj = tools.compute_Qj(S.current_op, S.jac_xyz, S.ds)
 
-        if self.net_currents is not None:
+        if S.current.net_currents is not None:
             BS_R = BS[2:]
-            if self.inverse_qj:
-                Qj_inv_R = np.linalg.inv(Qj[2:, 2:])
-            bnorm_ = self.bnorm - np.einsum("tpq,t", BS[:2], self.net_currents)
+            bnorm_ = self.bnorm - np.einsum("tpq,t", BS[:2], S.current.net_currents)
         else:
             BS_R = BS
-            if self.inverse_qj:
-                Qj_inv_R = np.linalg.inv(Qj)
             bnorm_ = self.bnorm
-        if self.inverse_qj:
-            BS_dagger = np.einsum("ut,tij,ij->uij", Qj_inv_R, BS_R, Sp.ds / Sp.npts)
-        else:
-            BS_dagger = np.einsum("uij,ij->uij", BS_R, Sp.ds / Sp.npts)
+        BS_dagger = np.einsum("uij,ij->uij", BS_R, Sp.ds / Sp.npts)
 
-        RHS = np.einsum("hpq,pq->h", BS_dagger, bnorm_)
+        rhs = np.einsum("hpq,pq->h", BS_dagger, bnorm_)
 
-        if self.net_currents is not None:
-            if self.inverse_qj:
-                RHS_lamb = Qj_inv_R @ Qj[2:, :2] @ self.net_currents
-            else:
-                RHS_lamb = Qj[2:, :2] @ self.net_currents
+        if S.current.net_currents is not None:
+            rhs_reg = Qj[2:, :2] @ S.current.net_currents
         else:
-            RHS_lamb = None
+            rhs_reg = None
 
         matrix = np.einsum("tpq,upq->tu", BS_dagger, BS_R)
-        if self.inverse_qj:
-            matrix_reg = np.eye(BS_R.shape[0])
-        else:
-            matrix_reg = Qj[2:, 2:]
+        matrix_reg = Qj[2:, 2:]
 
         return (
             RegCoilSolver(
                 current_cov=Qj,
                 matrix=matrix,
                 matrix_reg=matrix_reg,
-                rhs=RHS,
-                rhs_reg=RHS_lamb,
-                net_currents=self.net_currents,
+                rhs=rhs,
+                rhs_reg=rhs_reg,
+                net_currents=S.current.net_currents,
                 use_mu_0_factor=self.use_mu_0_factor,
             ),
             bs,

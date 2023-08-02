@@ -1,8 +1,10 @@
-from stellacode import np
+from typing import Optional
+
+import numpy as onp
 from jax import Array
 from jax.typing import ArrayLike
-from typing import Optional
-import numpy as onp
+
+from stellacode import np
 
 # the completely antisymetric tensor
 eijk = onp.zeros((3, 3, 3))

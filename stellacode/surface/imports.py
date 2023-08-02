@@ -33,10 +33,20 @@ def get_cws_grid(config):
     return AbstractSurface.get_uvgrid(n_pol_coil, n_tor_coil)
 
 
+from stellacode.tools.vmec import VMECIO
+
+
 def get_current_potential(config):
     mpol_coil = int(config["geometry"]["mpol_coil"])
     ntor_coil = int(config["geometry"]["ntor_coil"])
-    return Current(num_pol=mpol_coil, num_tor=ntor_coil)
+    num_tor_symmetry = int(config["geometry"]["Np"])
+    net_currents = np.array(
+        [
+            float(config["other"]["net_poloidal_current_Amperes"]) / num_tor_symmetry,
+            float(config["other"]["net_toroidal_current_Amperes"]),
+        ]
+    )
+    return Current(num_pol=mpol_coil, num_tor=ntor_coil, net_currents=net_currents)
 
 
 def get_plasma_surface(config):
@@ -45,8 +55,9 @@ def get_plasma_surface(config):
     path_plasma = str(config["geometry"]["path_plasma"])
 
     plasma = FourierSurface.from_file(
-        path_plasma, integration_par=IntegrationParams(num_points_u=n_pol_plasma, num_points_v=n_tor_plasma),
-        n_fp=int(config["geometry"]["Np"])
+        path_plasma,
+        integration_par=IntegrationParams(num_points_u=n_pol_plasma, num_points_v=n_tor_plasma),
+        n_fp=int(config["geometry"]["Np"]),
     )
     return plasma
 

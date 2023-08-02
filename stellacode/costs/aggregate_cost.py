@@ -6,6 +6,7 @@ from stellacode.costs.curvature import CurvatureCost
 from stellacode.costs.distance import DistanceCost
 from stellacode.costs.em_cost import EMCost
 from stellacode.surface.imports import get_cws, get_plasma_surface
+
 from .abstract_cost import AbstractCost, Results
 from .utils import merge_dataclasses
 

@@ -9,13 +9,14 @@ import scipy.optimize
 from pydantic import BaseModel, Extra
 
 from stellacode import np
-from stellacode.costs.aggregate_cost import AggregateCost
 from stellacode.costs.abstract_cost import Results
+from stellacode.costs.aggregate_cost import AggregateCost
 from stellacode.surface.coil_surface import CoilSurface
 from stellacode.surface.imports import get_cws
 from stellacode.tools.concat_dict import ConcatDictArray
 
 logger = logging.getLogger(__name__)
+
 
 def tostr(res_dict):
     """transform a dict in a string"""
@@ -27,6 +28,7 @@ def tostr(res_dict):
             out_str += f"{k}: {val:.4f}, "
     return out_str
 
+
 def tostr_jax(res_dict):
     """transform a dict in a string"""
     out_str = ""
@@ -36,6 +38,7 @@ def tostr_jax(res_dict):
         # else:
         #     out_str += f"{k}: {{{k}:.4f}}, "
     return out_str
+
 
 class Optimizer(BaseModel):
     cost: AggregateCost

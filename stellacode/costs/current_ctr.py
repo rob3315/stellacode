@@ -1,11 +1,12 @@
 from stellacode import np
 from stellacode.costs.abstract_cost import AbstractCost, Results
-from stellacode.costs.utils import inverse_barrier, Constraint
+from stellacode.costs.utils import Constraint, inverse_barrier
 
 
 class CurrentCtrCost(AbstractCost):
     """Penalization on the maximal current"""
-    constraint: Constraint = Constraint(limit=0., distance=1., weight=1., minimum=False)
+
+    constraint: Constraint = Constraint(limit=0.0, distance=1.0, weight=1.0, minimum=False)
 
     # max_val: float
     # distance: float = 1.0

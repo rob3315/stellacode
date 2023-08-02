@@ -1,12 +1,17 @@
 import configparser
+
 import numpy as np
+
 from stellacode.costs.em_cost import EMCost
-from stellacode.surface import ToroidalSurface, RotatedSurface, CylindricalSurface, Current
+from stellacode.surface import (
+    Current,
+    CylindricalSurface,
+    IntegrationParams,
+    RotatedSurface,
+    ToroidalSurface,
+)
 from stellacode.surface.cylindrical import CylindricalSurface
 from stellacode.surface.tore import ToroidalSurface
-import configparser
-from stellacode.costs.em_cost import EMCost
-from stellacode.surface import IntegrationParams
 
 
 def test_compare_axisymmetric_vs_cylindrical():
@@ -19,7 +24,14 @@ def test_compare_axisymmetric_vs_cylindrical():
     rotate_diff_current = 32
     major_radius = 5.5
     minor_radius = 1.036458468437195
-    current = Current(num_pol=8, num_tor=8)
+    num_tor_symmetry = int(config["geometry"]["Np"])
+    net_currents = np.array(
+        [
+            float(config["other"]["net_poloidal_current_Amperes"]) / num_tor_symmetry,
+            float(config["other"]["net_toroidal_current_Amperes"]),
+        ]
+    )
+    current = Current(num_pol=8, num_tor=8, net_currents=net_currents)
     n_pol_coil = 32
     n_tor_coil = 32
     num_tor_symmetry = em_cost.Sp.num_tor_symmetry * rotate_diff_current
@@ -30,7 +42,7 @@ def test_compare_axisymmetric_vs_cylindrical():
             make_joints=False,
             distance=major_radius,
             radius=minor_radius,
-            axis_angle=1.57079631-(np.pi / 2 + np.pi / num_tor_symmetry),
+            axis_angle=1.57079631 - (np.pi / 2 + np.pi / num_tor_symmetry),
         ),
         num_tor_symmetry=em_cost.Sp.num_tor_symmetry,
         rotate_diff_current=rotate_diff_current,
