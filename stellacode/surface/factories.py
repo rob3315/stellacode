@@ -7,6 +7,7 @@ from stellacode.surface.utils import fit_to_surface
 
 from stellacode.surface import Current, IntegrationParams, CurrentZeroTorBC, AbstractCurrent
 from stellacode.surface import FourierSurface
+from stellacode.tools.vmec import VMECIO
 
 
 def get_toroidal_surface(
@@ -111,14 +112,14 @@ def get_pwc_surface(
 
 
 def get_original_cws(path_cws: str, path_plasma: str, n_harmonics: int = 16, factor: int = 6):
-    assert path_cws[-3::] == ".nc"
-
+    num_tor_symmetry = VMECIO.from_grid(path_plasma).nfp
     cws = FourierSurface.from_file(
         path_cws,
         integration_par=IntegrationParams(
             num_points_u=n_harmonics * factor,
             num_points_v=n_harmonics * factor,
         ),
+        n_fp=num_tor_symmetry,
     )
 
     cws = RotatedSurface(
