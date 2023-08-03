@@ -7,7 +7,7 @@ from pydantic import BaseModel, Extra
 
 from stellacode import np
 from stellacode.tools.utils import get_min_dist
-
+from stellacode.tools.rotate_n_times import RotateNTimes
 from .utils import get_principles
 
 
@@ -180,22 +180,10 @@ class AbstractSurface(BaseModel):
 
         points = self.expand_for_plot_part()[0]
 
-        # points_ = [points]
-        # for i in range(1, self.num_tor_symmetry):
-        #     angle = 2 * i * np.pi / self.num_tor_symmetry
-        #     rotation_matrix = np.array(
-        #         [
-        #             [np.cos(angle), -np.sin(angle), 0],
-        #             [np.sin(angle), np.cos(angle), 0],
-        #             [0, 0, 1],
-        #         ]
-        #     )
-        #     points_.append(np.einsum("ij,uvj->uvi", rotation_matrix, points))
-
-        from stellacode.tools import get_rot_tensor
-
-        rot_tensor = get_rot_tensor(self.num_tor_symmetry)
-        points_ = [np.einsum("opq,ijq->iojp", rot_tensor, points)[:, i] for i in range(self.num_tor_symmetry)]
+        points_rot = RotateNTimes(self.num_tor_symmetry)(points)
+        pol, torrot, _=points_rot.shape
+        points_rot = np.reshape(points_rot, (pol, self.num_tor_symmetry, torrot//self.num_tor_symmetry, 3))
+        points_ = [points_rot[:, i] for i in range(self.num_tor_symmetry)]
 
         if detach_parts:
             return points_
