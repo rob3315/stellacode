@@ -45,7 +45,7 @@ class RegCoilSolver(BaseModel):
         arbitrary_types_allowed = True
         # extra = Extra.allow  # allow extra fields
 
-    current_cov: ArrayLike
+    current_basis_dot_prod: ArrayLike
     matrix: ArrayLike
     matrix_reg: ArrayLike
     rhs: ArrayLike
@@ -114,6 +114,7 @@ class EMCost(AbstractCost):
         Sp=None,
         use_mu_0_factor: bool = True,
         lamb: float = 0.1,
+        train_currents: bool = False,
     ):
         if Sp is None:
             Sp = FourierSurface.from_file(plasma_config.path_plasma, integration_par=integration_par)
@@ -139,6 +140,7 @@ class EMCost(AbstractCost):
             bnorm=bnorm_,
             Sp=Sp,
             use_mu_0_factor=use_mu_0_factor,
+            train_currents=train_currents
         )
 
     def cost(self, S, results: Results = Results()):
@@ -180,8 +182,7 @@ class EMCost(AbstractCost):
         # "Optimal shape of stellarators for magnetic confinement fusion"
         # in order to understand what's going on.
 
-        Qj = tools.compute_Qj(S.current_op, S.jac_xyz, S.ds)
-
+        current_basis_dot_prod = S.get_current_basis_dot_prod()
         if S.current.net_currents is not None:
             BS_R = BS[2:]
             bnorm_ = self.bnorm - np.einsum("tpq,t", BS[:2], S.current.net_currents)
@@ -193,16 +194,16 @@ class EMCost(AbstractCost):
         rhs = np.einsum("hpq,pq->h", BS_dagger, bnorm_)
 
         if S.current.net_currents is not None:
-            rhs_reg = Qj[2:, :2] @ S.current.net_currents
+            rhs_reg = current_basis_dot_prod[2:, :2] @ S.current.net_currents
         else:
             rhs_reg = None
 
         matrix = np.einsum("tpq,upq->tu", BS_dagger, BS_R)
-        matrix_reg = Qj[2:, 2:]
+        matrix_reg = current_basis_dot_prod[2:, 2:]
 
         return (
             RegCoilSolver(
-                current_cov=Qj,
+                current_basis_dot_prod=current_basis_dot_prod,
                 matrix=matrix,
                 matrix_reg=matrix_reg,
                 rhs=rhs,
@@ -227,7 +228,9 @@ class EMCost(AbstractCost):
 
         metrics["cost_B"] = self.Sp.integrate(B_err**2)
         if solver is not None:
-            metrics["cost_J"] = S.num_tor_symmetry * np.einsum("i,ij,j->", phi_mn, solver.current_cov, phi_mn)
+            metrics["cost_J"] = S.num_tor_symmetry * np.einsum(
+                "i,ij,j->", phi_mn, solver.current_basis_dot_prod, phi_mn
+            )
             metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
         else:
             metrics["cost"] = metrics["cost_B"]

@@ -53,8 +53,17 @@ class CoilSurface(BaseModel):
     def _set_curent_op(self):
         self.current_op = self.current._get_matrix_from_grid(self.grids)
 
-    def get_current_scalar_prod(self):
-        return compute_Qj(self.current_op, self.jac_xyz, self.ds)
+    def get_current_basis_dot_prod(self):
+        lu, lv = self.ds.shape
+        return np.einsum(
+            "oija,ijda,ijdk,pijk,ij->op",
+            self.current_op,
+            self.jac_xyz,
+            self.jac_xyz,
+            self.current_op,
+            1 / self.ds,
+            optimize=True,
+        ) / (lu * lv) # why isn't this dudv?
 
     @property
     def nbpts(self):
