@@ -52,11 +52,7 @@ class RotatedSurface(CoilSurface):
 
         self.compute_surface_attributes(deg=2)
 
-    def get_curent_op(self):
-        return self.current_op
-
-    def set_curent_op(self):
-        self.current.set_current_op(self.grids)
+    def _set_curent_op(self):
         if self.common_current_on_each_rot:
             gridu, gridv = self.grids
             gridu = np.concatenate([gridu] * self.rotate_diff_current, axis=1)
@@ -64,13 +60,13 @@ class RotatedSurface(CoilSurface):
             # this scaling is necessary because the Current class expect the grid to
             # always be from 0 to 1.
             gridv = np.concatenate([(i + gridv) / rd for i in range(rd)], axis=1)
-            blocks = self.current.get_matrix_from_grid((gridu, gridv))
+            blocks = self.current._get_matrix_from_grid((gridu, gridv))
             # this is because the current potential derivative vs v is scaled by rd
             # when v is scaled by 1/rd
             blocks[..., -1] *= rd
 
         else:
-            curent_op = super().get_curent_op()
+            curent_op = self.current._get_matrix_from_grid(self.grids)
             current_op_ = curent_op[2:]
 
             inner_blocks = collections.deque(
@@ -103,7 +99,7 @@ class RotatedSurface(CoilSurface):
 
         if deg >= 2:
             self.principles = [self.rotate_n(val) for val in self.surface.principles]
-        self.set_curent_op()
+        self._set_curent_op()
 
     def cartesian_to_toroidal(self):
         try:

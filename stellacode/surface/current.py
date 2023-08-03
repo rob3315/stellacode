@@ -3,7 +3,7 @@ import typing as tp
 import numpy as onp
 import pandas as pd
 from jax.typing import ArrayLike
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel
 
 from stellacode import np
 
@@ -15,13 +15,31 @@ def _stack(a, b):
 
 
 class AbstractCurrent(BaseModel):
-    trainable_params: tp.List[str] = []
-    current_op: tp.Optional[ArrayLike] = None
-    grids: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
-    net_currents: tp.Optional[ArrayLike] = None
+    num_pol: int
+    num_tor: int
+    net_currents: ArrayLike
+    phi_mn: ArrayLike = onp.zeros(1)
+    sin_basis: bool = True
+    cos_basis: bool = False
+    trainable_params: tp.List[str] = ["phi_mn"]
 
     class Config:
         arbitrary_types_allowed = True
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        num_dims = (self.num_tor * 2 + 1) * self.num_pol + self.num_tor
+        if self.sin_basis and self.cos_basis:
+            num_dims *= 2
+        self.phi_mn = onp.zeros(num_dims)
+
+    def get_integration_params(self, factor: float = 4):
+        return IntegrationParams(num_points_u=self.num_pol * factor, num_points_v=self.num_tor * factor)
+
+    def get_j_surface(self, phi_mn=None):
+        if phi_mn is None:
+            phi_mn = self.phi_mn
+        return np.einsum("oijk,o->ijk", self.current_op, phi_mn)
 
     def get_phi_mn(self):
         phi_mn = self.phi_mn * 1e8
@@ -35,52 +53,12 @@ class AbstractCurrent(BaseModel):
     def _get_coeffs(self):
         raise NotImplementedError
 
-    # def _get_grad_phi(self, gridu, gridv):
-    #     raise NotImplementedError
-
-    def get_matrix_from_grid(self, grids):
-        # ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
-        # lu, lv = ugrid.shape
-        xm, xn = self.get_coeffs()
-        xm = xm[:, None, None]
-        xn = xn[:, None, None]
-
-        dphi = []
-        assert self.sin_basis or self.cos_basis
-
-        dphi = self._get_grad_phi(*grids)
-
-        dphi = onp.concatenate(dphi, axis=0)
-        dphi = onp.concatenate((onp.zeros((2, *grids[0].shape, 2)), dphi), axis=0)
-
-        dphi[0, :, :, 0] = onp.ones(grids[0].shape)
-        dphi[1, :, :, 1] = onp.ones(grids[0].shape)
-
-        return dphi
-
-    def set_current_op(self, grids):
-        self.current_op = self.get_matrix_from_grid(grids)
+    @classmethod
+    def _get_matrix_from_grid(cls, grids, sin_basis, cos_basis, num_pol, num_tor):
+        raise NotImplementedError
 
 
 class Current(AbstractCurrent):
-    num_pol: int
-    num_tor: int
-    sin_basis: bool = True
-    cos_basis: bool = False
-    trainable_params: tp.List[str] = []
-    phi_mn: tp.Optional[ArrayLike] = None
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        if self.phi_mn is None:
-            num_dims = (self.num_tor * 2 + 1) * self.num_pol + self.num_tor
-            if self.sin_basis and self.cos_basis:
-                num_dims *= 2
-            self.phi_mn = onp.zeros(num_dims)
-
-    def get_integration_params(self, factor: float = 4):
-        return IntegrationParams(num_points_u=self.num_pol * factor, num_points_v=self.num_tor * factor)
-
     def _get_coeffs(self):
         grid = onp.mgrid[1 : (self.num_pol + 1), -self.num_tor : (self.num_tor + 1)].reshape((2, -1))
         xm = onp.concatenate((onp.zeros(self.num_tor), grid[0]))
@@ -88,12 +66,7 @@ class Current(AbstractCurrent):
 
         return xm, xn
 
-    def get_j_surface(self, phi_mn=None):
-        if phi_mn is None:
-            phi_mn = self.phi_mn
-        return np.einsum("oijk,o->ijk", self.current_op, phi_mn)
-
-    def get_matrix_from_grid(self, grids):
+    def _get_matrix_from_grid(self, grids):
         ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
         lu, lv = ugrid.shape
         xm, xn = self._get_coeffs()
@@ -148,22 +121,15 @@ class Current(AbstractCurrent):
 
 
 class CurrentZeroTorBC(AbstractCurrent):
-    num_pol: int
-    num_tor: int
-    sin_basis: bool = True
-    cos_basis: bool = True
-    trainable_params: tp.List[str] = ["phi_mn"]
-    phi_mn: tp.Optional[ArrayLike] = None
-
-    def get_coeffs(self):
+    def _get_coeffs(self):
         grid = onp.mgrid[1 : (self.num_pol + 2), 1 : (self.num_tor + 2)].reshape((2, -1))
         return grid[0], grid[1], onp.arange(1, (self.num_tor + 2))
 
-    def get_matrix_from_grid(self, grids):
+    def _get_matrix_from_grid(self, grids):
         ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
         vgrid = vgrid + 0.5 / vgrid.shape[1]
         lu, lv = ugrid.shape
-        xm, xn, xn0 = self.get_coeffs()
+        xm, xn, xn0 = self._get_coeffs()
         xm = xm[:, None, None]
         xn = xn[:, None, None]
         xn0 = xn0[:, None, None]

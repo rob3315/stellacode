@@ -2,12 +2,12 @@
 Imports for the surface module.
 """
 from stellacode import np
+from stellacode.tools.vmec import VMECIO
 
 from .abstract_surface import AbstractSurface, IntegrationParams
 from .current import Current
 from .fourier import FourierSurface
 from .rotated_surface import RotatedSurface
-from stellacode.tools.vmec import VMECIO
 
 
 def get_cws(config):

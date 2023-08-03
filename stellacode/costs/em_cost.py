@@ -87,6 +87,7 @@ class EMCost(AbstractCost):
     use_mu_0_factor: bool = False
     inverse_qj: bool = False
     slow_metrics: bool = True
+    train_currents: bool = False
 
     @classmethod
     def from_config(cls, config, Sp=None, use_mu_0_factor=True):
@@ -141,7 +142,7 @@ class EMCost(AbstractCost):
         )
 
     def cost(self, S, results: Results = Results()):
-        if "phi_mn" not in S.get_trainable_params().keys():
+        if not self.train_currents:
             solver, bs = self.get_regcoil_solver(S=S)
             phi_mn = solver.solve_lambda(lamb=self.lamb)
             bnorm_pred = bs.get_b_field(phi_mn)

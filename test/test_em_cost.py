@@ -19,8 +19,8 @@ from stellacode.surface.cylindrical import CylindricalSurface
 from stellacode.surface.imports import (
     get_current_potential,
     get_cws,
+    get_net_current,
     get_plasma_surface,
-    get_net_current
 )
 from stellacode.surface.rotated_surface import RotatedSurface
 from stellacode.surface.utils import fit_to_surface
@@ -222,7 +222,7 @@ def test_regcoil_with_pwc():
     )
 
     # check that the rotated current potential is well constructed
-    curent_potential_op = S.get_curent_op()[2:]
+    curent_potential_op = S.current_op[2:]
     s1, s2, s3, _ = curent_potential_op.shape
     assert np.all(curent_potential_op[:, :, : s3 // 3] == curent_potential_op[:, :, s3 // 3 : 2 * s3 // 3])
     cp_op = curent_potential_op.reshape((3, s1 // 3, s2, 9, s3 // 9, -1))

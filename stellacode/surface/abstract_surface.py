@@ -6,8 +6,9 @@ from jax.typing import ArrayLike
 from pydantic import BaseModel, Extra
 
 from stellacode import np
-from stellacode.tools.utils import get_min_dist
 from stellacode.tools.rotate_n_times import RotateNTimes
+from stellacode.tools.utils import get_min_dist
+
 from .utils import get_principles
 
 
@@ -181,8 +182,8 @@ class AbstractSurface(BaseModel):
         points = self.expand_for_plot_part()[0]
 
         points_rot = RotateNTimes(self.num_tor_symmetry)(points)
-        pol, torrot, _=points_rot.shape
-        points_rot = np.reshape(points_rot, (pol, self.num_tor_symmetry, torrot//self.num_tor_symmetry, 3))
+        pol, torrot, _ = points_rot.shape
+        points_rot = np.reshape(points_rot, (pol, self.num_tor_symmetry, torrot // self.num_tor_symmetry, 3))
         points_ = [points_rot[:, i] for i in range(self.num_tor_symmetry)]
 
         if detach_parts:

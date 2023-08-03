@@ -50,8 +50,8 @@ class CoilSurface(BaseModel):
     def compute_surface_attributes(self, deg=2):
         raise NotImplementedError
 
-    def get_curent_op(self):
-        return self.current.get_matrix_from_grid(self.grids)
+    def _set_curent_op(self):
+        self.current_op = self.current._get_matrix_from_grid(self.grids)
 
     def get_current_scalar_prod(self):
         return compute_Qj(self.current_op, self.jac_xyz, self.ds)
