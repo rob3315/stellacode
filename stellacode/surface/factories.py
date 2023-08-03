@@ -48,7 +48,7 @@ def get_toroidal_surface(
 
 
 def get_pwc_surface(
-    Sp: FourierSurface,
+    surf_plasma: FourierSurface,
     n_harmonics: int = 16,
     factor: int = 6,
     rotate_diff_current: int = 3,
@@ -58,8 +58,10 @@ def get_pwc_surface(
     distance: float = 0.0,
     sin_basis: bool = True,
     cos_basis: bool = True,
+    convex: bool = True,
+    match_surface: bool = False,
 ):
-    net_currents = get_net_current(Sp.file_path)
+    net_currents = get_net_current(surf_plasma.file_path)
     if common_current_on_each_rot:
         current: AbstractCurrent = Current(
             num_pol=n_harmonics,
@@ -76,26 +78,36 @@ def get_pwc_surface(
             cos_basis=cos_basis,
             net_currents=net_currents,
         )
-
-    S = RotatedSurface(
-        surface=CylindricalSurface(
-            integration_par=IntegrationParams(
-                num_points_u=n_harmonics * factor,
-                num_points_v=n_harmonics * factor // rotate_diff_current,
-            ),
-            num_tor_symmetry=Sp.num_tor_symmetry * rotate_diff_current,
+    integration_par = IntegrationParams(
+        num_points_u=n_harmonics * factor,
+        num_points_v=n_harmonics * factor // rotate_diff_current,
+    )
+    if match_surface:
+        surf_coil = surf_plasma.get_surface_envelope(num_cyl=rotate_diff_current, num_coeff=10, convex=convex)
+        surf_coil.update_params(
+            radius=surf_coil.radius + distance,
+            integration_par=integration_par,
+            make_joints=make_joints,
+        )
+    else:
+        surface = CylindricalSurface(
+            integration_par=integration_par,
             make_joints=make_joints,
             axis_angle=axis_angle,
-        ),
-        num_tor_symmetry=Sp.num_tor_symmetry,
+            num_tor_symmetry=surf_plasma.num_tor_symmetry * rotate_diff_current,
+        )
+
+    surf_coil = RotatedSurface(
+        surface=surface,
+        num_tor_symmetry=surf_plasma.num_tor_symmetry,
         rotate_diff_current=rotate_diff_current,
         current=current,
         common_current_on_each_rot=common_current_on_each_rot,
     )
+    if not match_surface:
+        surf_coil = fit_to_surface(surf_coil, surf_plasma, distance=distance)
 
-    S = fit_to_surface(S, Sp, distance=distance)
-
-    return S
+    return surf_coil
 
 
 def get_original_cws(path_cws: str, path_plasma: str, n_harmonics: int = 16, factor: int = 6):

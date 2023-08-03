@@ -125,31 +125,34 @@ class FourierSurface(AbstractSurface):
             height=self.Zmn[0],
         )
 
-    def cartesian_to_shifted_cylindrical(self, num_cyl: int = 1):
+    def cartesian_to_shifted_cylindrical(self, num_cyl: int = 1, angle: float = 0.0):
         num_tor = self.xyz.shape[1]
         num_pt_cyl = num_tor // num_cyl
         rphiz_l = []
         for ind in range(num_cyl):
             xyz = self.xyz[:, (ind * num_pt_cyl) : ((ind + 1) * num_pt_cyl)]
-            angle = -np.pi * (2 * ind + 1) / (self.num_tor_symmetry * num_cyl)
-            rphiz = cartesian_to_shifted_cylindrical(xyz=xyz, angle=angle, distance=self.get_major_radius())
+            cyl_angle = -np.pi * (2 * ind + 1) / (self.num_tor_symmetry * num_cyl) + angle
+            rphiz = cartesian_to_shifted_cylindrical(xyz=xyz, angle=cyl_angle, distance=self.get_major_radius())
 
             rphiz_l.append(rphiz)
 
         return onp.concatenate(rphiz_l, axis=1)
 
-    def _get_rtheta(self, num_cyl: tp.Optional[int] = None):
+    def _get_rtheta(self, num_cyl: tp.Optional[int] = None, angle: float = 0.0):
         if num_cyl is None:
             rtheta = self.cartesian_to_toroidal()[..., :2]
         else:
-            rtheta = self.cartesian_to_shifted_cylindrical(num_cyl)[..., :2]
+            rtheta = self.cartesian_to_shifted_cylindrical(num_cyl, angle=angle)[..., :2]
         return rtheta
 
-    def get_envelope(self, num_cyl: tp.Optional[int] = None, polar_coords: bool = True, convex: bool = True):
-        # Could also find the concave hull as shown here:
-        # https://stackoverflow.com/questions/57260352/python-concave-hull-polygon-of-a-set-of-lines
-
-        rtheta = self._get_rtheta(num_cyl=num_cyl)
+    def get_envelope(
+        self,
+        num_cyl: tp.Optional[int] = None,
+        polar_coords: bool = True,
+        convex: bool = True,
+        angle: float = 0.0,
+    ):
+        rtheta = self._get_rtheta(num_cyl=num_cyl, angle=angle)
 
         points = np.reshape(rtheta, (-1, 2))
         xy_points = np.stack(from_polar(points[:, 0], points[:, 1])).T
@@ -169,8 +172,14 @@ class FourierSurface(AbstractSurface):
             rth = rth[rth[:, 1].argsort()]
             return np.concatenate((rth, rth[:1]))
 
-    def get_envelope_fourier_coeff(self, num_cyl: tp.Optional[int] = None, num_coeff: int = 5, convex: bool = False):
-        xy = self.get_envelope(num_cyl=num_cyl, polar_coords=False, convex=convex)
+    def get_envelope_fourier_coeff(
+        self,
+        num_cyl: tp.Optional[int] = None,
+        num_coeff: int = 5,
+        convex: bool = False,
+        angle: float = 0.0,
+    ):
+        xy = self.get_envelope(num_cyl=num_cyl, polar_coords=False, convex=convex, angle=angle)
         # import matplotlib.pyplot as plt;import seaborn as sns;import matplotlib;matplotlib.use('TkAgg')
         # plt.scatter(xy[:, 0], xy[:, 1]);plt.show()
         # import pdb;pdb.set_trace()
@@ -196,8 +205,16 @@ class FourierSurface(AbstractSurface):
 
         return fourier_coefficients(th.min(), th.min() + 2 * np.pi, num_coeff, fun)
 
-    def get_surface_envelope(self, num_cyl: tp.Optional[int] = None, num_coeff: int = 5, convex: bool = False):
-        minor_radius, coefs = self.get_envelope_fourier_coeff(num_cyl=num_cyl, num_coeff=num_coeff, convex=convex)
+    def get_surface_envelope(
+        self,
+        num_cyl: tp.Optional[int] = None,
+        num_coeff: int = 5,
+        convex: bool = False,
+        angle: float = 0.0,
+    ):
+        minor_radius, coefs = self.get_envelope_fourier_coeff(
+            num_cyl=num_cyl, num_coeff=num_coeff, convex=convex, angle=angle
+        )
         if num_cyl is None:
             return ToroidalSurface(
                 integration_par=self.integration_par,
