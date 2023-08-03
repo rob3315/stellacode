@@ -20,7 +20,7 @@ from stellacode.surface.imports import (
     get_current_potential,
     get_cws,
     get_plasma_surface,
-    get_net_currents
+    get_net_current
 )
 from stellacode.surface.rotated_surface import RotatedSurface
 from stellacode.surface.utils import fit_to_surface
@@ -39,7 +39,7 @@ def test_reproduce_regcoil_axisym():
     major_radius = 5.5
     minor_radius = 1.404687741189692  # 0.9364584941264614*(1+0.5)
 
-    current = Current(num_pol=8, num_tor=8, net_currents=get_net_currents(w7x_plasma.path_plasma))
+    current = Current(num_pol=8, num_tor=8, net_currents=get_net_current(w7x_plasma.path_plasma))
 
     cws = RotatedSurface(
         surface=ToroidalSurface(
@@ -256,7 +256,7 @@ def test_regcoil_with_pwc_no_current_at_bc():
         num_tor=current_n_coeff,
         sin_basis=True,
         cos_basis=True,
-        net_currents=get_net_currents(w7x_plasma.path_plasma),
+        net_currents=get_net_current(w7x_plasma.path_plasma),
     )
 
     fourier_coeffs = np.zeros((0, 2))
