@@ -7,6 +7,7 @@ from .abstract_surface import AbstractSurface, IntegrationParams
 from .current import Current
 from .fourier import FourierSurface
 from .rotated_surface import RotatedSurface
+from stellacode.tools.vmec import VMECIO
 
 
 def get_cws(config):
@@ -33,7 +34,10 @@ def get_cws_grid(config):
     return AbstractSurface.get_uvgrid(n_pol_coil, n_tor_coil)
 
 
-from stellacode.tools.vmec import VMECIO
+def get_net_current(plasma_path):
+    vmec = VMECIO.from_grid(plasma_path)
+    num_tor_symmetry = vmec.nfp
+    return np.array([vmec.net_poloidal_current / num_tor_symmetry, 0.0])
 
 
 def get_current_potential(config):

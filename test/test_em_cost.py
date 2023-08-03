@@ -20,6 +20,7 @@ from stellacode.surface.imports import (
     get_current_potential,
     get_cws,
     get_plasma_surface,
+    get_net_currents
 )
 from stellacode.surface.rotated_surface import RotatedSurface
 from stellacode.surface.utils import fit_to_surface
@@ -37,17 +38,8 @@ def test_no_dimension_error():
 def test_reproduce_regcoil_axisym():
     major_radius = 5.5
     minor_radius = 1.404687741189692  # 0.9364584941264614*(1+0.5)
-    vmec = VMECIO.from_grid(w7x_plasma.path_plasma)
 
-    num_tor_symmetry = vmec.nfp
-
-    net_currents = np.array(
-        [
-            vmec.net_poloidal_current / num_tor_symmetry,
-            0.0,
-        ]
-    )
-    current = Current(num_pol=8, num_tor=8, net_currents=net_currents)
+    current = Current(num_pol=8, num_tor=8, net_currents=get_net_currents(w7x_plasma.path_plasma))
 
     cws = RotatedSurface(
         surface=ToroidalSurface(
@@ -259,23 +251,12 @@ def test_regcoil_with_pwc_no_current_at_bc():
         lamb=1e-20,
     )
 
-    vmec = VMECIO.from_grid(w7x_plasma.path_plasma)
-
-    num_tor_symmetry = vmec.nfp
-
-    net_currents = np.array(
-        [
-            vmec.net_poloidal_current / num_tor_symmetry,
-            0.0,
-        ]
-    )
-
     current = CurrentZeroTorBC(
         num_pol=current_n_coeff,
         num_tor=current_n_coeff,
         sin_basis=True,
         cos_basis=True,
-        net_currents=net_currents,
+        net_currents=get_net_currents(w7x_plasma.path_plasma),
     )
 
     fourier_coeffs = np.zeros((0, 2))
