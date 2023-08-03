@@ -14,7 +14,14 @@ from stellacode.tools.vmec import VMECIO
 
 from .abstract_surface import AbstractSurface, IntegrationParams
 from .tore import ToroidalSurface
-from .utils import cartesian_to_cylindrical, cartesian_to_toroidal, from_polar, to_polar
+from .cylindrical import CylindricalSurface
+from .utils import (
+    cartesian_to_cylindrical,
+    cartesian_to_toroidal,
+    from_polar,
+    to_polar,
+    cartesian_to_shifted_cylindrical,
+)
 
 
 class FourierSurface(AbstractSurface):
@@ -118,19 +125,40 @@ class FourierSurface(AbstractSurface):
             height=self.Zmn[0],
         )
 
-    def get_axisymmetric_envelope(self, polar_coords: bool = True, convex: bool = True):
+    def cartesian_to_shifted_cylindrical(self, num_cyl: int = 1):
+        num_tor = self.xyz.shape[1]
+        num_pt_cyl = num_tor // num_cyl
+        rphiz_l = []
+        for ind in range(num_cyl):
+            xyz = self.xyz[:, (ind * num_pt_cyl) : ((ind + 1) * num_pt_cyl)]
+            angle = -np.pi * (2 * ind + 1) / (self.num_tor_symmetry * num_cyl)
+            rphiz = cartesian_to_shifted_cylindrical(xyz=xyz, angle=angle, distance=self.get_major_radius())
+
+            rphiz_l.append(rphiz)
+
+        return onp.concatenate(rphiz_l, axis=1)
+
+    def _get_rtheta(self, num_cyl: tp.Optional[int] = None):
+        if num_cyl is None:
+            rtheta = self.cartesian_to_toroidal()[..., :2]
+        else:
+            rtheta = self.cartesian_to_shifted_cylindrical(num_cyl)[..., :2]
+        return rtheta
+
+    def get_envelope(self, num_cyl: tp.Optional[int] = None, polar_coords: bool = True, convex: bool = True):
         # Could also find the concave hull as shown here:
         # https://stackoverflow.com/questions/57260352/python-concave-hull-polygon-of-a-set-of-lines
 
-        rtphi = self.cartesian_to_toroidal()
+        rtheta = self._get_rtheta(num_cyl=num_cyl)
 
-        points = np.reshape(rtphi[..., :2], (-1, 2))
+        points = np.reshape(rtheta, (-1, 2))
         xy_points = np.stack(from_polar(points[:, 0], points[:, 1])).T
+
         if convex:
             hull = ConvexHull(xy_points)
             sel_xy_points = xy_points[hull.vertices, :]
         else:
-            sel_xy_points = concave_hull(xy_points, length_threshold=0.2)
+            sel_xy_points = concave_hull(xy_points, length_threshold=np.linalg.norm(xy_points[1] - xy_points[0]) * 4)
             sel_xy_points = np.stack(sel_xy_points)
 
         if not polar_coords:
@@ -141,8 +169,11 @@ class FourierSurface(AbstractSurface):
             rth = rth[rth[:, 1].argsort()]
             return np.concatenate((rth, rth[:1]))
 
-    def get_axisymmetric_evelope_fourier_coeff(self, num_coeff: int = 5, convex: bool = False):
-        xy = self.get_axisymmetric_envelope(polar_coords=False, convex=convex)
+    def get_envelope_fourier_coeff(self, num_cyl: tp.Optional[int] = None, num_coeff: int = 5, convex: bool = False):
+        xy = self.get_envelope(num_cyl=num_cyl, polar_coords=False, convex=convex)
+        # import matplotlib.pyplot as plt;import seaborn as sns;import matplotlib;matplotlib.use('TkAgg')
+        # plt.scatter(xy[:, 0], xy[:, 1]);plt.show()
+        # import pdb;pdb.set_trace()
         r, th = to_polar(xy[:, 0], xy[:, 1])
         xy = xy[th.argsort()]
         th = th[th.argsort()]
@@ -150,28 +181,43 @@ class FourierSurface(AbstractSurface):
         th = np.concatenate((th, th[:1] + 2 * np.pi))
         # rth_s = rth_s.at[-1, 1].set(rth_s[-1, 1] + 2 * np.pi)
         # interp = CubicSpline(th, xy, bc_type="periodic")
-        # interp = interp1d(th, xy, kind="linear", axis=0)
+        interp = interp1d(th, xy, kind="linear", axis=0)
         interp = CubicSpline(th, xy, bc_type="periodic")
 
         def fun(theta):
             return to_polar(*interp(theta))[0]
 
         # fun = lambda x: onp.interp(x, rth_s[:, 1], rth_s[:, 0], period=2*np.pi)
+        # import pdb;pdb.set_trace()
+        # theta = np.linspace(0,2*np.pi, 50)
+        # xy =interp(theta)
+        # import matplotlib.pyplot as plt;import seaborn as sns;import matplotlib;matplotlib.use('TkAgg')
+        # plt.scatter(xy[:, 0], xy[:, 1]);plt.show()
 
         return fourier_coefficients(th.min(), th.min() + 2 * np.pi, num_coeff, fun)
 
-    def get_axisymmetric_surface_envelope(self, num_coeff: int = 5, convex: bool = False):
-        minor_radius, coefs = self.get_axisymmetric_evelope_fourier_coeff(num_coeff=num_coeff, convex=convex)
-        return ToroidalSurface(
-            integration_par=self.integration_par,
-            num_tor_symmetry=self.num_tor_symmetry,
-            major_radius=self.get_major_radius(),
-            minor_radius=minor_radius,
-            fourier_coeffs=coefs / minor_radius,
-        )
+    def get_surface_envelope(self, num_cyl: tp.Optional[int] = None, num_coeff: int = 5, convex: bool = False):
+        minor_radius, coefs = self.get_envelope_fourier_coeff(num_cyl=num_cyl, num_coeff=num_coeff, convex=convex)
+        if num_cyl is None:
+            return ToroidalSurface(
+                integration_par=self.integration_par,
+                num_tor_symmetry=self.num_tor_symmetry,
+                major_radius=self.get_major_radius(),
+                minor_radius=minor_radius,
+                fourier_coeffs=coefs / minor_radius,
+            )
+        else:
+            return CylindricalSurface(
+                integration_par=self.integration_par,
+                num_tor_symmetry=self.num_tor_symmetry * num_cyl,
+                distance=self.get_major_radius(),
+                radius=minor_radius,
+                fourier_coeffs=coefs / minor_radius,
+            )
 
     def plot_cross_sections(
         self,
+        num_cyl: tp.Optional[int] = None,
         num: int = 5,
         convex_envelope: bool = True,
         concave_envelope: bool = False,
@@ -181,16 +227,17 @@ class FourierSurface(AbstractSurface):
 
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
-        rtphi = self.cartesian_to_toroidal()
+        # rtphi = self.cartesian_to_toroidal()
+        rtheta = self._get_rtheta(num_cyl=num_cyl)
 
-        num_phi_s = rtphi.shape[1]
-        for i in range(0, num_phi_s, num_phi_s // num):
-            rphi = np.concatenate((rtphi[:, i, :], rtphi[:1, i, :]), axis=0)
-            ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] + [i / num_phi_s])
+        num_phi_s = rtheta.shape[1]
+        for i in np.linspace(0, num_phi_s - 1, num).astype(int):
+            rphi = np.concatenate((rtheta[:, i, :], rtheta[:1, i, :]), axis=0)
+            ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] + [float(i / num_phi_s)])
         if convex_envelope:
-            env = self.get_axisymmetric_envelope(convex=True)
+            env = self.get_envelope(num_cyl=num_cyl, convex=True)
             ax.plot(env[:, 1], env[:, 0], c="r", linewidth=3)
         if concave_envelope:
-            env = self.get_axisymmetric_envelope(convex=False)
+            env = self.get_envelope(num_cyl=num_cyl, convex=False)
             ax.plot(env[:, 1], env[:, 0], c="g", linewidth=3)
         return ax
