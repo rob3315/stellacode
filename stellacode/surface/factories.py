@@ -91,7 +91,7 @@ def get_pwc_surface(
             make_joints=make_joints,
         )
     else:
-        surface = CylindricalSurface(
+        surf_coil = CylindricalSurface(
             integration_par=integration_par,
             make_joints=make_joints,
             axis_angle=axis_angle,
@@ -99,7 +99,7 @@ def get_pwc_surface(
         )
 
     surf_coil = RotatedSurface(
-        surface=surface,
+        surface=surf_coil,
         num_tor_symmetry=surf_plasma.num_tor_symmetry,
         rotate_diff_current=rotate_diff_current,
         current=current,
