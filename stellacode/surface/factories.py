@@ -29,7 +29,7 @@ def get_toroidal_surface(
         net_currents=net_currents,
     )
     if match_surface:
-        tor_surf = surf_plasma.get_axisymmetric_surface_envelope(num_coeff=10, convex=convex)
+        tor_surf = surf_plasma.get_surface_envelope(num_coeff=10, convex=convex)
         tor_surf.update_params(minor_radius=tor_surf.minor_radius + distance)
     else:
         minor_radius = surf_plasma.get_minor_radius()
