@@ -33,7 +33,7 @@ extensions = ["sphinx.ext.autodoc", "sphinx.ext.coverage", "sphinx.ext.napoleon"
 extensions.append("autoapi.extension")
 
 autoapi_type = "python"
-autoapi_dirs = ["../src"]
+autoapi_dirs = ["../stellacode"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
