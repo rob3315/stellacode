@@ -64,27 +64,3 @@ def get_plasma_surface(config):
         n_fp=int(config["geometry"]["Np"]),
     )
     return plasma
-
-
-def plot_cws_and_plasma(cws, plasma):
-    """Plots two surfaces.
-
-    :param cws: coil winding surface
-    :type cws: Surface
-
-    :param plasma: plasma surface
-    :type plasma Surface
-
-    :return: None
-    :rtype: NoneType
-
-    """
-    from mayavi import mlab
-    from numpy import linspace, zeros
-
-    mlab.mesh(*cws.expand_for_plot_part(), representation="wireframe", colormap="Wistia")
-    mlab.mesh(*plasma.expand_for_plot_part(), representation="surface", colormap="Spectral")
-    mlab.plot3d(linspace(0, 5, 100), zeros(100), zeros(100), color=(1, 0, 0))
-    mlab.plot3d(zeros(100), linspace(0, 5, 100), zeros(100), color=(0, 1, 0))
-    mlab.plot3d(zeros(100), zeros(100), linspace(0, 5, 100), color=(0, 0, 1))
-    mlab.show()
