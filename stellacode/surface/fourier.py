@@ -13,14 +13,14 @@ from stellacode.surface.utils import fourier_coefficients
 from stellacode.tools.vmec import VMECIO
 
 from .abstract_surface import AbstractSurface, IntegrationParams
-from .tore import ToroidalSurface
 from .cylindrical import CylindricalSurface
+from .tore import ToroidalSurface
 from .utils import (
     cartesian_to_cylindrical,
+    cartesian_to_shifted_cylindrical,
     cartesian_to_toroidal,
     from_polar,
     to_polar,
-    cartesian_to_shifted_cylindrical,
 )
 
 

@@ -280,7 +280,7 @@ def test_regcoil_with_pwc_no_current_at_bc():
     j_s = new_surface.get_j_surface(phi_mn)
 
     # exactly at the boundary, the current is zero
-    assert np.max(np.abs(j_s[:, 0, 1]) / np.max(np.abs(j_s))) < 0.2
+    assert np.max(np.abs(j_s[:, 0, 1]) / np.max(np.abs(j_s))) < 0.1
 
     j_3d = new_surface.get_j_3D(phi_mn)
     # new_surface.plot(only_one_period=True, vector_field=j_3d)

@@ -6,7 +6,7 @@ from jax.typing import ArrayLike
 from pydantic import BaseModel
 
 from stellacode import np
-
+import jax
 from .abstract_surface import IntegrationParams
 
 
@@ -32,6 +32,40 @@ class AbstractCurrent(BaseModel):
         if self.sin_basis and self.cos_basis:
             num_dims *= 2
         self.phi_mn = onp.zeros(num_dims)
+
+    # def phi(self, uv):
+    #     raise NotImplementedError
+    
+    # def get_phi_on_grid(self, grid):
+    #     grid_ = np.reshape(grid, (2, -1))
+    #     _, lu, lv = grid.shape
+    #     surf = jax.vmap(self.get_phi, in_axes=1, out_axes=0)
+    #     surf_res = surf(grid_)
+    #     phi = np.reshape(surf_res, (lu, lv))
+
+    #     return phi
+
+    # def get_jac_phi_on_grid(self, grid):
+    #     grid_ = np.reshape(grid, (2, -1))
+    #     _, lu, lv = grid.shape
+
+    #     jac_surf = jax.jacobian(self.get_phi, argnums=0)
+    #     jac_surf_vmap = jax.vmap(jac_surf, in_axes=1, out_axes=0)
+    #     jac_surf_res = jac_surf_vmap(grid_)
+    #     jac_phi = np.reshape(jac_surf_res, (lu, lv, 2))
+
+    #     return jac_phi
+
+    # def get_hess_phi_on_grid(self, grid):
+    #     grid_ = np.reshape(grid, (2, -1))
+    #     _, lu, lv = grid.shape
+
+    #     hess_surf = jax.hessian(self.get_phi, argnums=0, holomorphic=False)
+    #     hess_surf_vmap = jax.vmap(hess_surf, in_axes=1, out_axes=0)
+    #     hess_surf_res = hess_surf_vmap(grid_)
+
+    #     return np.reshape(hess_surf_res, (lu, lv, 2, 2))
+
 
     def get_integration_params(self, factor: float = 4):
         return IntegrationParams(num_points_u=self.num_pol * factor, num_points_v=self.num_tor * factor)
@@ -138,25 +172,22 @@ class CurrentZeroTorBC(AbstractCurrent):
         assert self.sin_basis or self.cos_basis
 
         cosu = onp.cos(2 * onp.pi * xm * ugrid)
-        cosv = onp.cos(2 * onp.pi * xn * vgrid)
+        cosv = onp.cos(onp.pi * xn * vgrid)
         sinu = onp.sin(2 * onp.pi * xm * ugrid)
-        sinv = onp.sin(2 * onp.pi * xn * vgrid)
+        sinv = onp.sin(onp.pi * xn * vgrid)
         # the current potential is written as:
         # sin(2*onp.pi*u)*sin(2*onp.pi*v) and cos(2*onp.pi*u)*sin(2*onp.pi*v)
         # to ensure proper BC
         if self.sin_basis:
             # current for Phi=sin(2*onp.pi*xn*v)
-            cosu0 = onp.cos(2 * onp.pi * xn0 * vgrid)
-            dphi.append(_stack(xn0 * cosu0, onp.zeros_like(xn0 * cosu0)))
-            # current for Phi=sin(2*onp.pi*xm*u)*sin(2*onp.pi*xn*v)
-            dphi.append(_stack(xn * sinu * cosv, -xm * cosu * sinv))
+            cosv0 = onp.cos(onp.pi * xn0 * vgrid)
+            dphi.append(_stack(xn0 * cosv0, onp.zeros_like(xn0 * cosv0)))
+            # current for Phi=sin(2*onp.pi*xm*u)*sin(onp.pi*xn*v)
+            dphi.append(_stack(xn * sinu * cosv/2, -xm * cosu * sinv))
 
         if self.cos_basis:
-            # current for Phi=cos(2*onp.pi*xn*v)
-            sinu0 = onp.sin(2 * onp.pi * xn0 * vgrid)
-            dphi.append(_stack(-xn0 * sinu0, onp.zeros_like(xn0 * sinu0)))
             # current for Phi=cos(2*onp.pi*xm*u)*sin(2*onp.pi*xn*v)
-            dphi.append(_stack(xn * cosu * cosv, xm * sinu * sinv))
+            dphi.append(_stack(xn * cosu * cosv/2, xm * sinu * sinv))
 
         dphi = onp.concatenate(dphi, axis=0)
         dphi = onp.concatenate((onp.zeros((2, lu, lv, 2)), dphi), axis=0)

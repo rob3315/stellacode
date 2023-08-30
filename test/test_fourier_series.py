@@ -2,9 +2,10 @@ import configparser
 
 import numpy as onp
 import pytest
+
 from stellacode import np
-from stellacode.surface.imports import get_plasma_surface
 from stellacode.surface import ToroidalSurface
+from stellacode.surface.imports import get_plasma_surface
 from stellacode.surface.utils import (
     fit_to_surface,
     fourier_coefficients,
@@ -18,6 +19,7 @@ def test_fourier_series():
     res = fourier_coefficients(0, 2 * np.pi, 5, lambda val: fourier_transform(coefs, val))[1]
 
     assert np.max(np.abs(res - coefs)) < 1e-15
+
 
 @pytest.mark.parametrize("convex", [True, False])
 @pytest.mark.parametrize("num_cyl", [None, 3])

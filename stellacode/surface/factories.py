@@ -1,12 +1,17 @@
-from stellacode.surface import ToroidalSurface, RotatedSurface, CylindricalSurface
+from stellacode.surface import (
+    AbstractCurrent,
+    Current,
+    CurrentZeroTorBC,
+    CylindricalSurface,
+    FourierSurface,
+    IntegrationParams,
+    RotatedSurface,
+    ToroidalSurface,
+)
 from stellacode.surface.cylindrical import CylindricalSurface
-from stellacode.surface.tore import ToroidalSurface
-
 from stellacode.surface.imports import get_net_current
+from stellacode.surface.tore import ToroidalSurface
 from stellacode.surface.utils import fit_to_surface
-
-from stellacode.surface import Current, IntegrationParams, CurrentZeroTorBC, AbstractCurrent
-from stellacode.surface import FourierSurface
 from stellacode.tools.vmec import VMECIO
 
 

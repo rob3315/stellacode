@@ -1,24 +1,24 @@
-from stellacode.optimizer import Optimizer
 import jax
+
+from stellacode.optimizer import Optimizer
 
 jax.config.update("jax_enable_x64", True)
 
-from stellacode.definitions import w7x_plasma
+import numpy as np
+import pytest
+
 from stellacode.costs import (
     AggregateCost,
-    EMCost,
-    DistanceCost,
-    NegTorCurvatureCost,
     CurrentCtrCost,
+    DistanceCost,
+    EMCost,
+    NegTorCurvatureCost,
 )
-
-from stellacode.optimizer import Optimizer
 from stellacode.costs.utils import Constraint
-
-from stellacode.surface.factories import get_toroidal_surface, get_pwc_surface
+from stellacode.definitions import w7x_plasma
+from stellacode.optimizer import Optimizer
 from stellacode.surface import IntegrationParams
-import pytest
-import numpy as np
+from stellacode.surface.factories import get_pwc_surface, get_toroidal_surface
 
 
 def test_optimization():
