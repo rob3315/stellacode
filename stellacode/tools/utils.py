@@ -3,6 +3,19 @@ from scipy.integrate import quad
 from scipy.spatial.distance import cdist
 
 from stellacode import np
+import numpy as onp
+
+
+# the completely antisymetric tensor
+def get_eijk():
+    eijk = onp.zeros((3, 3, 3))
+    eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
+    eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
+    eijk = np.asarray(eijk)
+    return eijk
+
+
+eijk = get_eijk()
 
 
 def get_min_dist(S1, S2):
@@ -10,6 +23,10 @@ def get_min_dist(S1, S2):
 
     # slower but differentiable
     # return np.linalg.norm(S1.P[...,None,None,:]-S2.P[None,None,...], axis=-1).min()
+
+
+def cross(v1, v2):
+    return np.einsum("ija,ijb, dab->ijd", v1, v2, eijk)
 
 
 def fourier_coefficients(li, lf, n, f):
