@@ -40,8 +40,16 @@ class IntegrationParams(BaseModel):
         return self.num_points_u * self.num_points_v
 
     @property
+    def du(self):
+        return 1 / self.num_points_u
+
+    @property
+    def dv(self):
+        return self.max_val_v / self.num_points_v
+
+    @property
     def dudv(self):
-        return self.max_val_v / (self.num_points_u * self.num_points_v)
+        return self.du * self.dv
 
 
 class AbstractSurface(BaseModel):

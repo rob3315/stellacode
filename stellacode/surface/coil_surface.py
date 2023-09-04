@@ -9,6 +9,7 @@ from stellacode.tools.utils import get_min_dist
 
 from .abstract_surface import AbstractSurface
 from .current import AbstractCurrent
+from stellacode.tools.laplace_force import laplace_force
 
 
 class CoilSurface(BaseModel):
@@ -63,7 +64,9 @@ class CoilSurface(BaseModel):
             self.current_op,
             1 / self.ds,
             optimize=True,
-        ) / (lu * lv) # why isn't this dudv?
+        ) / (
+            lu * lv
+        )  # why isn't this dudv?
 
     @property
     def nbpts(self):
@@ -94,6 +97,12 @@ class CoilSurface(BaseModel):
         else:
             return np.einsum("oijk,ijdk,o->ijd", self.current_op, self.jac_xyz, phi_mn)
 
+    def get_grad_s_j_3D(self, phi_mn=None):
+        if phi_mn is None:
+            phi_mn = self.current.get_phi_mn()
+
+        return np.einsum("oijk,ijdke,ij,o->ijde", self.current_op, self.hess_xyz, 1 / self.ds, phi_mn)
+
     def get_b_field(
         self,
         xyz_plasma: ArrayLike,
@@ -122,6 +131,55 @@ class CoilSurface(BaseModel):
             bs_op *= mu_0_fac
 
         return bs_op
+
+    @property
+    def du(self):
+        return self.surface.integration_par.du
+
+    @property
+    def dv(self):
+        return self.surface.integration_par.dv
+
+    def get_g_lower_covariant(self):
+        """
+        Covariant surface metric g_{ij}
+        """
+        return np.einsum("ijab,ijac->ijbc", self.jac_xyz, self.jac_xyz)
+
+    def get_g_upper_contravariant(self):
+        """
+        Contravariant surface metric g^{ij}
+        """
+        return np.linalg.pinv(self.get_g_lower_covariant())
+
+    def get_g_upper_basis(self):
+        """
+        Return the contravariant basis vectors
+        """
+        g_up = self.get_g_upper_contravariant()
+        return np.einsum("...kl,...ak->...al", g_up, self.jac_xyz)
+
+    def naive_laplace_force(self, epsilon: float = 1e-3):
+        j_3d = self.get_j_3D()
+
+        xyz_ext = self.xyz + epsilon * self.normal_unit
+        xyz_int = self.xyz - epsilon * self.normal_unit
+
+        b_avg = self.get_b_field(xyz_ext) + self.get_b_field(xyz_int)
+
+        return 0.5 * np.cross(j_3d, b_avg)
+
+    def laplace_force(self):
+        return laplace_force(
+            j_3d=self.get_j_3D(),
+            xyz=self.xyz,
+            normal_unit=self.normal_unit,
+            ds=self.ds,
+            g_up_map=self.get_g_upper_basis(),
+            num_tor_symmetry=self.num_tor_symmetry,
+            du=self.du,
+            dv=self.dv,
+        )
 
     def imshow_j(self, phi_mn):
         import matplotlib.pyplot as plt
