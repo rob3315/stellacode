@@ -37,14 +37,14 @@ def get_cws_grid(config):
 def get_net_current(plasma_path):
     vmec = VMECIO.from_grid(plasma_path)
     num_tor_symmetry = vmec.nfp
-    return np.array([vmec.net_poloidal_current / num_tor_symmetry, 0.0])
+    return -np.array([vmec.net_poloidal_current / num_tor_symmetry, 0.0])
 
 
 def get_current_potential(config):
     mpol_coil = int(config["geometry"]["mpol_coil"])
     ntor_coil = int(config["geometry"]["ntor_coil"])
     num_tor_symmetry = int(config["geometry"]["Np"])
-    net_currents = np.array(
+    net_currents = -np.array(
         [
             float(config["other"]["net_poloidal_current_Amperes"]) / num_tor_symmetry,
             float(config["other"]["net_toroidal_current_Amperes"]),

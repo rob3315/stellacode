@@ -92,8 +92,10 @@ def test_laplace_force():
     force2 = coil_surf.laplace_force()
 
     # Approximate and rigorous Laplace forces are close:
-    assert np.max(np.linalg.norm(force[:, :14]+force2, axis=-1))/np.mean(np.linalg.norm(force2))<0.1
-    # still a problem with the sign
+    assert np.max(np.linalg.norm(force[:, :14] - force2, axis=-1))/np.mean(np.linalg.norm(force2))<0.1
+
+    # The Laplace Force is pointing outside of the surface
+    assert np.mean(np.einsum("ija,ija->ij", force2, coil_surf.normal_unit[:, :14]))<-1e4
 
 
 def div(f, ds):
@@ -281,4 +283,4 @@ def f_laplace(surf, i, j, Np):
     res = res1 + res2 + res3 + res4 + res5 + res6
 
     return res
-test_laplace_force()
+# test_laplace_force()

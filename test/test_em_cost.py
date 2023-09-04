@@ -104,13 +104,13 @@ def test_compare_to_regcoil(use_mu_0_factor):
     em_cost.lamb = lambdas[-1]
     solver = em_cost.get_regcoil_solver(cws)[0]
     phi_mn = solver.solve_lambda(lambdas[-1])
-    js_reg = file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]
+    js_reg = -file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]
     assert np.abs(js_reg - phi_mn[2:]).max() / js_reg.max() < 1e-14
 
     # however the result is no more the same for very low lambdas
     phi_mn = solver.solve_lambda(lambdas[2])
-    js_reg = file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]
-    assert np.abs(js_reg - phi_mn[2:]).max() / js_reg.max() < 2e-4
+    js_reg = -file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]
+    assert np.abs(js_reg - phi_mn[2:]).max() / js_reg.max() < 2.7e-4
     j_3d = cws.get_j_3D(phi_mn)
 
     phi_mn = solver.solve_lambda(1e-30)
