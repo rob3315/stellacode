@@ -70,22 +70,22 @@ class RegCoilSolver(BaseModel):
 
 
 class EMCost(AbstractCost):
-    """Main cost coming from the inverse problem
+    """
+    Cost of the optimal current inverse problem.
 
     Args:
-        * Regularization parameter
-        * Number of field periods
-        * Number of poloidal points on the cws
-        * Number of toroidal points on the cws
-        * Amount of current flowig poloidally
-        * Amount of current flowig toroidally (usually 0)
+        * lamb: Regularization parameter.
+        * Sp: Plasma surface
+        * bnorm: normal magnetic field pointing inside of the surface.
+        * use_mu_0_factor: Multiply by the mu_0 factor.
+        * slow_metrics: compute metrics that take time.
+        * train_currents: use current parameters to compute the currents
     """
 
     lamb: float
     Sp: AbstractSurface
     bnorm: ArrayLike = 0.0
     use_mu_0_factor: bool = False
-    inverse_qj: bool = False
     slow_metrics: bool = True
     train_currents: bool = False
 
