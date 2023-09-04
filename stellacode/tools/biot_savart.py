@@ -5,14 +5,11 @@ from jax import Array
 from jax.typing import ArrayLike
 
 from stellacode import np
-
-# the completely antisymetric tensor
-eijk = onp.zeros((3, 3, 3))
-eijk[0, 1, 2] = eijk[1, 2, 0] = eijk[2, 0, 1] = 1
-eijk[0, 2, 1] = eijk[2, 1, 0] = eijk[1, 0, 2] = -1
-eijk = np.asarray(eijk)
+from .utils import eijk
+import jax
 
 
+@jax.jit
 def biot_et_savart_op(
     xyz_plasma: ArrayLike,
     xyz_coil: ArrayLike,
@@ -49,6 +46,7 @@ def biot_et_savart_op(
     return B * dudv
 
 
+@jax.jit
 def biot_et_savart(
     xyz_plasma: ArrayLike,
     xyz_coil: ArrayLike,
