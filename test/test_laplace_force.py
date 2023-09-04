@@ -82,7 +82,7 @@ def test_laplace_force():
         end_v=14,
     )
 
-    # Check that the code for new and old versions of Laplace force are the same 
+    # Check that the code for new and old versions of Laplace force are the same
     force3 = f_laplace(coil_surf, 0, 1, Np=1)
     assert np.allclose(force2[0, 1], force3)
 
@@ -91,10 +91,9 @@ def test_laplace_force():
 
     force2 = coil_surf.laplace_force()
 
-    # Approximate and rigorous Laplace forces should be close but are not:
-    cov_force = np.einsum("ija,klb->ijkl", (force/np.linalg.norm(force, axis=-1)[:,:,None])[:,:14], force2/np.linalg.norm(force2, axis=-1)[...,None])
-    print(force[0, 1])
-    print(force2[0, 1])
+    # Approximate and rigorous Laplace forces are close:
+    assert np.max(np.linalg.norm(force[:, :14]+force2, axis=-1))/np.mean(np.linalg.norm(force2))<0.1
+    # still a problem with the sign
 
 
 def div(f, ds):
@@ -281,8 +280,5 @@ def f_laplace(surf, i, j, Np):
 
     res = res1 + res2 + res3 + res4 + res5 + res6
 
-    print(res1, res2, res3, res4, res5, res6)
     return res
-
-
 test_laplace_force()
