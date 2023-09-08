@@ -8,14 +8,14 @@ from scipy.io import netcdf_file
 
 from stellacode import np
 from stellacode.costs.em_cost import EMCost, get_b_field_err
-from stellacode.definitions import w7x_plasma
+from stellacode.definitions import w7x_plasma, ncsx_plasma
 from stellacode.surface import (
     Current,
     CurrentZeroTorBC,
     IntegrationParams,
     ToroidalSurface,
 )
-from stellacode.surface.cylindrical import CylindricalSurface
+from stellacode.surface import CylindricalSurface, FourierSurface
 from stellacode.surface.imports import (
     get_current_potential,
     get_cws,
@@ -288,11 +288,11 @@ def test_regcoil_with_pwc_no_current_at_bc():
 
 
 def test_plot_plasma_cross_sections():
-    path_config_file = "test/data/li383/config.ini"
-    config = configparser.ConfigParser()
-    config.read(path_config_file)
-    surf = get_plasma_surface(config)
-
-    surf.plot_cross_sections()
+    surf = FourierSurface.from_file(
+        ncsx_plasma.path_plasma,
+        integration_par=IntegrationParams(num_points_u=32, num_points_v=32),
+        n_fp=3,
+    )
+    surf.plot_cross_sections(num=5)
     # import matplotlib.pyplot as plt
     # plt.show()

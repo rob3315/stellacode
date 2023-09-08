@@ -118,19 +118,23 @@ class FourierSurface(AbstractSurface):
     def cartesian_to_cylindrical(self):
         return cartesian_to_cylindrical(xyz=self.xyz)
 
-    def cartesian_to_toroidal(self):
+    def cartesian_to_toroidal(self, xyz=None):
+        if xyz is None:
+            xyz = self.xyz
         return cartesian_to_toroidal(
-            xyz=self.xyz,
+            xyz=xyz,
             tore_radius=self.get_major_radius(),
             height=self.Zmn[0],
         )
 
-    def cartesian_to_shifted_cylindrical(self, num_cyl: int = 1, angle: float = 0.0):
-        num_tor = self.xyz.shape[1]
+    def cartesian_to_shifted_cylindrical(self, xyz=None, num_cyl: int = 1, angle: float = 0.0):
+        if xyz is None:
+            xyz = self.xyz
+        num_tor = xyz.shape[1]
         num_pt_cyl = num_tor // num_cyl
         rphiz_l = []
         for ind in range(num_cyl):
-            xyz = self.xyz[:, (ind * num_pt_cyl) : ((ind + 1) * num_pt_cyl)]
+            xyz = xyz[:, (ind * num_pt_cyl) : ((ind + 1) * num_pt_cyl)]
             cyl_angle = -np.pi * (2 * ind + 1) / (self.num_tor_symmetry * num_cyl) + angle
             rphiz = cartesian_to_shifted_cylindrical(xyz=xyz, angle=cyl_angle, distance=self.get_major_radius())
 
@@ -138,11 +142,13 @@ class FourierSurface(AbstractSurface):
 
         return onp.concatenate(rphiz_l, axis=1)
 
-    def _get_rtheta(self, num_cyl: tp.Optional[int] = None, angle: float = 0.0):
+    def _get_rtheta(self, xyz=None, num_cyl: tp.Optional[int] = None, angle: float = 0.0):
+        if xyz is None:
+            xyz = self.xyz
         if num_cyl is None:
-            rtheta = self.cartesian_to_toroidal()[..., :2]
+            rtheta = self.cartesian_to_toroidal(xyz=xyz)[..., :2]
         else:
-            rtheta = self.cartesian_to_shifted_cylindrical(num_cyl, angle=angle)[..., :2]
+            rtheta = self.cartesian_to_shifted_cylindrical(xyz=xyz, num_cyl=num_cyl, angle=angle)[..., :2]
         return rtheta
 
     def get_envelope(
@@ -238,23 +244,28 @@ class FourierSurface(AbstractSurface):
         num: int = 5,
         convex_envelope: bool = True,
         concave_envelope: bool = False,
+        scale_envelope: float = 1.0,
         ax=None,
     ):
         import matplotlib.pyplot as plt
 
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
-        # rtphi = self.cartesian_to_toroidal()
-        rtheta = self._get_rtheta(num_cyl=num_cyl)
 
-        num_phi_s = rtheta.shape[1]
-        for i in np.linspace(0, num_phi_s - 1, num).astype(int):
-            rphi = np.concatenate((rtheta[:, i, :], rtheta[:1, i, :]), axis=0)
-            ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] + [float(i / num_phi_s)])
+        u = np.linspace(0, 1, 100, endpoint=True)
+        v = np.linspace(0, 1, num, endpoint=True)
+        ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
+        xyz = self.get_xyz_on_grid(np.stack((ugrid, vgrid)))
+        rtheta = self._get_rtheta(xyz=xyz, num_cyl=num_cyl)
+
+        for i in range(num):
+            rphi = np.concatenate((rtheta[:, i, :], rtheta[:, i, :]), axis=0)
+            ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] + [float((i + 1) / (num + 1))])
+
         if convex_envelope:
             env = self.get_envelope(num_cyl=num_cyl, convex=True)
-            ax.plot(env[:, 1], env[:, 0], c="r", linewidth=3)
+            ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="r", linewidth=3)
         if concave_envelope:
             env = self.get_envelope(num_cyl=num_cyl, convex=False)
-            ax.plot(env[:, 1], env[:, 0], c="g", linewidth=3)
+            ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
         return ax
