@@ -1,15 +1,34 @@
 from stellacode import np
+from jax.typing import ArrayLike
+from jax import Array
 
 
-def laplace_force(j_3d, xyz, normal_unit, ds, g_up_map, 
-                  num_tor_symmetry, 
-                  du, dv, 
-                  end_u=1000000, end_v=1000000
-                  ):
+def laplace_force(
+    j_3d: np.ndarray,
+    xyz: np.ndarray,
+    normal_unit: np.ndarray,
+    ds: np.ndarray,
+    g_up_map: np.ndarray,
+    num_tor_symmetry: int,
+    du: float,
+    dv: float,
+    end_u: int = 1000000,
+    end_v: int = 1000000,
+) -> np.ndarray:
     """
     Compute the Laplace force of a distribution of
     currents on itself.
 
+    Args:
+        * j_3d: surface current Nu x Nv x 3
+        * xyz: surface cartesian coordinates Nu x Nv x 3
+        * normal_unit: surface normal vector normalized Nu x Nv x 3
+        * ds: surface area of each sample point Nu x Nv
+        * g_up_map: map from cartisian to contravariant coordinate Nu x Nv x 3 x 2
+        * du: length between two naighbor points on the surface along the poloidal dimension
+        * dv: length between two naighbor points on the surface along the toroidal dimension
+        * end_u: cut the points along u at end_u
+        * end_v: cut the points along v at end_v
 
     y is in the first two dimensions: ij
     x is in the next two dimensions: kl
@@ -27,7 +46,7 @@ def laplace_force(j_3d, xyz, normal_unit, ds, g_up_map,
     # Kernels
     T = (xyz[:, :num_pts, None, None] - xyz[None, None, ...])[:, :, :end_u, :end_v]
     inv_l1 = 1 / np.linalg.norm(T, axis=-1)
-    inv_l1 = np.where(np.isinf(inv_l1), 0.0, inv_l1)
+    inv_l1 = np.where(np.abs(inv_l1) > 1e10, 0.0, inv_l1)
     K = T * inv_l1[..., None] ** 3
 
     # Projects j_3d on the surface
