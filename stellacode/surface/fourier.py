@@ -256,7 +256,7 @@ class FourierSurface(AbstractSurface):
         v = np.linspace(0, 1, num, endpoint=True)
         ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
         xyz = self.get_xyz_on_grid(np.stack((ugrid, vgrid)))
-        rtheta = self._get_rtheta(xyz=xyz, num_cyl=num_cyl)
+        rtheta = self._get_rtheta(xyz=xyz)
 
         for i in range(num):
             rphi = np.concatenate((rtheta[:, i, :], rtheta[:, i, :]), axis=0)

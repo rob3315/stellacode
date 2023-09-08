@@ -112,7 +112,6 @@ class AbstractSurface(BaseModel):
         _, lu, lv = grid.shape
         surf = jax.vmap(self.get_xyz, in_axes=1, out_axes=0)
         surf_res = surf(grid_)
-        lu, lv = self.nbpts
         xyz = np.reshape(surf_res, (lu, lv, 3))
 
         return xyz
