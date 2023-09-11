@@ -275,13 +275,7 @@ def to_float(dict_):
 
 def get_b_field_err(em_cost, coil_surf, err: str = "rmse_n"):
     b_field = em_cost.get_b_field(coil_surf)
-    vmec = VMECIO.from_grid(
-        em_cost.Sp.file_path,
-        ntheta=em_cost.Sp.integration_par.num_points_u,
-        nzeta=em_cost.Sp.integration_par.num_points_v * em_cost.Sp.num_tor_symmetry,
-        surface_label=-1,
-    )
-    b_field_gt = vmec.b_cartesian[-1, :, : em_cost.Sp.integration_par.num_points_v]
+    b_field_gt =  em_cost.Sp.get_gt_b_field(surface_labels=-1)[:, : em_cost.Sp.integration_par.num_points_v]
     norm_b = np.sqrt(em_cost.Sp.integrate(np.linalg.norm(b_field_gt, axis=-1) ** 2))
     if err == "rmse_n":
         return np.sqrt(em_cost.Sp.integrate(np.linalg.norm(b_field - b_field_gt, axis=-1) ** 2)) / norm_b
