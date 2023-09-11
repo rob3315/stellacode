@@ -173,7 +173,8 @@ class AbstractSurface(BaseModel):
         return get_min_dist(self.xyz, xyz)
 
     def integrate(self, field):
-        return np.sum(self.ds * field) * self.dudv * self.num_tor_symmetry
+        add_dims = "abcd"[: len(field.shape) - 2]
+        return np.einsum(f"ij,ij{add_dims}->{add_dims}", self.ds , field) * self.dudv * self.num_tor_symmetry
 
     @property
     def area(self):
