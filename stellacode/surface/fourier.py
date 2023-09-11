@@ -283,4 +283,7 @@ class FourierSurface(AbstractSurface):
             nzeta=self.integration_par.num_points_v * self.num_tor_symmetry,
             surface_label=surface_labels,
         )
-        return vmec.b_cartesian[surface_labels]
+        if isinstance(surface_labels, int):
+            return vmec.b_cartesian[0]
+        else:
+            return vmec.b_cartesian[surface_labels]

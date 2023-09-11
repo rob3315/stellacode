@@ -21,6 +21,7 @@ from stellacode.surface.imports import (
     get_cws,
     get_net_current,
     get_plasma_surface,
+    get_cws_from_plasma_config,
 )
 from stellacode.surface.rotated_surface import RotatedSurface
 from stellacode.surface.utils import fit_to_surface
@@ -116,10 +117,6 @@ def test_compare_to_regcoil(use_mu_0_factor):
     phi_mn = solver.solve_lambda(1e-30)
     bs = em_cost.get_bs_operator(cws, normal_b_field=False)
 
-    em_cost.lamb = 1e-30
-    assert get_b_field_err(em_cost, cws) < 0.08
-    assert get_b_field_err(em_cost, cws, err="max_n") < 0.55
-
     # Plot regcoil vs stellacode
     # import pandas as pd
     # import matplotlib.pyplot as plt;import seaborn as sns;import matplotlib;matplotlib.use('TkAgg')
@@ -138,6 +135,43 @@ def test_compare_to_regcoil(use_mu_0_factor):
     # sns.heatmap(b_err, ax=axes[0])
     # sns.heatmap(np.linalg.norm(b_field_gt, axis=-1), ax=axes[1])
     # sns.heatmap(np.linalg.norm(np.transpose(b_field, (1, 2, 0)), axis=-1), ax=axes[2])
+    # plt.show()
+
+
+@pytest.mark.parametrize("plasma_config", [w7x_plasma, ncsx_plasma])
+@pytest.mark.parametrize("surface_label", [1, -1])
+def test_b_field_err(plasma_config, surface_label):
+    current_n_coeff = 4
+    n_points = current_n_coeff * 6
+    em_cost = EMCost.from_plasma_config(
+        plasma_config=plasma_config,
+        integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points),
+        lamb=1e-30,
+        surface_label=surface_label,
+        fit_b_3d=False
+    )
+    cws = get_cws_from_plasma_config(plasma_config, n_harmonics_current=current_n_coeff)
+
+    b_field = em_cost.get_b_field(cws)
+    b_field_gt = em_cost.Sp.get_gt_b_field(surface_labels=surface_label)[:, : em_cost.Sp.integration_par.num_points_v]
+
+    err_b = em_cost.Sp.integrate((np.linalg.norm(b_field - b_field_gt, axis=-1))) / em_cost.Sp.integrate(
+        (np.linalg.norm(b_field_gt, axis=-1))
+    )
+
+    if surface_label == -1:
+        assert err_b < 0.09
+    else:
+        assert err_b < 0.29
+
+    # import matplotlib.pyplot as plt
+    # import seaborn as sns
+
+    # _, axes = plt.subplots(3)
+
+    # sns.heatmap(np.linalg.norm(b_field_gt, axis=-1), cmap="seismic", ax=axes[0])
+    # sns.heatmap(np.linalg.norm(b_field, axis=-1), cmap="seismic", ax=axes[1])
+    # sns.heatmap(np.linalg.norm(b_field_gt - b_field, axis=-1), cmap="seismic", ax=axes[2], center=0)
     # plt.show()
 
 

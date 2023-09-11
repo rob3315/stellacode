@@ -9,6 +9,7 @@ from .abstract_surface import AbstractSurface, IntegrationParams
 from .current import Current
 from .fourier import FourierSurface
 from .rotated_surface import RotatedSurface
+from stellacode.definitions import PlasmaConfig
 
 
 def get_cws(config):
@@ -24,6 +25,35 @@ def get_cws(config):
         surface=cws,
         current=get_current_potential(config),
         num_tor_symmetry=n_fp,
+    )
+    return cws
+
+
+def get_cws_from_plasma_config(
+    plasma_config: PlasmaConfig,
+    n_harmonics_current: int,
+    mult_coil_points: int = 6,
+):
+    assert plasma_config.path_cws is not None
+    num_tor_symmetry = VMECIO.from_grid(plasma_config.path_plasma).nfp
+    cws = FourierSurface.from_file(
+        plasma_config.path_cws,
+        integration_par=IntegrationParams(
+            num_points_u=n_harmonics_current * mult_coil_points,
+            num_points_v=n_harmonics_current * mult_coil_points,
+        ),
+        n_fp=num_tor_symmetry,
+    )
+
+    current = Current(
+        num_pol=n_harmonics_current,
+        num_tor=n_harmonics_current,
+        net_currents=get_net_current(plasma_config.path_plasma),
+    )
+    cws = RotatedSurface(
+        surface=cws,
+        current=current,
+        num_tor_symmetry=num_tor_symmetry,
     )
     return cws
 
