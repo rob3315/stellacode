@@ -155,11 +155,7 @@ class AbstractSurface(BaseModel):
 
         if deg >= 2:
             self.hess_xyz = self.get_hess_xyz_on_grid(uv_grid)
-            # self.principles = get_principles(
-            #     hess_xyz=np.transpose(hess, (2, 3, 4, 0, 1)),
-            #     jac_xyz=np.transpose(self.jac_xyz, (2, 3, 0, 1)),
-            #     normal_unit=np.transpose(self.normal_unit, (2, 0, 1)),
-            # )
+
             self.principles = get_principles(
                 hess_xyz=self.hess_xyz,
                 jac_xyz=self.jac_xyz,
