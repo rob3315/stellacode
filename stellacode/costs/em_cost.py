@@ -248,15 +248,15 @@ class EMCost(AbstractCost):
 
     def cost_multiple_lambdas(self, S, lambdas):
         solver, bs = self.get_regcoil_solver(S=S)
-        results = {}
+        metric_results = {}
+        results_d = {}
         for lamb in lambdas:
             phi_mn = solver.solve_lambda(lamb=lamb)
             bnorm_pred = bs.get_b_field(phi_mn)
-            results[float(lamb)] = to_float(
-                self.get_results(bnorm_pred=bnorm_pred, solver=solver, phi_mn=phi_mn, S=S, lamb=lamb)[1]
-            )
-
-        return pd.DataFrame(results).T
+            metrics, results = self.get_results(bnorm_pred=bnorm_pred, solver=solver, phi_mn=phi_mn, S=S, lamb=lamb)[1:]
+            metric_results[float(lamb)] = to_float(metrics)
+            results_d[float(lamb)] = results
+        return pd.DataFrame(metric_results).T, results_d
 
     def get_current_weights(self, S):
         solver, bs = self.get_regcoil_solver(S=S)

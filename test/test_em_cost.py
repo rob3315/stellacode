@@ -61,7 +61,7 @@ def test_reproduce_regcoil_axisym():
     filename = "test/data/w7x/regcoil_out.w7x_axis.nc"
     file_ = netcdf_file(filename, "r", mmap=False)
     lambdas = file_.variables["lambda"][()].astype(float)
-    metrics = em_cost.cost_multiple_lambdas(cws, lambdas)
+    metrics = em_cost.cost_multiple_lambdas(cws, lambdas)[0]
 
     # the agreement is not perfect for very low lambdas
     chi_b = file_.variables["chi2_B"][()].astype(float)
@@ -93,7 +93,7 @@ def test_compare_to_regcoil(use_mu_0_factor):
 
     lambdas = file_.variables["lambda"][()].astype(float)
 
-    metrics = em_cost.cost_multiple_lambdas(cws, lambdas)
+    metrics = em_cost.cost_multiple_lambdas(cws, lambdas)[0]
 
     # for some reason chi_j is not well reproduced for low lambdas
     chi2_b = file_.variables["chi2_B"][()].astype(float)
