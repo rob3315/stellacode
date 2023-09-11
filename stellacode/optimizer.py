@@ -13,7 +13,7 @@ from stellacode.costs.abstract_cost import Results
 from stellacode.costs.aggregate_cost import AggregateCost
 from stellacode.surface.coil_surface import CoilSurface
 from stellacode.surface.imports import get_cws
-from stellacode.tools.concat_dict import ConcatDictArray
+from stellacode.tools.concat_dict import ConcatScaleDictArray, ScaleDictArray
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ def tostr_jax(res_dict):
 
 class Optimizer(BaseModel):
     cost: AggregateCost
-    concater: ConcatDictArray
+    concater: ConcatScaleDictArray
     coil_surface: CoilSurface
     loss_and_grad: Any
     init_param: Any
@@ -96,12 +96,16 @@ class Optimizer(BaseModel):
         )
 
     @classmethod
-    def from_cost(cls, cost, coil_surface, **kwargs):
-        concater = ConcatDictArray()
-        init_param = concater.concat(coil_surface.get_trainable_params())
+    def from_cost(cls, cost, coil_surface, set_scales: bool = False, preset_scales: dict = {}, **kwargs):
+        if set_scales:
+            scaler = ScaleDictArray(scales=preset_scales)
+        else:
+            scaler = None
+        concater = ConcatScaleDictArray(scaler=scaler)
+        init_param = concater.apply(coil_surface.get_trainable_params())
 
         def loss(X):
-            kwargs_ = concater.unconcat(X)
+            kwargs_ = concater.unapply(X)
             # tic = time()
             coil_surface.update_params(**kwargs_)
             # print("Surface", time() - tic)
@@ -144,7 +148,7 @@ class Optimizer(BaseModel):
                 pickle.dump(optimize_shape, output_file)
 
         # assert optimize_shape.success
-        optimized_params = self.concater.unconcat(optimize_shape.x)
+        optimized_params = self.concater.unapply(optimize_shape.x)
 
         self.coil_surface.update_params(**optimized_params)
         cost, metrics, results = self.cost.cost(self.coil_surface)
