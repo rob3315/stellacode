@@ -112,6 +112,11 @@ class VMECIO:
         return np.stack((radius, phi, z_), axis=-1)
 
     @property
+    def xyz(self):
+        rphiz = self.rphiz
+        return cylindrical_to_cartesian(rphiz, self.grid.zeta)
+
+    @property
     def grad_rphiz(self):
         r_grad = self.get_val_grad("r", nyq=False)
         z_grad = self.get_val_grad("z", nyq=False)
@@ -206,9 +211,8 @@ class VMECIO:
 
     @property
     def net_poloidal_current2(self):
-        np.sum(self.b_cylindrical[-1] * self.grad_rpz[-1][..., 1], axis=-1).sum(1) / mu_0
-        return np.sum(self.b_cartesian[-1] * self.grad_xyz[-1][..., 1], axis=-1).sum(1) / mu_0
-        # np.sum(b_cart[:, :48] * Sp.jac_xyz[..., 1], axis=-1).sum(1) / mu_0 / 48 * 5
+        xyz_dv = self.grad_xyz[-1, :, :, :, 1] * (2 * np.pi)
+        return np.mean(np.sum((self.b_cartesian[-1] * xyz_dv)[:, 0], axis=-1), 0) / mu_0
 
     @classmethod
     def from_grid(
