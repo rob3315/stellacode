@@ -115,10 +115,10 @@ def test_compare_to_regcoil(use_mu_0_factor):
 
     phi_mn = solver.solve_lambda(1e-30)
     bs = em_cost.get_bs_operator(cws, normal_b_field=False)
-    b_field = bs.get_b_field(phi_mn)
 
     em_cost.lamb = 1e-30
-    assert get_b_field_err(em_cost, cws) < 0.15
+    assert get_b_field_err(em_cost, cws) < 0.08
+    assert get_b_field_err(em_cost, cws, err="max_n") < 0.55
 
     # Plot regcoil vs stellacode
     # import pandas as pd

@@ -281,8 +281,9 @@ def get_b_field_err(em_cost, coil_surf, err: str = "rmse_n"):
         nzeta=em_cost.Sp.integration_par.num_points_v * em_cost.Sp.num_tor_symmetry,
         surface_label=-1,
     )
-    b_field_gt = np.transpose(vmec.b_cartesian[-1, :, : em_cost.Sp.integration_par.num_points_v], (2, 0, 1))
+    b_field_gt = vmec.b_cartesian[-1, :, : em_cost.Sp.integration_par.num_points_v]
+    norm_b = np.sqrt(em_cost.Sp.integrate(np.linalg.norm(b_field_gt, axis=-1) ** 2))
     if err == "rmse_n":
-        return np.sqrt(em_cost.Sp.integrate((b_field - b_field_gt) ** 2) / em_cost.Sp.area)
-    elif err == "max":
-        return np.max(np.linalg.norm(b_field_gt - b_field, axis=0))
+        return np.sqrt(em_cost.Sp.integrate(np.linalg.norm(b_field - b_field_gt, axis=-1) ** 2)) / norm_b
+    elif err == "max_n":
+        return np.max(np.linalg.norm(b_field_gt - b_field, axis=-1)) / np.max(np.linalg.norm(b_field_gt , axis=-1))
