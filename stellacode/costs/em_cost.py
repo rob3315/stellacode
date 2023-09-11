@@ -23,16 +23,13 @@ class BiotSavartOperator(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
-        # extra = Extra.allow  # allow extra fields
 
     bs: ArrayLike
     use_mu_0_factor: bool = False
 
     def get_b_field(self, phi_mn):
-        if len(self.bs.shape) == 4:
-            b_field = np.einsum("hpqd,h", self.bs, phi_mn)
-        else:
-            b_field = np.einsum("hpq,h", self.bs, phi_mn)
+        dims = "pqabcd"[: len(self.bs.shape) - 1]
+        b_field = np.einsum(f"h{dims},h->{dims}", self.bs, phi_mn)
         if not self.use_mu_0_factor:
             b_field *= mu_0_fac
         return b_field
@@ -88,6 +85,7 @@ class EMCost(AbstractCost):
     use_mu_0_factor: bool = False
     slow_metrics: bool = True
     train_currents: bool = False
+    fit_b_3d: bool = False
 
     @classmethod
     def from_config(cls, config, Sp=None, use_mu_0_factor=True):
@@ -115,18 +113,18 @@ class EMCost(AbstractCost):
         use_mu_0_factor: bool = True,
         lamb: float = 0.1,
         train_currents: bool = False,
+        fit_b_3d: bool = False,
+        surface_label=-1,
     ):
         if Sp is None:
             Sp = FourierSurface.from_file(plasma_config.path_plasma, integration_par=integration_par)
 
-        vmec = VMECIO.from_grid(plasma_config.path_plasma)
-
-        # Checking the computation of net_poloidal_current
-        # np.sum(vmec.b_cylindrical[-1] * vmec.grad_rphiz[-1][..., 1], axis=-1).sum(1) / mu_0*(1/(2*np.pi*5*48))
-        # b_cart= vmec.b_cartesian[-1]
-        # from scipy.constants import mu_0
-        # np.sum(b_cart[:,:48]*Sp.jac_xyz[...,1], axis=-1).sum(1)/mu_0/48*num_tor_symmetry
-        # np.linalg.norm(vmec.b_cartesian[-1], axis=-1)
+        vmec = VMECIO.from_grid(
+            plasma_config.path_plasma,
+            ntheta=integration_par.num_points_u,
+            nzeta=integration_par.num_points_v,
+            surface_label=surface_label,
+        )
 
         if plasma_config.path_bnorm is not None:
             bnorm_ = -vmec.scale_bnorm(bnorm.get_bnorm(plasma_config.path_bnorm, Sp))
@@ -135,12 +133,16 @@ class EMCost(AbstractCost):
         else:
             bnorm_ = 0.0
 
+        if fit_b_3d:
+            bnorm_ = vmec.b_cartesian[-1]
+
         return cls(
             lamb=lamb,
             bnorm=bnorm_,
             Sp=Sp,
             use_mu_0_factor=use_mu_0_factor,
-            train_currents=train_currents
+            train_currents=train_currents,
+            fit_b_3d=fit_b_3d,
         )
 
     def cost(self, S, results: Results = Results()):
@@ -154,7 +156,12 @@ class EMCost(AbstractCost):
             # old way, much more memory intensive
             # bs = self.get_bs_operator(S=S)
             # bnorm_pred = bs.get_b_field(phi_mn)
-            bnorm_pred = S.get_b_field(xyz_plasma=self.Sp.xyz, plasma_normal=self.Sp.normal_unit)
+            if not self.fit_b_3d:
+                plasma_normal = self.Sp.normal_unit
+            else:
+                plasma_normal = None
+
+            bnorm_pred = S.get_b_field(xyz_plasma=self.Sp.xyz, plasma_normal=plasma_normal)
 
             solver = None
 
@@ -173,7 +180,7 @@ class EMCost(AbstractCost):
         return BiotSavartOperator(bs=BS, use_mu_0_factor=self.use_mu_0_factor)
 
     def get_regcoil_solver(self, S):
-        bs = self.get_bs_operator(S)
+        bs = self.get_bs_operator(S, normal_b_field=not self.fit_b_3d)
         BS = bs.bs
         Sp = self.Sp
 
@@ -183,24 +190,29 @@ class EMCost(AbstractCost):
         # in order to understand what's going on.
 
         current_basis_dot_prod = S.get_current_basis_dot_prod()
+        if self.fit_b_3d:
+            add_dim = "a"
+        else:
+            add_dim = ""
+
         if S.current.net_currents is not None:
             BS_R = BS[2:]
-            bnorm_ = self.bnorm - np.einsum("tpq,t", BS[:2], S.current.net_currents)
+            bnorm_ = self.bnorm - np.einsum(f"tpq{add_dim},t->pq{add_dim}", BS[:2], S.current.net_currents)
         else:
             BS_R = BS
             bnorm_ = self.bnorm
-        BS_dagger = np.einsum("uij,ij->uij", BS_R, Sp.ds / Sp.npts)
+        BS_dagger = np.einsum(f"uij{add_dim},ij->uij{add_dim}", BS_R, Sp.ds / Sp.npts)
 
-        rhs = np.einsum("hpq,pq->h", BS_dagger, bnorm_)
+        rhs = np.einsum(f"hpq{add_dim},pq{add_dim}->h", BS_dagger, bnorm_)
 
         if S.current.net_currents is not None:
             rhs_reg = current_basis_dot_prod[2:, :2] @ S.current.net_currents
         else:
             rhs_reg = None
 
-        matrix = np.einsum("tpq,upq->tu", BS_dagger, BS_R)
+        matrix = np.einsum(f"tpq{add_dim},upq{add_dim}->tu", BS_dagger, BS_R)
         matrix_reg = current_basis_dot_prod[2:, 2:]
-
+        import pdb;pdb.set_trace()
         return (
             RegCoilSolver(
                 current_basis_dot_prod=current_basis_dot_prod,
@@ -223,10 +235,11 @@ class EMCost(AbstractCost):
 
         metrics = {}
         results = Results(bnorm_plasma_surface=bnorm_pred, phi_mn_wnet_cur=phi_mn)
-        B_err = bnorm_pred - self.bnorm * fac
-        metrics["err_max_B"] = np.max(np.abs(B_err))
-
-        metrics["cost_B"] = self.Sp.integrate(B_err**2)
+        b_err = (bnorm_pred - self.bnorm * fac) ** 2
+        metrics["err_max_B"] = np.max(np.abs(b_err))
+        if self.fit_b_3d:
+            b_err = np.sum(b_err, axis=-1)
+        metrics["cost_B"] = self.Sp.integrate(b_err)
         if solver is not None:
             metrics["cost_J"] = S.num_tor_symmetry * np.einsum(
                 "i,ij,j->", phi_mn, solver.current_basis_dot_prod, phi_mn
