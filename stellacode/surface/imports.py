@@ -3,6 +3,7 @@ Imports for the surface module.
 """
 from stellacode import np
 from stellacode.tools.vmec import VMECIO
+import os
 
 from .abstract_surface import AbstractSurface, IntegrationParams
 from .current import Current
@@ -14,7 +15,7 @@ def get_cws(config):
     n_fp = int(config["geometry"]["Np"])
     n_pol_coil = int(config["geometry"]["ntheta_coil"])
     n_tor_coil = int(config["geometry"]["nzeta_coil"])
-    path_cws = str(config["geometry"]["path_cws"])
+    path_cws = str(config["geometry"]["path_cws"]).replace("/", os.sep)
     cws = FourierSurface.from_file(
         path_cws, integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil), n_fp=n_fp
     )
@@ -56,7 +57,7 @@ def get_current_potential(config):
 def get_plasma_surface(config):
     n_pol_plasma = int(config["geometry"]["ntheta_plasma"])
     n_tor_plasma = int(config["geometry"]["nzeta_plasma"])
-    path_plasma = str(config["geometry"]["path_plasma"])
+    path_plasma = str(config["geometry"]["path_plasma"]).replace("/", os.sep)
 
     plasma = FourierSurface.from_file(
         path_plasma,

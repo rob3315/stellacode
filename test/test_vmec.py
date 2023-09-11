@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from stellacode.tools.vmec import VMECIO
+from stellacode.definitions import ncsx_plasma, w7x_plasma, hsx_plasma
 
 
 @pytest.mark.skip("Missing dependency")
@@ -47,3 +48,12 @@ def test_vmec():
     # jvmec = vmec.j_vmec
     # jvmec_gt = np.stack((vmec2.Ju, vmec2.Jv), axis=-1)
     # assert np.allclose(jvmec_gt, jvmec)
+
+
+@pytest.mark.parametrize("plasma", [ncsx_plasma, w7x_plasma, hsx_plasma])
+def test_vmec_poloidal_current(plasma):
+    vmec = VMECIO.from_grid(plasma.path_plasma, surface_label=-1)
+
+    net_pol = vmec.net_poloidal_current
+    net_pol2 = vmec.net_poloidal_current2
+    assert abs(net_pol2 - net_pol) / net_pol < 0.15

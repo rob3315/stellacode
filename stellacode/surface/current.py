@@ -22,6 +22,7 @@ class AbstractCurrent(BaseModel):
     sin_basis: bool = True
     cos_basis: bool = False
     trainable_params: tp.List[str] = ["phi_mn"]
+    scale_phi_mn: float = 1e8
 
     class Config:
         arbitrary_types_allowed = True
@@ -35,7 +36,7 @@ class AbstractCurrent(BaseModel):
 
     # def phi(self, uv):
     #     raise NotImplementedError
-    
+
     # def get_phi_on_grid(self, grid):
     #     grid_ = np.reshape(grid, (2, -1))
     #     _, lu, lv = grid.shape
@@ -66,7 +67,6 @@ class AbstractCurrent(BaseModel):
 
     #     return np.reshape(hess_surf_res, (lu, lv, 2, 2))
 
-
     def get_integration_params(self, factor: float = 4):
         return IntegrationParams(num_points_u=self.num_pol * factor, num_points_v=self.num_tor * factor)
 
@@ -76,10 +76,13 @@ class AbstractCurrent(BaseModel):
         return np.einsum("oijk,o->ijk", self.current_op, phi_mn)
 
     def get_phi_mn(self):
-        phi_mn = self.phi_mn * 1e8
+        phi_mn = self.phi_mn * self.scale_phi_mn
         if self.net_currents is not None:
             phi_mn = np.concatenate((self.net_currents, phi_mn))
         return phi_mn
+
+    def set_phi_mn(self, phi_mn: float):
+        self.phi_mn = phi_mn / self.scale_phi_mn
 
     def get_trainable_params(self):
         return {k: getattr(self, k) for k in self.trainable_params}
@@ -183,11 +186,11 @@ class CurrentZeroTorBC(AbstractCurrent):
             cosv0 = onp.cos(onp.pi * xn0 * vgrid)
             dphi.append(_stack(xn0 * cosv0, onp.zeros_like(xn0 * cosv0)))
             # current for Phi=sin(2*onp.pi*xm*u)*sin(onp.pi*xn*v)
-            dphi.append(_stack(xn * sinu * cosv/2, -xm * cosu * sinv))
+            dphi.append(_stack(xn * sinu * cosv / 2, -xm * cosu * sinv))
 
         if self.cos_basis:
             # current for Phi=cos(2*onp.pi*xm*u)*sin(2*onp.pi*xn*v)
-            dphi.append(_stack(xn * cosu * cosv/2, xm * sinu * sinv))
+            dphi.append(_stack(xn * cosu * cosv / 2, xm * sinu * sinv))
 
         dphi = onp.concatenate(dphi, axis=0)
         dphi = onp.concatenate((onp.zeros((2, lu, lv, 2)), dphi), axis=0)

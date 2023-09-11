@@ -269,3 +269,12 @@ class FourierSurface(AbstractSurface):
             env = self.get_envelope(num_cyl=num_cyl, convex=False)
             ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
         return ax
+
+    def get_gt_b_field(self, surface_labels=-1):
+        vmec = VMECIO.from_grid(
+            self.file_path,
+            ntheta=self.integration_par.num_points_u,
+            nzeta=self.integration_par.num_points_v * self.num_tor_symmetry,
+            surface_label=surface_labels,
+        )
+        return vmec.b_cartesian[surface_labels]
