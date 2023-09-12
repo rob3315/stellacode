@@ -26,8 +26,7 @@ ScaleDict = tp.Dict[str, tp.Union[float, tp.Tuple[float, float], None]]
 
 class ScaleDictArray(BaseModel):
     scales: ScaleDict = {}
-    min_std: bool = 1e-8
-    shapes: tp.Optional[tp.Dict[str, np.ndarray]] = None
+    min_std: float = 1e-8
     additional_scale: float = 1e-2
 
     class Config:
@@ -44,15 +43,14 @@ class ScaleDictArray(BaseModel):
 
         scaled_darr = {}
         for k, v in darr.items():
-            scaled_darr[k] = np.reshape(v, -1)
             if k in self.scales:
                 if self.scales[k] is None:
                     pass
                 elif len(np.array(v).shape) == 0:
-                    scaled_darr[k] = scaled_darr[k] / v * self.additional_scale
+                    scaled_darr[k] = v / self.scales[k] * self.additional_scale
                 else:
                     mean_, std = self.scales[k]
-                    scaled_darr[k] = (scaled_darr[k] - mean_) / std * self.additional_scale
+                    scaled_darr[k] = (v - mean_) / std * self.additional_scale
 
         return scaled_darr
 
@@ -62,7 +60,7 @@ class ScaleDictArray(BaseModel):
             if k in self.scales:
                 if self.scales[k] is None:
                     pass
-                elif len(self.shapes[k]) == 0:
+                elif len(np.array(v).shape) == 0:
                     darr[k] = v * self.scales[k] / self.additional_scale
                 else:
                     mean_, std = self.scales[k]
