@@ -275,6 +275,11 @@ def test_regcoil_with_pwc():
     phi_mn = em_cost.get_current_weights(S)
     new_surface.plot_j_surface(phi_mn, num_rot=1)
 
+    # check that current basis has no net currents except in the first two functions
+    curr_op = S.current._get_matrix_from_grid(S.grids)
+    assert np.abs(curr_op[..., 0].sum(2))[2:].max() < 1e-11
+    assert np.abs(curr_op[..., 1].sum(1))[2:].max() < 1e-11
+
 
 def test_regcoil_with_pwc_no_current_at_bc():
     current_n_coeff = 8
