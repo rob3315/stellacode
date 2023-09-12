@@ -212,7 +212,7 @@ class EMCost(AbstractCost):
 
         matrix = np.einsum(f"tpq{add_dim},upq{add_dim}->tu", BS_dagger, BS_R)
         matrix_reg = current_basis_dot_prod[2:, 2:]
-        import pdb;pdb.set_trace()
+
         return (
             RegCoilSolver(
                 current_basis_dot_prod=current_basis_dot_prod,
