@@ -8,6 +8,8 @@ from pydantic import BaseModel, Extra
 from stellacode import np
 from stellacode.tools.rotate_n_times import RotateNTimes
 from stellacode.tools.utils import get_min_dist
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from .utils import get_principles
 
@@ -170,7 +172,7 @@ class AbstractSurface(BaseModel):
 
     def integrate(self, field):
         add_dims = "abcd"[: len(field.shape) - 2]
-        return np.einsum(f"ij,ij{add_dims}->{add_dims}", self.ds , field) * self.dudv * self.num_tor_symmetry
+        return np.einsum(f"ij,ij{add_dims}->{add_dims}", self.ds, field) * self.dudv * self.num_tor_symmetry
 
     @property
     def area(self):
@@ -267,3 +269,24 @@ class AbstractSurface(BaseModel):
             mlab.colorbar(surf, nb_labels=4, label_fmt="%.1E", orientation="vertical")
 
         mlab.view(39.35065816238082, 52.4711478893247, 4.259806307223165, np.array([4.10903064, 2.9532187, 4.20616949]))
+
+    def plot_2d_field(self, field, num_prec=2, ax=None):
+        """
+        x is the toroidal direction (second dimension, also labelled v)
+        y is the poloidal direction (first dimension, also labelled u)
+        """
+        assert field.shape[0] == self.xyz.shape[0]
+        assert field.shape[1] == self.xyz.shape[1]
+
+        field_norm = np.linalg.norm(field, axis=-1)
+        field_cov = np.einsum("ija,ijau->iju", field, self.jac_xyz)
+        ax = sns.heatmap(field_norm.T, cmap="winter", ax=ax)
+
+        x_pos = self.grids[1][::num_prec, ::num_prec].T * field_norm.shape[1]
+        y_pos = self.grids[0][::num_prec, ::num_prec].T * field_norm.shape[0]
+        x_field = field_cov[::num_prec, ::num_prec, 1].T
+        y_field = field_cov[::num_prec, ::num_prec, 0].T
+        ax.quiver(x_pos, y_pos, x_field, y_field, color="w", units="width")
+        plt.ylabel("Poloidal angle")
+        plt.xlabel("Toroidal angle")
+        return ax
