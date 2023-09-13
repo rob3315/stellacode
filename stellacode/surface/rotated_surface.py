@@ -45,6 +45,7 @@ class RotatedSurface(CoilSurface):
 
     def update_params(self, **kwargs):
         for k, v in kwargs.items():
+            assert not (k in type(self.surface).__fields__ and k in type(self.current).__fields__)
             if k in type(self.surface).__fields__:
                 setattr(self.surface, k, v)
             elif k in type(self.current).__fields__:
