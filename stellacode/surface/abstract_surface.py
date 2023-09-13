@@ -280,7 +280,7 @@ class AbstractSurface(BaseModel):
 
         field_norm = np.linalg.norm(field, axis=-1)
         field_cov = np.einsum("ija,ijau->iju", field, self.jac_xyz)
-        ax = sns.heatmap(field_norm.T, cmap="winter", ax=ax)
+        ax = sns.heatmap(field_norm, cmap="winter", ax=ax)
 
         x_pos = self.grids[1][::num_prec, ::num_prec].T * field_norm.shape[1]
         y_pos = self.grids[0][::num_prec, ::num_prec].T * field_norm.shape[0]
