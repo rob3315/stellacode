@@ -27,7 +27,7 @@ ScaleDict = tp.Dict[str, tp.Union[float, tp.Tuple[float, float], None]]
 class ScaleDictArray(BaseModel):
     scales: ScaleDict = {}
     min_std: float = 1e-8
-    additional_scale: float = 1e-2
+    additional_scale: float = 1
 
     class Config:
         arbitrary_types_allowed = True
