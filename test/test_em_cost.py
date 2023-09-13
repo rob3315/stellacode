@@ -148,7 +148,7 @@ def test_b_field_err(plasma_config, surface_label):
         integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points),
         lamb=1e-30,
         surface_label=surface_label,
-        fit_b_3d=False
+        fit_b_3d=False,
     )
     cws = get_cws_from_plasma_config(plasma_config, n_harmonics_current=current_n_coeff)
 
@@ -275,10 +275,32 @@ def test_regcoil_with_pwc():
     phi_mn = em_cost.get_current_weights(S)
     new_surface.plot_j_surface(phi_mn, num_rot=1)
 
+
+def test_current_conservation():
+    plasma_config = w7x_plasma
+    import numpy as onp
+
     # check that current basis has no net currents except in the first two functions
-    curr_op = S.current._get_matrix_from_grid(S.grids)
+    cws = get_cws_from_plasma_config(plasma_config, n_harmonics_current=4)
+    cws.current.set_phi_mn(onp.random.random(cws.current.phi_mn.shape) * 1e5)
+    curr_op = cws.current._get_matrix_from_grid(cws.grids)
     assert np.abs(curr_op[..., 0].sum(2))[2:].max() < 1e-11
     assert np.abs(curr_op[..., 1].sum(1))[2:].max() < 1e-11
+
+    vmec = VMECIO.from_grid(plasma_config.path_plasma)
+
+    js = np.einsum("oijk,o->ijk", cws.current_op, cws.current.get_phi_mn())
+    assert np.abs(-js[..., 0].sum(1) * cws.dv - vmec.net_poloidal_current).max() < 1e-7
+    assert np.abs(js[..., 1].sum(0) * cws.du).max() < 1e-8
+
+    # Check the computation of the net currents
+    from stellacode.surface.utils import get_net_current
+
+    net_pol_curr = get_net_current(cws, toroidal=False)
+    assert np.max(np.abs(-net_pol_curr - vmec.net_poloidal_current)) < 1e-7
+
+    net_tor_curr = get_net_current(cws, toroidal=True)
+    assert np.max(np.abs(net_tor_curr)) < 1e-8
 
 
 def test_regcoil_with_pwc_no_current_at_bc():

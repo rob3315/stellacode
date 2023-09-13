@@ -124,3 +124,22 @@ def get_principles(hess_xyz, jac_xyz, normal_unit):
     Pmax = H + np.sqrt(H**2 - K)
     Pmin = H - np.sqrt(H**2 - K)
     return Pmax, Pmin
+
+
+def get_net_current(coil_surf, toroidal: bool = True):
+    j_3d = coil_surf.get_j_3D()
+    vec_u = coil_surf.jac_xyz[..., 0]
+    vec_v = coil_surf.jac_xyz[..., 1]
+    if toroidal:
+        int_vec = vec_u
+        dl = coil_surf.du
+        axis_sum = 0
+    else:
+        int_vec = vec_v
+        dl = coil_surf.dv
+        axis_sum = 1
+
+    vecn = np.cross(int_vec, coil_surf.normal, -1, -1, -1)
+    vecn = vecn / np.linalg.norm(vecn, axis=-1, keepdims=True)
+    j_tor = np.einsum("ija,ija->ij", j_3d, vecn)
+    return np.sum(j_tor * np.linalg.norm(int_vec, axis=-1), axis=axis_sum) * dl
