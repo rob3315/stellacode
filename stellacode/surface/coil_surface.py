@@ -189,6 +189,9 @@ class CoilSurface(BaseModel):
         plt.imshow(norm_j, cmap="seismic")
 
     def get_j_surface(self, phi_mn):
+        """ 
+        It is the contravariant components of the current divided by ds: J^i/ds 
+        """
         return np.einsum("oijk,ij,o->ijk", self.current_op, 1 / self.ds, phi_mn)
 
     def plot_j_surface(self, phi_mn, num_rot: int = 3):
