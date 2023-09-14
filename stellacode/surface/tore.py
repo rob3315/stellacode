@@ -15,7 +15,7 @@ class ToroidalSurface(AbstractSurface):
     axis_angle: float = 0.0
 
     trainable_params: tp.List[str] = [
-        # "major_radius",
+        "major_radius",
         "minor_radius",
         "fourier_coeffs",
     ]
