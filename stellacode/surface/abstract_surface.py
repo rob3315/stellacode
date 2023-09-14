@@ -62,7 +62,7 @@ class AbstractSurface(BaseModel):
 
     Args:
         * normal: surface normal vector pointing inside the surface
-        * normalèunit: normalized surface normal vector pointing inside the surface
+        * normal_unit: normalized surface normal vector pointing inside the surface
     """
 
     integration_par: IntegrationParams
