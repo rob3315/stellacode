@@ -196,9 +196,9 @@ class CoilSurface(BaseModel):
             phi_mn = self.current.get_phi_mn()
         return np.einsum("oijk,o->ijk", self.current_op, phi_mn)
 
-    def plot_j_surface(self, phi_mn=None, num_rot: int = 3):
+    def plot_j_surface(self, phi_mn=None, num_prec: int = 2, ax=None):
         j_surface = self.get_j_3D(phi_mn)
-        return self.surface.plot_2d_field(j_surface[:, : self.surface.nbpts[1]])
+        return self.surface.plot_2d_field(j_surface[:, : self.surface.nbpts[1]], num_prec=num_prec, ax=ax)
 
 
 def compute_Qj(matrixd_phi, dpsi, dS):
