@@ -17,7 +17,6 @@ readme = "Readme.md"
 requires-python = ">=3.7"
 keywords = ["stellarator", "coils"]
 dependencies = [
-    "dask",
     "matplotlib",
     "mayavi",
     "numpy",
@@ -26,7 +25,8 @@ dependencies = [
     "jax",
     "jaxlib",
     "pydantic",
-    "concave_hull"
+    "concave_hull",
+    "autograd_minimize",
 ]
 
 [tool.setuptools]
