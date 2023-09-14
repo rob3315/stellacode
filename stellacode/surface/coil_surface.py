@@ -194,7 +194,7 @@ class CoilSurface(BaseModel):
         """
         if phi_mn is None:
             phi_mn = self.current.get_phi_mn()
-        return np.einsum("oijk,ij,o->ijk", self.current_op, phi_mn)
+        return np.einsum("oijk,o->ijk", self.current_op, phi_mn)
 
     def plot_j_surface(self, phi_mn=None, num_rot: int = 3):
         j_surface = self.get_j_3D(phi_mn)
