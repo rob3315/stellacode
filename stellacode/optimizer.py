@@ -5,15 +5,14 @@ import pickle
 from typing import Any, Optional
 
 import jax
-import scipy.optimize
 from pydantic import BaseModel, Extra
 
-from stellacode import np
 from stellacode.costs.abstract_cost import Results
 from stellacode.costs.aggregate_cost import AggregateCost
 from stellacode.surface.coil_surface import CoilSurface
 from stellacode.surface.imports import get_cws
-from stellacode.tools.concat_dict import ConcatScaleDictArray, ScaleDictArray
+from stellacode.tools.concat_dict import ScaleDictArray
+from autograd_minimize import minimize
 
 logger = logging.getLogger(__name__)
 
@@ -42,16 +41,16 @@ def tostr_jax(res_dict):
 
 class Optimizer(BaseModel):
     cost: AggregateCost
-    concater: ConcatScaleDictArray
     coil_surface: CoilSurface
-    loss_and_grad: Any
+    loss: Any
     init_param: Any
+    scaler: Optional[ScaleDictArray] = None
     freq_save: int = 100
     save_res: bool = False
     output_folder_name: Optional[str] = None
     info: dict = dict(Nfeval=0)
     method: Optional[str] = None
-    options: dict = {}
+    kwargs: dict = {}
 
     class Config:
         arbitrary_types_allowed = True
@@ -96,18 +95,28 @@ class Optimizer(BaseModel):
         )
 
     @classmethod
-    def from_cost(cls, cost, coil_surface, set_scales: bool = False, preset_scales: dict = {}, **kwargs):
+    def from_cost(
+        cls,
+        cost,
+        coil_surface,
+        set_scales: bool = False,
+        preset_scales: dict = {},
+        freeze_params: list = [],
+        **kwargs,
+    ):
+        init_param = coil_surface.get_trainable_params()
+        init_param = {k: v for k, v in init_param.items() if k not in freeze_params}
         if set_scales:
             scaler = ScaleDictArray(scales=preset_scales)
+            init_param = scaler.apply(init_param)
         else:
             scaler = None
-        concater = ConcatScaleDictArray(scaler=scaler)
-        init_param = concater.apply(coil_surface.get_trainable_params())
 
-        def loss(X):
-            kwargs_ = concater.unapply(X)
+        def loss(**kwargs):
+            if scaler is not None:
+                kwargs = scaler.unapply(**kwargs)
             # tic = time()
-            coil_surface.update_params(**kwargs_)
+            coil_surface.update_params(**kwargs)
             # print("Surface", time() - tic)
 
             res, metrics, results = cost.cost(coil_surface, results=Results())
@@ -126,29 +135,23 @@ class Optimizer(BaseModel):
         return cls(
             cost=cost,
             coil_surface=coil_surface,
-            concater=concater,
-            loss_and_grad=jax.value_and_grad(loss),
+            scaler=scaler,
+            loss=loss,
             init_param=init_param,
             **kwargs,
         )
 
     def optimize(self):
         # The optimization
-        optimize_shape = scipy.optimize.minimize(
-            self.loss_and_grad,
-            self.init_param,
-            jac=True,
-            method=self.method,
-            options=self.options,
-        )
+        optim_res = minimize(self.loss, self.init_param, method=self.method, backend="jax", **self.kwargs)
 
         if self.save_res:
             logging.warning("optimization ended, saving file")
             with open("{}/result".format(self.output_folder_name), "wb") as output_file:
-                pickle.dump(optimize_shape, output_file)
+                pickle.dump(optim_res, output_file)
 
         # assert optimize_shape.success
-        optimized_params = self.concater.unapply(optimize_shape.x)
+        optimized_params = optim_res.x
 
         self.coil_surface.update_params(**optimized_params)
         cost, metrics, results = self.cost.cost(self.coil_surface)

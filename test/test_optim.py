@@ -73,7 +73,7 @@ def test_current_optim(surface_name):
         agg_cost,
         coil_surf,
         method="L-BFGS-B",
-        options={"disp": False, "maxls": 10, "maxiter": 5},
+        kwargs=dict(options={"disp": False, "maxls": 10, "maxiter": 5}),
     )
 
     cost, metrics, results, optimized_params = opt.optimize()
