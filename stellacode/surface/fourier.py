@@ -22,6 +22,7 @@ from .utils import (
     from_polar,
     to_polar,
 )
+from stellacode.tools.bnorm import get_bnorm
 
 
 class FourierSurface(AbstractSurface):
@@ -276,7 +277,7 @@ class FourierSurface(AbstractSurface):
             ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
         return ax
 
-    def get_gt_b_field(self, surface_labels=-1):
+    def get_gt_b_field(self, surface_labels: int = -1, b_norm_file: tp.Optional[str] = None):
         vmec = VMECIO.from_grid(
             self.file_path,
             ntheta=self.integration_par.num_points_u,
@@ -284,6 +285,14 @@ class FourierSurface(AbstractSurface):
             surface_label=surface_labels,
         )
         if isinstance(surface_labels, int):
-            return vmec.b_cartesian[0]
+            b_field = vmec.b_cartesian[0]
         else:
-            return vmec.b_cartesian[surface_labels]
+            b_field = vmec.b_cartesian[surface_labels]
+
+        b_field = b_field[:, : self.nbpts[1]]
+
+        if b_norm_file is not None:
+            bnorm = -vmec.scale_bnorm(get_bnorm(b_norm_file, self))
+            b_field += bnorm[..., None] * self.normal_unit
+
+        return b_field
