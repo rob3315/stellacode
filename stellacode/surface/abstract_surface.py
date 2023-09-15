@@ -15,6 +15,15 @@ from .utils import get_principles
 
 
 class IntegrationParams(BaseModel):
+    """
+    Represent a 2D grid for integration.
+
+    Args:
+        * num_points_u: number of points in the poloidal, u direction
+        * num_points_v: number of points in the toroidal, v direction
+        * max_val_v: maximum value in the toroidal, v direction
+    """
+
     num_points_u: int
     num_points_v: int
     max_val_v: float = 1.0
@@ -23,15 +32,12 @@ class IntegrationParams(BaseModel):
     def from_current_potential(cls, current_pot):
         return cls(current_pot.num_pol * 4, current_pot.num_tor * 4)
 
-    def get_uvgrid(self, concat: bool = False):
+    def get_uvgrid(self):
         u = np.linspace(0, 1, self.num_points_u, endpoint=False)
         v = np.linspace(0, self.max_val_v, self.num_points_v, endpoint=False)
 
         ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
-        if concat:
-            return np.stack((ugrid, vgrid), axis=0)
-        else:
-            return ugrid, vgrid
+        return ugrid, vgrid
 
     @property
     def nbpts(self):
@@ -43,14 +49,17 @@ class IntegrationParams(BaseModel):
 
     @property
     def du(self):
+        """Integration surface element in the poloidal, u direction"""
         return 1 / self.num_points_u
 
     @property
     def dv(self):
+        """Integration surface element in the toroidal, v direction"""
         return self.max_val_v / self.num_points_v
 
     @property
     def dudv(self):
+        """2D integration surface element"""
         return self.du * self.dv
 
 
@@ -61,6 +70,10 @@ class AbstractSurface(BaseModel):
     * visualize surfaces
 
     Args:
+        * integration_par: parameters for the 2D grid
+        * grids: 2D grids in cartesian coordinates
+        * num_tor_symmetry: number of symmetries  in the toroidal direction
+        * trainable_params: list of parameters that should be trained
         * normal: surface normal vector pointing inside the surface
         * normal_unit: normalized surface normal vector pointing inside the surface
     """
@@ -110,8 +123,9 @@ class AbstractSurface(BaseModel):
         self.compute_surface_attributes(deg=2)
 
     def get_xyz_on_grid(self, grid):
-        grid_ = np.reshape(grid, (2, -1))
+
         _, lu, lv = grid.shape
+        grid_ = np.reshape(grid, (2, -1))
         surf = jax.vmap(self.get_xyz, in_axes=1, out_axes=0)
         surf_res = surf(grid_)
         xyz = np.reshape(surf_res, (lu, lv, 3))
@@ -119,9 +133,9 @@ class AbstractSurface(BaseModel):
         return xyz
 
     def get_jac_xyz_on_grid(self, grid):
-        grid_ = np.reshape(grid, (2, -1))
-        _, lu, lv = grid.shape
 
+        _, lu, lv = grid.shape
+        grid_ = np.reshape(grid, (2, -1))
         jac_surf = jax.jacobian(self.get_xyz, argnums=0)
         jac_surf_vmap = jax.vmap(jac_surf, in_axes=1, out_axes=0)
         jac_surf_res = jac_surf_vmap(grid_)
@@ -130,9 +144,9 @@ class AbstractSurface(BaseModel):
         return jac_xyz
 
     def get_hess_xyz_on_grid(self, grid):
-        grid_ = np.reshape(grid, (2, -1))
-        _, lu, lv = grid.shape
 
+        _, lu, lv = grid.shape
+        grid_ = np.reshape(grid, (2, -1))
         hess_surf = jax.hessian(self.get_xyz, argnums=0, holomorphic=False)
         hess_surf_vmap = jax.vmap(hess_surf, in_axes=1, out_axes=0)
         hess_surf_res = hess_surf_vmap(grid_)
