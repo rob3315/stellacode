@@ -18,7 +18,7 @@ class CurvatureCost(AbstractCost):
         return cls(constraint=Constraint(limit=c1, distance=c1 - c0, minimum=False))
 
     def cost(self, S, results: Results = Results()):
-        pmax, pmin = S.principles[0], S.principles[1]
+        pmax, pmin = S.principle_max, S.principle_min
         f_pmax = self.constraint.barrier(pmax)
         f_pmin = self.constraint.barrier(pmin)
         # f_pmax = inverse_barrier(val=-pmax, min_val=-self.max_val, distance=self.distance, weight=self.weight)

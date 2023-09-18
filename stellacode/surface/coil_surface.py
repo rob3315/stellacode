@@ -29,8 +29,8 @@ class CoilSurface(BaseModel):
     normal: tp.Optional[ArrayLike] = None
     normal_unit: tp.Optional[ArrayLike] = None
     ds: tp.Optional[ArrayLike] = None
-    principles: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
-    # mult_current_grid: tp.Optional[int] = None
+    principle_max: tp.Optional[ArrayLike] = None
+    principle_min: tp.Optional[ArrayLike] = None
 
     class Config:
         arbitrary_types_allowed = True

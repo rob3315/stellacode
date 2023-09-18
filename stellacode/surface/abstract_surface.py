@@ -75,7 +75,8 @@ class AbstractSurface(BaseModel):
     normal: tp.Optional[ArrayLike] = None
     normal_unit: tp.Optional[ArrayLike] = None
     ds: tp.Optional[ArrayLike] = None
-    principles: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
+    principle_max: tp.Optional[ArrayLike] = None
+    principle_min: tp.Optional[ArrayLike] = None
     max_val_v: float = 1.0
 
     class Config:
@@ -158,7 +159,7 @@ class AbstractSurface(BaseModel):
         if deg >= 2:
             self.hess_xyz = self.get_hess_xyz_on_grid(uv_grid)
 
-            self.principles = get_principles(
+            self.principle_max, self.principle_min = get_principles(
                 hess_xyz=self.hess_xyz,
                 jac_xyz=self.jac_xyz,
                 normal_unit=self.normal_unit,
