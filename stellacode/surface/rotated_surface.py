@@ -93,13 +93,20 @@ class RotatedSurface(CoilSurface):
         self.grids = self.surface.grids
         self.surface.compute_surface_attributes(deg=deg)
 
-        for k in ["xyz", "jac_xyz", "normal", "ds", "normal_unit", "hess_xyz"]:
+        for k in [
+            "xyz",
+            "jac_xyz",
+            "normal",
+            "ds",
+            "normal_unit",
+            "hess_xyz",
+            "principle_max",
+            "principle_min",
+        ]:
             val = getattr(self.surface, k)
             if val is not None:
                 setattr(self, k, self.rotate_n(val))
 
-        if deg >= 2:
-            self.principles = [self.rotate_n(val) for val in self.surface.principles]
         self._set_curent_op()
 
     def cartesian_to_toroidal(self):
