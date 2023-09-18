@@ -273,7 +273,7 @@ def test_regcoil_with_pwc():
 
     # compute regcoil metrics
     phi_mn = em_cost.get_current_weights(S)
-    new_surface.plot_j_surface(phi_mn, num_rot=1)
+    new_surface.plot_j_surface(phi_mn)
 
 
 def test_current_conservation():
