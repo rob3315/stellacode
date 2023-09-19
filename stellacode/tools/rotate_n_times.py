@@ -4,23 +4,28 @@ from stellacode import np
 
 
 class RotateNTimes:
-    def __init__(self, num_tor_symmetry):
-        self.num_tor_symmetry = num_tor_symmetry
+    def __init__(self, angle: float, number: int = 1):
+        self.number = number
+        self.angle = angle
         rot = onp.array(
             [
-                [onp.cos(2 * onp.pi / num_tor_symmetry), -onp.sin(2 * onp.pi / num_tor_symmetry), 0],
-                [onp.sin(2 * onp.pi / num_tor_symmetry), onp.cos(2 * onp.pi / num_tor_symmetry), 0],
+                [onp.cos(angle), -onp.sin(angle), 0],
+                [onp.sin(angle), onp.cos(angle), 0],
                 [0, 0, 1],
             ]
         )
-        self.rot_ten = np.stack([onp.linalg.matrix_power(rot, i) for i in range(num_tor_symmetry)])
+        self.rot_ten = np.stack([onp.linalg.matrix_power(rot, i) for i in range(number)])
+
+    @classmethod
+    def from_nfp(cls, nfp: int):
+        return cls(2 * np.pi / nfp, nfp)
 
     def __call__(self, ten):
         """
         tensor dimensions are always: poloidal x toroidal x 3 x others
         """
         if len(ten.shape) == 2:
-            return np.concatenate([ten] * self.num_tor_symmetry, axis=1)
+            return np.concatenate([ten] * self.number, axis=1)
         elif len(ten.shape) == 3:
             assert ten.shape[2] == 3
             return np.reshape(

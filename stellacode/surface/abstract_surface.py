@@ -232,7 +232,7 @@ class AbstractSurface(BaseModel):
 
         points = self.expand_for_plot_part()[0]
 
-        points_rot = RotateNTimes(self.num_tor_symmetry)(points)
+        points_rot = RotateNTimes.from_nfp(self.num_tor_symmetry)(points)
         pol, torrot, _ = points_rot.shape
         points_rot = np.reshape(points_rot, (pol, self.num_tor_symmetry, torrot // self.num_tor_symmetry, 3))
         points_ = [points_rot[:, i] for i in range(self.num_tor_symmetry)]

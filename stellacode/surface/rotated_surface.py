@@ -61,7 +61,7 @@ class RotatedCoil(CoilSurface):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.rotate_n = RotateNTimes(self.num_tor_symmetry * self.rotate_diff_current)
+        self.rotate_n = RotateNTimes.from_nfp(self.num_tor_symmetry * self.rotate_diff_current)
         self.compute_surface_attributes()
         assert self.num_tor_symmetry * self.rotate_diff_current == self.surface.num_tor_symmetry
 
