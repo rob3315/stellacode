@@ -68,7 +68,6 @@ class AbstractSurface(BaseModel):
     integration_par: IntegrationParams
     grids: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
     num_tor_symmetry: int = 1
-    trainable_params: tp.List[str] = []
     xyz: tp.Optional[ArrayLike] = None
     jac_xyz: tp.Optional[ArrayLike] = None
     hess_xyz: tp.Optional[ArrayLike] = None
@@ -77,7 +76,6 @@ class AbstractSurface(BaseModel):
     ds: tp.Optional[ArrayLike] = None
     principle_max: tp.Optional[ArrayLike] = None
     principle_min: tp.Optional[ArrayLike] = None
-    max_val_v: float = 1.0
 
     class Config:
         arbitrary_types_allowed = True
@@ -98,72 +96,13 @@ class AbstractSurface(BaseModel):
     def dudv(self):
         return self.integration_par.dudv
 
-    def get_xyz(self, uv):
-        """return the point parametrized by uv in cartesian coordinate"""
-        raise NotImplementedError
+    @property
+    def du(self):
+        return self.surface.integration_par.du
 
-    def get_trainable_params(self):
-        return {k: getattr(self, k) for k in self.trainable_params}
-
-    def update_params(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-        self.compute_surface_attributes(deg=2)
-
-    def get_xyz_on_grid(self, grid):
-        grid_ = np.reshape(grid, (2, -1))
-        _, lu, lv = grid.shape
-        surf = jax.vmap(self.get_xyz, in_axes=1, out_axes=0)
-        surf_res = surf(grid_)
-        xyz = np.reshape(surf_res, (lu, lv, 3))
-
-        return xyz
-
-    def get_jac_xyz_on_grid(self, grid):
-        grid_ = np.reshape(grid, (2, -1))
-        _, lu, lv = grid.shape
-
-        jac_surf = jax.jacobian(self.get_xyz, argnums=0)
-        jac_surf_vmap = jax.vmap(jac_surf, in_axes=1, out_axes=0)
-        jac_surf_res = jac_surf_vmap(grid_)
-        jac_xyz = np.reshape(jac_surf_res, (lu, lv, 3, 2))
-
-        return jac_xyz
-
-    def get_hess_xyz_on_grid(self, grid):
-        grid_ = np.reshape(grid, (2, -1))
-        _, lu, lv = grid.shape
-
-        hess_surf = jax.hessian(self.get_xyz, argnums=0, holomorphic=False)
-        hess_surf_vmap = jax.vmap(hess_surf, in_axes=1, out_axes=0)
-        hess_surf_res = hess_surf_vmap(grid_)
-
-        return np.reshape(hess_surf_res, (lu, lv, 3, 2, 2))
-
-    def compute_surface_attributes(self, deg: int = 2):
-        """compute surface elements used in the shape optimization up
-        to degree deg
-        deg is 0,1 or 2"""
-        self.grids = self.integration_par.get_uvgrid()
-        uv_grid = np.stack(self.grids, axis=0)
-
-        self.xyz = self.get_xyz_on_grid(uv_grid)
-
-        # We also compute surface element dS and derivatives dS_u and dS_v:
-        if deg >= 1:
-            self.jac_xyz = self.get_jac_xyz_on_grid(uv_grid)
-            self.normal = np.cross(self.jac_xyz[..., 0], self.jac_xyz[..., 1], -1, -1, -1)
-            self.ds = np.linalg.norm(self.normal, axis=-1)
-            self.normal_unit = self.normal / self.ds[:, :, None]  # normal inward unit vector
-
-        if deg >= 2:
-            self.hess_xyz = self.get_hess_xyz_on_grid(uv_grid)
-
-            self.principle_max, self.principle_min = get_principles(
-                hess_xyz=self.hess_xyz,
-                jac_xyz=self.jac_xyz,
-                normal_unit=self.normal_unit,
-            )
+    @property
+    def dv(self):
+        return self.surface.integration_par.dv
 
     def get_distance(self, xyz):
         return np.linalg.norm(self.xyz[..., None, None, :] - xyz[None, None, ...], axis=-1)
@@ -178,6 +117,31 @@ class AbstractSurface(BaseModel):
     @property
     def area(self):
         return np.sum(self.ds) * self.dudv * self.num_tor_symmetry
+
+    def get_distance(self, xyz):
+        return np.linalg.norm(self.xyz[..., None, None, :] - xyz[None, None, ...], axis=-1)
+
+    def get_min_distance(self, xyz):
+        return get_min_dist(self.xyz, xyz)
+
+    def get_g_lower_covariant(self):
+        """
+        Covariant surface metric g_{ij}
+        """
+        return np.einsum("ijab,ijac->ijbc", self.jac_xyz, self.jac_xyz)
+
+    def get_g_upper_contravariant(self):
+        """
+        Contravariant surface metric g^{ij}
+        """
+        return np.linalg.pinv(self.get_g_lower_covariant())
+
+    def get_g_upper_basis(self):
+        """
+        Return the contravariant basis vectors
+        """
+        g_up = self.get_g_upper_contravariant()
+        return np.einsum("...kl,...ak->...al", g_up, self.jac_xyz)
 
     def expand_for_plot_part(self):
         """Returns X, Y, Z arrays of one field period, adding redundancy of first column."""
@@ -291,3 +255,73 @@ class AbstractSurface(BaseModel):
         plt.ylabel("Poloidal angle")
         plt.xlabel("Toroidal angle")
         return ax
+
+
+class AbstractSurfaceFactory(BaseModel):
+    def get_xyz(self, uv):
+        """return the point parametrized by uv in cartesian coordinate"""
+        raise NotImplementedError
+
+    # def get_trainable_params(self):
+    #     return {k: getattr(self, k) for k in self.trainable_params}
+
+    # def update_params(self, **kwargs):
+    #     for k, v in kwargs.items():
+    #         setattr(self, k, v)
+    #     self.compute_surface_attributes(deg=2)
+
+    def get_xyz_on_grid(self, grid):
+        grid_ = np.reshape(grid, (2, -1))
+        _, lu, lv = grid.shape
+        surf = jax.vmap(self.get_xyz, in_axes=1, out_axes=0)
+        surf_res = surf(grid_)
+        xyz = np.reshape(surf_res, (lu, lv, 3))
+
+        return xyz
+
+    def get_jac_xyz_on_grid(self, grid):
+        grid_ = np.reshape(grid, (2, -1))
+        _, lu, lv = grid.shape
+
+        jac_surf = jax.jacobian(self.get_xyz, argnums=0)
+        jac_surf_vmap = jax.vmap(jac_surf, in_axes=1, out_axes=0)
+        jac_surf_res = jac_surf_vmap(grid_)
+        jac_xyz = np.reshape(jac_surf_res, (lu, lv, 3, 2))
+
+        return jac_xyz
+
+    def get_hess_xyz_on_grid(self, grid):
+        grid_ = np.reshape(grid, (2, -1))
+        _, lu, lv = grid.shape
+
+        hess_surf = jax.hessian(self.get_xyz, argnums=0, holomorphic=False)
+        hess_surf_vmap = jax.vmap(hess_surf, in_axes=1, out_axes=0)
+        hess_surf_res = hess_surf_vmap(grid_)
+
+        return np.reshape(hess_surf_res, (lu, lv, 3, 2, 2))
+
+    def compute_surface_attributes(self, grids, deg: int = 2):
+        """compute surface elements used in the shape optimization up
+        to degree deg
+        deg is 0,1 or 2"""
+        # self.grids = self.integration_par.get_uvgrid()
+        # uv_grid = np.stack(self.grids, axis=0)
+        surf = AbstractSurface()
+        surf.xyz = self.get_xyz_on_grid(grids)
+
+        # We also compute surface element dS and derivatives dS_u and dS_v:
+        if deg >= 1:
+            surf.jac_xyz = self.get_jac_xyz_on_grid(grids)
+            surf.normal = np.cross(surf.jac_xyz[..., 0], surf.jac_xyz[..., 1], -1, -1, -1)
+            surf.ds = np.linalg.norm(surf.normal, axis=-1)
+            surf.normal_unit = surf.normal / surf.ds[:, :, None]  # normal inward unit vector
+
+        if deg >= 2:
+            surf.hess_xyz = self.get_hess_xyz_on_grid(grids)
+
+            surf.principle_max, surf.principle_min = get_principles(
+                hess_xyz=surf.hess_xyz,
+                jac_xyz=surf.jac_xyz,
+                normal_unit=surf.normal_unit,
+            )
+        return surf
