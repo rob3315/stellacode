@@ -4,8 +4,9 @@ from stellacode import np
 
 
 class RotateNTimes:
-    def __init__(self, angle: float, number: int = 1):
-        self.number = number
+    def __init__(self, angle: float, max_num: int = 1, min_num: int = 0):
+        self.min_num = min_num
+        self.max_num = max_num
         self.angle = angle
         rot = onp.array(
             [
@@ -14,7 +15,7 @@ class RotateNTimes:
                 [0, 0, 1],
             ]
         )
-        self.rot_ten = np.stack([onp.linalg.matrix_power(rot, i) for i in range(number)])
+        self.rot_ten = np.stack([onp.linalg.matrix_power(rot, i) for i in range(self.min_num, self.max_num)])
 
     @classmethod
     def from_nfp(cls, nfp: int):
@@ -25,7 +26,7 @@ class RotateNTimes:
         tensor dimensions are always: poloidal x toroidal x 3 x others
         """
         if len(ten.shape) == 2:
-            return np.concatenate([ten] * self.number, axis=1)
+            return np.concatenate([ten] * (self.max_num - self.min_num), axis=1)
         elif len(ten.shape) == 3:
             assert ten.shape[2] == 3
             return np.reshape(
