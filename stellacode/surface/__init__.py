@@ -1,4 +1,4 @@
-from .abstract_surface import AbstractSurface, IntegrationParams, AbstractSurfaceFactory
+from .abstract_surface import Surface, IntegrationParams, AbstractSurfaceFactory
 from .current import AbstractCurrent, Current, CurrentZeroTorBC
 from .cylindrical import CylindricalSurface
 from .fourier import FourierSurface

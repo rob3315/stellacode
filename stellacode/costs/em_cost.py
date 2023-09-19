@@ -10,7 +10,7 @@ import stellacode.tools.bnorm as bnorm
 from stellacode import mu_0_fac, np
 from stellacode.costs.abstract_cost import AbstractCost, Results
 from stellacode.definitions import PlasmaConfig
-from stellacode.surface import AbstractSurface, FourierSurface, IntegrationParams
+from stellacode.surface import Surface, FourierSurface, IntegrationParams
 from stellacode.surface.imports import get_cws, get_plasma_surface
 from stellacode.tools import biot_et_savart, biot_et_savart_op
 from stellacode.tools.vmec import VMECIO
@@ -80,7 +80,7 @@ class EMCost(AbstractCost):
     """
 
     lamb: float
-    Sp: AbstractSurface
+    Sp: Surface
     bnorm: ArrayLike = 0.0
     use_mu_0_factor: bool = False
     slow_metrics: bool = True

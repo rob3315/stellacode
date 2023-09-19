@@ -4,11 +4,11 @@ from jax.typing import ArrayLike
 
 from stellacode import np
 
-from .abstract_surface import AbstractSurface
+from .abstract_surface import AbstractSurfaceFactory
 from .utils import cartesian_to_toroidal, fourier_transform
 
 
-class ToroidalSurface(AbstractSurface):
+class ToroidalSurface(AbstractSurfaceFactory):
     major_radius: float = 5.0
     minor_radius: float = 1.0
     fourier_coeffs: ArrayLike = np.zeros((4, 2))

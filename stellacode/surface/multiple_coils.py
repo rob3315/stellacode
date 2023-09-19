@@ -7,7 +7,7 @@ from stellacode import mu_0_fac, np
 from stellacode.tools import biot_et_savart, biot_et_savart_op
 from stellacode.tools.utils import get_min_dist
 
-from .abstract_surface import AbstractSurface
+from .abstract_surface import Surface
 from .current import AbstractCurrent
 from stellacode.tools.laplace_force import laplace_force
 from .coil_surface import CoilSurface

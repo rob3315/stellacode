@@ -12,7 +12,7 @@ from stellacode import np
 from stellacode.surface.utils import fourier_coefficients
 from stellacode.tools.vmec import VMECIO
 
-from .abstract_surface import AbstractSurface, IntegrationParams
+from .abstract_surface import AbstractSurfaceFactory, IntegrationParams
 from .cylindrical import CylindricalSurface
 from .tore import ToroidalSurface
 from .utils import (
@@ -24,7 +24,7 @@ from .utils import (
 )
 
 
-class FourierSurface(AbstractSurface):
+class FourierSurface(AbstractSurfaceFactory):
     """A class used to represent a toroidal surface with Fourier coefficients
 
     :param params: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
