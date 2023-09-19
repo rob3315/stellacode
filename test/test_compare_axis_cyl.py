@@ -36,7 +36,7 @@ def test_compare_axisymmetric_vs_cylindrical():
     n_tor_coil = 32
     num_tor_symmetry = em_cost.Sp.num_tor_symmetry * rotate_diff_current
     surf_pwc = RotatedSurface(
-        surface=CylindricalSurface(
+        surface_factory=CylindricalSurface(
             integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil // rotate_diff_current),
             num_tor_symmetry=num_tor_symmetry,
             make_joints=False,
@@ -48,7 +48,7 @@ def test_compare_axisymmetric_vs_cylindrical():
         rotate_diff_current=rotate_diff_current,
         current=current,
         common_current_on_each_rot=True,
-    )
+    ).compute_surface_attributes()
 
     tor_surf = ToroidalSurface(
         num_tor_symmetry=em_cost.Sp.num_tor_symmetry,
@@ -57,11 +57,11 @@ def test_compare_axisymmetric_vs_cylindrical():
         integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
     )
     surf_axi = RotatedSurface(
-        surface=tor_surf,
+        surface_factory=tor_surf,
         num_tor_symmetry=em_cost.Sp.num_tor_symmetry,
         rotate_diff_current=1,
         current=current,
-    )
+    ).compute_surface_attributes()
 
     # rtp_pwc = surf_pwc.cartesian_to_toroidal()
     # rtp_axi = surf_axi.cartesian_to_toroidal()

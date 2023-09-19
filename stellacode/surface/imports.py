@@ -56,7 +56,7 @@ def get_cws_from_plasma_config(
         current=current,
         num_tor_symmetry=num_tor_symmetry,
     )
-    return cws
+    return cws.compute_surface_attributes()
 
 
 def get_cws_grid(config):

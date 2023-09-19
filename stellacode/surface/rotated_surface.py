@@ -53,9 +53,9 @@ class RotatedSurface(CoilSurfaceFactory):
 
         self.compute_surface_attributes(deg=2)
 
-    def _get_curent_op(self):
+    def _get_curent_op(self, grids):
         if self.common_current_on_each_rot:
-            gridu, gridv = self.grids
+            gridu, gridv = grids
             gridu = np.concatenate([gridu] * self.rotate_diff_current, axis=1)
             rd = self.rotate_diff_current
             # this scaling is necessary because the Current class expect the grid to
@@ -67,7 +67,7 @@ class RotatedSurface(CoilSurfaceFactory):
             blocks[..., -1] *= rd
 
         else:
-            curent_op = self.current._get_matrix_from_grid(self.grids)
+            curent_op = self.current._get_matrix_from_grid(grids)
             current_op_ = curent_op[2:]
 
             inner_blocks = collections.deque(
@@ -83,7 +83,7 @@ class RotatedSurface(CoilSurfaceFactory):
             blocks = np.concatenate(blocks, axis=2)
             blocks = np.concatenate((np.concatenate([curent_op[:2]] * len(inner_blocks), axis=2), blocks), axis=0)
 
-        self.current_op = np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
+        return np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
 
     # def compute_surface_attributes(self, surface, grids, deg: int = 2):
     #     coil = CoilSurface.from_surface(surface=surface)
@@ -95,11 +95,10 @@ class RotatedSurface(CoilSurfaceFactory):
         to degree deg
         deg is 0,1 or 2"""
 
-        # self.grids = self.surface.grids
-        surf = self.surface.compute_surface_attributes(deg=deg)
+        surf = self.surface_factory.compute_surface_attributes(deg=deg)
         coil = CoilSurface(
-            grids=self.grids,
-            integration_par=self.integration_par,
+            grids=surf.grids,
+            integration_par=self.surface_factory.integration_par,
         )
         for k in [
             "xyz",
@@ -115,7 +114,8 @@ class RotatedSurface(CoilSurfaceFactory):
             if val is not None:
                 setattr(coil, k, self.rotate_n(val))
 
-        coil.current_op = self._get_curent_op()
+        coil.current_op = self._get_curent_op(grids=surf.grids)
+        coil.net_currents = self.current.net_currents
         return coil
 
     def cartesian_to_toroidal(self):

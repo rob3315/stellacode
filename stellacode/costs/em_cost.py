@@ -195,9 +195,9 @@ class EMCost(AbstractCost):
         else:
             add_dim = ""
 
-        if S.current.net_currents is not None:
+        if S.net_currents is not None:
             BS_R = BS[2:]
-            bnorm_ = self.bnorm - np.einsum(f"tpq{add_dim},t->pq{add_dim}", BS[:2], S.current.net_currents)
+            bnorm_ = self.bnorm - np.einsum(f"tpq{add_dim},t->pq{add_dim}", BS[:2], S.net_currents)
         else:
             BS_R = BS
             bnorm_ = self.bnorm
@@ -205,8 +205,8 @@ class EMCost(AbstractCost):
 
         rhs = np.einsum(f"hpq{add_dim},pq{add_dim}->h", BS_dagger, bnorm_)
 
-        if S.current.net_currents is not None:
-            rhs_reg = current_basis_dot_prod[2:, :2] @ S.current.net_currents
+        if S.net_currents is not None:
+            rhs_reg = current_basis_dot_prod[2:, :2] @ S.net_currents
         else:
             rhs_reg = None
 
@@ -220,7 +220,7 @@ class EMCost(AbstractCost):
                 matrix_reg=matrix_reg,
                 rhs=rhs,
                 rhs_reg=rhs_reg,
-                net_currents=S.current.net_currents,
+                net_currents=S.net_currents,
                 use_mu_0_factor=self.use_mu_0_factor,
             ),
             bs,
