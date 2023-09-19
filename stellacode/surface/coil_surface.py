@@ -52,6 +52,19 @@ class CoilSurface(AbstractSurface):
     def _set_curent_op(self):
         self.current_op = self.current._get_matrix_from_grid(self.grids)
 
+    def get_trainable_params(self):
+        return {**self.current.get_trainable_params(), **self.surface.get_trainable_params()}
+
+    def update_params(self, **kwargs):
+        for k, v in kwargs.items():
+            assert not (k in type(self.surface).__fields__ and k in type(self.current).__fields__)
+            if k in type(self.surface).__fields__:
+                setattr(self.surface, k, v)
+            elif k in type(self.current).__fields__:
+                setattr(self.current, k, v)
+
+        self.compute_surface_attributes(deg=2)
+
     def get_current_basis_dot_prod(self):
         lu, lv = self.ds.shape
         return np.einsum(
