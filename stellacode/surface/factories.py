@@ -5,7 +5,7 @@ from stellacode.surface import (
     CylindricalSurface,
     FourierSurface,
     IntegrationParams,
-    RotatedSurface,
+    RotatedCoil,
     ToroidalSurface,
 )
 from stellacode.surface.cylindrical import CylindricalSurface
@@ -45,7 +45,7 @@ def get_toroidal_surface(
             minor_radius=minor_radius + distance,
             integration_par=current.get_integration_params(factor=factor),
         )
-    return RotatedSurface(
+    return RotatedCoil(
         surface=tor_surf,
         num_tor_symmetry=surf_plasma.num_tor_symmetry,
         rotate_diff_current=1,
@@ -103,7 +103,7 @@ def get_pwc_surface(
             num_tor_symmetry=surf_plasma.num_tor_symmetry * rotate_diff_current,
         )
 
-    surf_coil = RotatedSurface(
+    surf_coil = RotatedCoil(
         surface=surf_coil,
         num_tor_symmetry=surf_plasma.num_tor_symmetry,
         rotate_diff_current=rotate_diff_current,
@@ -127,7 +127,7 @@ def get_original_cws(path_cws: str, path_plasma: str, n_harmonics: int = 16, fac
         n_fp=num_tor_symmetry,
     )
 
-    cws = RotatedSurface(
+    cws = RotatedCoil(
         surface=cws,
         current=Current(num_pol=n_harmonics, num_tor=n_harmonics, net_currents=get_net_current(path_plasma)),
         num_tor_symmetry=cws.num_tor_symmetry,

@@ -16,7 +16,7 @@ from stellacode.surface import (
     ToroidalSurface,
 )
 from stellacode.surface.imports import get_net_current
-from stellacode.surface import CylindricalSurface, RotatedSurface, FourierSurface
+from stellacode.surface import CylindricalSurface, RotatedCoil, FourierSurface
 from stellacode.surface.factories import get_original_cws
 from stellacode.tools.laplace_force import laplace_force
 
@@ -38,7 +38,7 @@ def test_laplace_force():
     import numpy as onp
 
     onp.random.seed(987)
-    coil_surf = RotatedSurface(
+    coil_surf = RotatedCoil(
         surface=coil_surf,
         current=Current(num_pol=2, num_tor=2, cos_basis=True, net_currents=np.array([I, G])),
         num_tor_symmetry=coil_surf.num_tor_symmetry,

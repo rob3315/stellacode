@@ -7,7 +7,7 @@ from stellacode.surface import (
     Current,
     CylindricalSurface,
     IntegrationParams,
-    RotatedSurface,
+    RotatedCoil,
     ToroidalSurface,
 )
 from stellacode.surface.cylindrical import CylindricalSurface
@@ -43,7 +43,7 @@ def test_compare_axisymmetric_vs_cylindrical():
             radius=minor_radius,
             axis_angle=1.57079631 - (np.pi / 2 + np.pi / num_tor_symmetry),
         )
-    surf_pwc = RotatedSurface(
+    surf_pwc = RotatedCoil(
         surface=surface,
         num_tor_symmetry=em_cost.Sp.num_tor_symmetry,
         rotate_diff_current=rotate_diff_current,
@@ -57,7 +57,7 @@ def test_compare_axisymmetric_vs_cylindrical():
         minor_radius=minor_radius,
         integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
     )
-    surf_axi = RotatedSurface(
+    surf_axi = RotatedCoil(
         surface=tor_surf,
         num_tor_symmetry=em_cost.Sp.num_tor_symmetry,
         rotate_diff_current=1,

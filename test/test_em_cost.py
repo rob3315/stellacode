@@ -23,7 +23,7 @@ from stellacode.surface.imports import (
     get_plasma_surface,
     get_cws_from_plasma_config,
 )
-from stellacode.surface.rotated_surface import RotatedSurface
+from stellacode.surface.rotated_surface import RotatedCoil
 from stellacode.surface.utils import fit_to_surface
 from stellacode.tools.vmec import VMECIO
 
@@ -48,7 +48,7 @@ def test_reproduce_regcoil_axisym():
         params={},
         integration_par=current.get_integration_params(),
     )
-    cws = RotatedSurface(
+    cws = RotatedCoil(
         surface=surface,
         num_tor_symmetry=5,
         rotate_diff_current=1,
@@ -210,7 +210,7 @@ def test_pwc_fit():
         num_tor_symmetry=9,
         make_joints=True,
     )
-    S = RotatedSurface(
+    S = RotatedCoil(
         surface=surface,
         # nbpts=(32, 16),
         num_tor_symmetry=3,
@@ -247,7 +247,7 @@ def test_regcoil_with_pwc():
         # nbpts=(n_pol_coil, n_tor_coil),
         num_tor_symmetry=9,
     )
-    S = RotatedSurface(
+    S = RotatedCoil(
         surface=surface,
         # nbpts=(n_pol_coil, n_tor_coil),
         num_tor_symmetry=3,
@@ -327,7 +327,7 @@ def test_regcoil_with_pwc_no_current_at_bc():
         integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points),
         num_tor_symmetry=9,
     )
-    coil_surf = RotatedSurface(
+    coil_surf = RotatedCoil(
         surface=surface,
         num_tor_symmetry=3,
         rotate_diff_current=3,
