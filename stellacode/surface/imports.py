@@ -21,10 +21,9 @@ def get_cws(config):
         path_cws, integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil), n_fp=n_fp
     )
 
-    cws = RotatedSurface(
+    cws = RotatedSurface.from_surface(
         surface=cws,
         current=get_current_potential(config),
-        num_tor_symmetry=n_fp,
     )
     return cws
 

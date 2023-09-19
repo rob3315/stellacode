@@ -78,7 +78,7 @@ class AbstractSurface(BaseModel):
         * normal_unit: normalized surface normal vector pointing inside the surface
     """
 
-    integration_par: IntegrationParams
+    integration_par: tp.Optional[IntegrationParams]=None
     grids: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
     num_tor_symmetry: int = 1
     trainable_params: tp.List[str] = []
@@ -90,7 +90,6 @@ class AbstractSurface(BaseModel):
     ds: tp.Optional[ArrayLike] = None
     principle_max: tp.Optional[ArrayLike] = None
     principle_min: tp.Optional[ArrayLike] = None
-    max_val_v: float = 1.0
 
     class Config:
         arbitrary_types_allowed = True
@@ -106,6 +105,14 @@ class AbstractSurface(BaseModel):
     @property
     def npts(self):
         return self.integration_par.npts
+
+    @property
+    def du(self):
+        return self.integration_par.du
+
+    @property
+    def dv(self):
+        return self.integration_par.dv
 
     @property
     def dudv(self):
@@ -192,6 +199,25 @@ class AbstractSurface(BaseModel):
     @property
     def area(self):
         return np.sum(self.ds) * self.dudv * self.num_tor_symmetry
+
+    def get_g_lower_covariant(self):
+        """
+        Covariant surface metric g_{ij}
+        """
+        return np.einsum("ijab,ijac->ijbc", self.jac_xyz, self.jac_xyz)
+
+    def get_g_upper_contravariant(self):
+        """
+        Contravariant surface metric g^{ij}
+        """
+        return np.linalg.pinv(self.get_g_lower_covariant())
+
+    def get_g_upper_basis(self):
+        """
+        Return the contravariant basis vectors
+        """
+        g_up = self.get_g_upper_contravariant()
+        return np.einsum("...kl,...ak->...al", g_up, self.jac_xyz)
 
     def expand_for_plot_part(self):
         """Returns X, Y, Z arrays of one field period, adding redundancy of first column."""

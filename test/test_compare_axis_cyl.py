@@ -35,15 +35,16 @@ def test_compare_axisymmetric_vs_cylindrical():
     n_pol_coil = 32
     n_tor_coil = 32
     num_tor_symmetry = em_cost.Sp.num_tor_symmetry * rotate_diff_current
-    surf_pwc = RotatedSurface(
-        surface=CylindricalSurface(
+    surface=CylindricalSurface(
             integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil // rotate_diff_current),
             num_tor_symmetry=num_tor_symmetry,
             make_joints=False,
             distance=major_radius,
             radius=minor_radius,
             axis_angle=1.57079631 - (np.pi / 2 + np.pi / num_tor_symmetry),
-        ),
+        )
+    surf_pwc = RotatedSurface(
+        surface=surface,
         num_tor_symmetry=em_cost.Sp.num_tor_symmetry,
         rotate_diff_current=rotate_diff_current,
         current=current,

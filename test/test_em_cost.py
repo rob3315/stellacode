@@ -41,15 +41,15 @@ def test_reproduce_regcoil_axisym():
     minor_radius = 1.404687741189692  # 0.9364584941264614*(1+0.5)
 
     current = Current(num_pol=8, num_tor=8, net_currents=get_net_current(w7x_plasma.path_plasma))
-
+    surface = ToroidalSurface(
+        num_tor_symmetry=5,
+        major_radius=major_radius,
+        minor_radius=minor_radius,
+        params={},
+        integration_par=current.get_integration_params(),
+    )
     cws = RotatedSurface(
-        surface=ToroidalSurface(
-            num_tor_symmetry=5,
-            major_radius=major_radius,
-            minor_radius=minor_radius,
-            params={},
-            integration_par=current.get_integration_params(),
-        ),
+        surface=surface,
         num_tor_symmetry=5,
         rotate_diff_current=1,
         current=current,
@@ -204,14 +204,14 @@ def test_pwc_fit():
     em_cost = EMCost.from_config(config=config, use_mu_0_factor=False)
 
     fourier_coeffs = np.zeros((5, 2))
-
+    surface = CylindricalSurface(
+        fourier_coeffs=fourier_coeffs,
+        integration_par=IntegrationParams(num_points_u=32, num_points_v=16),
+        num_tor_symmetry=9,
+        make_joints=True,
+    )
     S = RotatedSurface(
-        surface=CylindricalSurface(
-            fourier_coeffs=fourier_coeffs,
-            integration_par=IntegrationParams(num_points_u=32, num_points_v=16),
-            num_tor_symmetry=9,
-            make_joints=True,
-        ),
+        surface=surface,
         # nbpts=(32, 16),
         num_tor_symmetry=3,
         rotate_diff_current=3,
@@ -241,14 +241,14 @@ def test_regcoil_with_pwc():
     fourier_coeffs = np.zeros((5, 2))
     n_pol_coil = int(config["geometry"]["ntheta_coil"])
     n_tor_coil = int(config["geometry"]["nzeta_coil"])
-
+    surface = CylindricalSurface(
+        fourier_coeffs=fourier_coeffs,
+        integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
+        # nbpts=(n_pol_coil, n_tor_coil),
+        num_tor_symmetry=9,
+    )
     S = RotatedSurface(
-        surface=CylindricalSurface(
-            fourier_coeffs=fourier_coeffs,
-            integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
-            # nbpts=(n_pol_coil, n_tor_coil),
-            num_tor_symmetry=9,
-        ),
+        surface=surface,
         # nbpts=(n_pol_coil, n_tor_coil),
         num_tor_symmetry=3,
         rotate_diff_current=3,
@@ -283,7 +283,8 @@ def test_current_conservation():
     # check that current basis has no net currents except in the first two functions
     cws = get_cws_from_plasma_config(plasma_config, n_harmonics_current=4)
     cws.current.set_phi_mn(onp.random.random(cws.current.phi_mn.shape) * 1e5)
-    curr_op = cws.current._get_matrix_from_grid(cws.grids)
+    cws.compute_surface_attributes()
+    curr_op = cws.current_op
     assert np.abs(curr_op[..., 0].sum(2))[2:].max() < 1e-11
     assert np.abs(curr_op[..., 1].sum(1))[2:].max() < 1e-11
 
@@ -321,13 +322,13 @@ def test_regcoil_with_pwc_no_current_at_bc():
     )
 
     fourier_coeffs = np.zeros((0, 2))
-
+    surface = CylindricalSurface(
+        fourier_coeffs=fourier_coeffs,
+        integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points),
+        num_tor_symmetry=9,
+    )
     coil_surf = RotatedSurface(
-        surface=CylindricalSurface(
-            fourier_coeffs=fourier_coeffs,
-            integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points),
-            num_tor_symmetry=9,
-        ),
+        surface=surface,
         num_tor_symmetry=3,
         rotate_diff_current=3,
         current=current,

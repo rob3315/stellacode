@@ -1,6 +1,5 @@
 import collections
 
-import stellacode.tools as tools
 from stellacode import np
 from stellacode.tools.rotate_n_times import RotateNTimes
 
@@ -53,9 +52,9 @@ class RotatedSurface(CoilSurface):
 
         self.compute_surface_attributes(deg=2)
 
-    def _set_curent_op(self):
+    def _get_curent_op(self, grids):
         if self.common_current_on_each_rot:
-            gridu, gridv = self.grids
+            gridu, gridv = grids
             gridu = np.concatenate([gridu] * self.rotate_diff_current, axis=1)
             rd = self.rotate_diff_current
             # this scaling is necessary because the Current class expect the grid to
@@ -67,7 +66,7 @@ class RotatedSurface(CoilSurface):
             blocks[..., -1] *= rd
 
         else:
-            curent_op = self.current._get_matrix_from_grid(self.grids)
+            curent_op = self.current._get_matrix_from_grid(grids)
             current_op_ = curent_op[2:]
 
             inner_blocks = collections.deque(
@@ -83,14 +82,13 @@ class RotatedSurface(CoilSurface):
             blocks = np.concatenate(blocks, axis=2)
             blocks = np.concatenate((np.concatenate([curent_op[:2]] * len(inner_blocks), axis=2), blocks), axis=0)
 
-        self.current_op = np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
+        return np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
 
     def compute_surface_attributes(self, deg=2):
         """compute surface elements used in the shape optimization up
         to degree deg
         deg is 0,1 or 2"""
 
-        self.grids = self.surface.grids
         self.surface.compute_surface_attributes(deg=deg)
 
         for k in [
@@ -107,7 +105,8 @@ class RotatedSurface(CoilSurface):
             if val is not None:
                 setattr(self, k, self.rotate_n(val))
 
-        self._set_curent_op()
+        self.current_op = self._get_curent_op(grids=self.surface.grids)
+
 
     def cartesian_to_toroidal(self):
         try:
