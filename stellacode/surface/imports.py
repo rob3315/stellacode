@@ -8,7 +8,7 @@ import os
 from .abstract_surface import AbstractSurface, IntegrationParams
 from .current import Current
 from .fourier import FourierSurface
-from .rotated_surface import RotatedSurface
+from .rotated_surface import RotatedCoil
 from stellacode.definitions import PlasmaConfig
 
 
@@ -21,7 +21,7 @@ def get_cws(config):
         path_cws, integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil), n_fp=n_fp
     )
 
-    cws = RotatedSurface.from_surface(
+    cws = RotatedCoil.from_surface(
         surface=cws,
         current=get_current_potential(config),
     )
@@ -49,7 +49,7 @@ def get_cws_from_plasma_config(
         num_tor=n_harmonics_current,
         net_currents=get_net_current(plasma_config.path_plasma),
     )
-    cws = RotatedSurface(
+    cws = RotatedCoil(
         surface=cws,
         current=current,
         num_tor_symmetry=num_tor_symmetry,
