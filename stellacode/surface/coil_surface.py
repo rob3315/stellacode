@@ -13,7 +13,6 @@ from .current import AbstractCurrent
 from stellacode.tools.laplace_force import laplace_force
 
 
-
 # class AbstractCoilSurface(AbstractSurface):
 #     """A class used to:
 #     * represent an abstract surfaces
@@ -23,8 +22,6 @@ from stellacode.tools.laplace_force import laplace_force
 
 #     current_op: tp.Optional[ArrayLike] = None
 #     j_surface: tp.Optional[ArrayLike] = None
-
-
 
 
 class CoilSurface(AbstractSurface):
@@ -117,12 +114,28 @@ class CoilSurface(AbstractSurface):
     def get_j_3D(self, phi_mn=None, scale_by_ds: bool = True):
         # phi_mn is a vector containing the components of the best scalar current potential.
         # The real surface current is given by :
+        # if phi_mn is None:
+        #     phi_mn = self.current.get_phi_mn()
+
+        # if scale_by_ds:
+        #     return np.einsum("oijk,ijdk,ij,o->ijd", self.current_op, self.jac_xyz, 1 / self.ds, phi_mn)
+        # else:
+        #     return np.einsum("oijk,ijdk,o->ijd", self.current_op, self.jac_xyz, phi_mn)
+
         if phi_mn is None:
-            phi_mn = self.current.get_phi_mn()
-        if scale_by_ds:
-            return np.einsum("oijk,ijdk,ij,o->ijd", self.current_op, self.jac_xyz, 1 / self.ds, phi_mn)
+            if self.j_surface is not None:
+                j_surface = self.j_surface
+            else:
+                j_surface = self.get_j_surface()
+            if scale_by_ds:
+                return np.einsum("ijk,ijdk,ij->ijd", j_surface, self.jac_xyz, 1 / self.ds)
+            else:
+                return np.einsum("ijk,ijdk->ijd", j_surface, self.jac_xyz)
         else:
-            return np.einsum("oijk,ijdk,o->ijd", self.current_op, self.jac_xyz, phi_mn)
+            if scale_by_ds:
+                return np.einsum("oijk,ijdk,ij,o->ijd", self.current_op, self.jac_xyz, 1 / self.ds, phi_mn)
+            else:
+                return np.einsum("oijk,ijdk,o->ijd", self.current_op, self.jac_xyz, phi_mn)
 
     def get_grad_s_j_3D(self, phi_mn=None):
         if phi_mn is None:
