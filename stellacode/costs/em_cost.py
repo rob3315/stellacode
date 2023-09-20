@@ -66,6 +66,85 @@ class RegCoilSolver(BaseModel):
             return phi_mn
 
 
+class MSEBField(AbstractCost):
+    Sp: AbstractSurface
+    bnorm: ArrayLike = 0.0
+    use_mu_0_factor: bool = False
+    slow_metrics: bool = True
+    train_currents: bool = False
+    fit_b_3d: bool = False
+
+    @classmethod
+    def from_plasma_config(
+        cls,
+        plasma_config: PlasmaConfig,
+        integration_par: IntegrationParams,
+        Sp=None,
+        use_mu_0_factor: bool = True,
+        fit_b_3d: bool = False,
+        surface_label=-1,
+    ):
+        if Sp is None:
+            Sp = FourierSurface.from_file(plasma_config.path_plasma, integration_par=integration_par)
+
+        vmec = VMECIO.from_grid(
+            plasma_config.path_plasma,
+            ntheta=integration_par.num_points_u,
+            nzeta=integration_par.num_points_v,
+            surface_label=surface_label,
+        )
+
+        if plasma_config.path_bnorm is not None:
+            bnorm_ = -vmec.scale_bnorm(bnorm.get_bnorm(plasma_config.path_bnorm, Sp))
+            if not use_mu_0_factor:
+                bnorm_ /= mu_0_fac
+        else:
+            bnorm_ = 0.0
+
+        if fit_b_3d:
+            bnorm_ = vmec.b_cartesian[-1]
+
+        return cls(
+            bnorm=bnorm_,
+            Sp=Sp,
+            use_mu_0_factor=use_mu_0_factor,
+            fit_b_3d=fit_b_3d,
+        )
+
+    def cost(self, S, results: Results = Results()):
+        if not self.fit_b_3d:
+            plasma_normal = self.Sp.normal_unit
+        else:
+            plasma_normal = None
+
+        bnorm_pred = S.get_b_field(xyz_plasma=self.Sp.xyz, plasma_normal=plasma_normal)
+
+        cost, metrics, results_ = self.get_results(bnorm_pred=bnorm_pred, S=S)
+        return cost, metrics, merge_dataclasses(results, results_)
+
+    def get_results(self, bnorm_pred, S):
+        if self.use_mu_0_factor:
+            fac = 1
+        else:
+            fac = mu_0_fac
+
+        metrics = {}
+        results = Results(bnorm_plasma_surface=bnorm_pred)
+        b_err = (bnorm_pred - self.bnorm * fac) ** 2
+        metrics["err_max_B"] = np.max(np.abs(b_err))
+        if self.fit_b_3d:
+            b_err = np.sum(b_err, axis=-1)
+        metrics["cost_B"] = self.Sp.integrate(b_err)
+        metrics["cost"] = metrics["cost_B"]
+
+        if self.slow_metrics:
+            j_3D = S.get_j_3D()
+            metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
+            results.j_3d = j_3D
+
+        return metrics["cost"], metrics, results
+
+
 class EMCost(AbstractCost):
     """
     Cost of the optimal current inverse problem.
