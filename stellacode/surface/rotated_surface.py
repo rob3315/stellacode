@@ -5,9 +5,10 @@ from stellacode.tools.rotate_n_times import RotateNTimes
 from .abstract_surface import AbstractSurface
 from .coil_surface import CoilSurface
 from .utils import cartesian_to_toroidal
+import typing as tp
 
 
-class RotatedSurface(AbstractSurface):
+class RotatedSurface(CoilSurface):
     """ """
 
     surface: AbstractSurface
@@ -27,10 +28,41 @@ class RotatedSurface(AbstractSurface):
             "hess_xyz",
             "principle_max",
             "principle_min",
+            "j_surface",
         ]:
-            val = getattr(self.surface, k)
-            if val is not None:
-                setattr(self, k, self.rotate_n(val))
+            stack_dim = None
+            if k in dir(self.surface):
+                if k == "j_surface":
+                    stack_dim = 1
+                val = getattr(self.surface, k)
+                if val is not None:
+                    setattr(self, k, self.rotate_n(val, stack_dim=stack_dim))
+
+
+class ConcatSurfaces(CoilSurface):
+    """ """
+
+    surfaces: tp.List[AbstractSurface]
+
+    def compute_surface_attributes(self, deg=2):
+        """ """
+        for surface in self.surfaces:
+            surface.compute_surface_attributes(deg=deg)
+
+        for k in [
+            "xyz",
+            "jac_xyz",
+            "normal",
+            "ds",
+            "normal_unit",
+            "hess_xyz",
+            "principle_max",
+            "principle_min",
+            "j_surface",
+        ]:
+            if k in dir(self.surfaces[0]) and getattr(self.surfaces[0], k) is not None:
+                val = np.concatenate([getattr(surface, k) for surface in self.surfaces], axis=1)
+                setattr(self, k, val)
 
 
 class RotatedCoil(CoilSurface):
