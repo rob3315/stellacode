@@ -114,7 +114,7 @@ class Optimizer(BaseModel):
 
         def loss(**kwargs):
             if scaler is not None:
-                kwargs = scaler.unapply(**kwargs)
+                kwargs = scaler.unapply(kwargs)
             # tic = time()
             coil_surface.update_params(**kwargs)
             # print("Surface", time() - tic)
