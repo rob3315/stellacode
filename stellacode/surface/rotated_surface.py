@@ -38,6 +38,13 @@ class RotatedSurface(CoilSurface):
                 if val is not None:
                     setattr(self, k, self.rotate_n(val, stack_dim=stack_dim))
 
+    def get_trainable_params(self):
+        return self.surface.get_trainable_params()
+
+    def update_params(self, **kwargs):
+        self.surface.update_params(**kwargs)
+        self.compute_surface_attributes(deg=2)
+
 
 class ConcatSurfaces(CoilSurface):
     """ """
@@ -63,6 +70,25 @@ class ConcatSurfaces(CoilSurface):
             if k in dir(self.surfaces[0]) and getattr(self.surfaces[0], k) is not None:
                 val = np.concatenate([getattr(surface, k) for surface in self.surfaces], axis=1)
                 setattr(self, k, val)
+
+    def get_trainable_params(self):
+        params = {}
+        for i, surface in enumerate(self.surfaces):
+            params = {**params, **{f"{i}.{k}": v for k, v in surface.get_trainable_params().items()}}
+        return params
+
+    def update_params(self, **kwargs):
+        for i in range(len(self.surfaces)):
+            _kwargs = {k.split(".")[1]: v for k, v in kwargs.items() if int(k.split(".")[0]) == i}
+            self.surfaces[i].update_params(**_kwargs)
+
+        self.compute_surface_attributes(deg=2)
+
+    def __getattribute__(self, name: str):
+        if name in ["integration_par", "grids", "dudv"]:
+            return getattr(self.surfaces[0], name)
+        else:
+            return super().__getattribute__(name)
 
 
 class RotatedCoil(CoilSurface):
