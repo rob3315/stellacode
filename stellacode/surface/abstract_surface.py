@@ -256,6 +256,7 @@ class AbstractSurface(BaseModel):
             line_width=0.5,
             scale_factor=0.1,
         ),
+        mesh_kwargs: dict = dict()
     ):
         """Plot the surface"""
         import numpy as np
@@ -266,7 +267,7 @@ class AbstractSurface(BaseModel):
         else:
             xyz = self.expand_for_plot_whole(detach_parts)
 
-        kwargs = {}
+        kwargs = mesh_kwargs
         if scalar is not None:
             scalar_ = np.concatenate((scalar, scalar[0:1]), axis=0)
             kwargs["scalars"] = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)
