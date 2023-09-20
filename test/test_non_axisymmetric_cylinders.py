@@ -56,7 +56,7 @@ def test_non_axisymmetric_cylinders():
         Sp=em_cost.Sp,
         constraint=Constraint(limit=0.2, distance=0.03, minimum=True, method=method),
     )
-    current_ctr = CurrentCtrCost(constraint=Constraint(limit=9, distance=0.3, minimum=False, method=method))
+    current_ctr = CurrentCtrCost(constraint=Constraint(limit=100, distance=0.3, minimum=False, method=method))
     neg_curv = NegTorCurvatureCost(constraint=Constraint(limit=-0.05, distance=0.1, minimum=True, method=method))
     agg_cost = AggregateCost(costs=[em_cost, distance, neg_curv, current_ctr])
 
@@ -87,16 +87,22 @@ def test_non_axisymmetric_cylinders():
         )
         surfaces.append(coil_surf)
     coil_surf = ConcatSurfaces(surfaces=surfaces)
-
+    coil_surf = RotatedSurface(
+        surface=coil_surf,
+        rotate_n=RotateNTimes(angle=2 * np.pi / num_tor_symmetry, max_num=num_tor_symmetry),
+    )
     opt = Optimizer.from_cost(
         agg_cost,
         coil_surf,
         method="L-BFGS-B",
-        kwargs=dict(options={"disp": True, "maxls": 10, "maxiter": 5}),
+        kwargs=dict(options={"disp": True, "maxls": 30, "maxiter": 5}),
     )
-
+    
     cost, metrics, results, optimized_params = opt.optimize()
+    # import pdb;pdb.set_trace()
+    # coil_surf.get_distance(em_cost.Sp.xyz)
 
+    # {k:v for k,v in optimized_params.items() if "radius" in k}
     metrics["deltaB_B"] = np.sqrt(metrics["cost_B"] / 1056)
-
+    # import pdb;pdb.set_trace()
     assert metrics["deltaB_B"] < 0.15
