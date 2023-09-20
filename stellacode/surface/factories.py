@@ -133,3 +133,55 @@ def get_original_cws(path_cws: str, path_plasma: str, n_harmonics: int = 16, fac
         num_tor_symmetry=cws.num_tor_symmetry,
     )
     return cws
+
+
+import numpy as np
+
+from stellacode.surface.coil_surface import CoilSurface
+from stellacode.surface.rotated_surface import RotatedSurface, ConcatSurfaces, RotateNTimes
+
+
+def get_free_cylinders(
+    surf_plasma,
+    distance: float = 0.0,
+    num_cyl=3,
+    n_harmonics: int = 8,
+    factor: int = 6,
+):
+    num_points = n_harmonics * factor
+    num_tor_symmetry = VMECIO.from_grid(surf_plasma.file_path).nfp
+
+    num_sym_by_cyl = num_tor_symmetry * num_cyl
+    angle = 2 * np.pi / num_sym_by_cyl
+
+    surfaces = []
+    for n in range(num_cyl):
+        current = CurrentZeroTorBC(
+            num_pol=n_harmonics,
+            num_tor=n_harmonics,
+            sin_basis=True,
+            cos_basis=True,
+            net_currents=get_net_current(surf_plasma.file_path),
+        )
+        fourier_coeffs = np.zeros((5, 2))
+
+        surface = CylindricalSurface(
+            fourier_coeffs=fourier_coeffs,
+            integration_par=IntegrationParams(num_points_u=num_points, num_points_v=num_points),
+            num_tor_symmetry=num_sym_by_cyl,
+            radius=surf_plasma.get_minor_radius() + distance,
+            distance=surf_plasma.get_major_radius(),
+        )
+
+        coil_surf = CoilSurface(surface=surface, current=current)
+        coil_surf = RotatedSurface(
+            surface=coil_surf,
+            rotate_n=RotateNTimes(angle=angle, max_num=n + 1, min_num=n),
+        )
+        surfaces.append(coil_surf)
+    coil_surf = ConcatSurfaces(surfaces=surfaces)
+    coil_surf = RotatedSurface(
+        surface=coil_surf,
+        rotate_n=RotateNTimes(angle=2 * np.pi / num_tor_symmetry, max_num=num_tor_symmetry),
+    )
+    return coil_surf
