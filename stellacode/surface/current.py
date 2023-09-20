@@ -158,6 +158,15 @@ class Current(AbstractCurrent):
 
 
 class CurrentZeroTorBC(AbstractCurrent):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        num_dims = 0
+        if self.sin_basis:
+            num_dims += (self.num_pol + 1) * (self.num_tor + 1) + self.num_tor + 1
+        if self.cos_basis:
+            num_dims += (self.num_pol + 1) * (self.num_tor + 1)
+        self.phi_mn = onp.zeros(num_dims)
+
     def _get_coeffs(self):
         grid = onp.mgrid[1 : (self.num_pol + 2), 1 : (self.num_tor + 2)].reshape((2, -1))
         return grid[0], grid[1], onp.arange(1, (self.num_tor + 2))
