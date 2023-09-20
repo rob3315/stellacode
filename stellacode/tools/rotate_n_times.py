@@ -1,6 +1,7 @@
 import numpy as onp
 
 from stellacode import np
+import typing as tp
 
 
 class RotateNTimes:
@@ -21,11 +22,13 @@ class RotateNTimes:
     def from_nfp(cls, nfp: int):
         return cls(2 * np.pi / nfp, nfp)
 
-    def __call__(self, ten):
+    def __call__(self, ten, stack_dim: tp.Optional[int] = None):
         """
         tensor dimensions are always: poloidal x toroidal x 3 x others
         """
-        if len(ten.shape) == 2:
+        if stack_dim is not None:
+            return np.concatenate([ten] * (self.max_num - self.min_num), axis=stack_dim)
+        elif len(ten.shape) == 2:
             return np.concatenate([ten] * (self.max_num - self.min_num), axis=1)
         elif len(ten.shape) == 3:
             assert ten.shape[2] == 3
