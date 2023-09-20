@@ -323,9 +323,6 @@ class EMCost(AbstractCost):
             metrics["cost_J"] = S.num_tor_symmetry * np.einsum(
                 "i,ij,j->", phi_mn, solver.current_basis_dot_prod, phi_mn
             )
-            metrics["cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
-        else:
-            metrics["cost"] = metrics["cost_B"]
 
         if self.slow_metrics:
             j_3D = S.get_j_3D(phi_mn)
@@ -336,7 +333,7 @@ class EMCost(AbstractCost):
             metrics["min_j_pol"] = j_2D[:, :, 0].min()
             results.j_s = j_2D
 
-        return metrics["cost"], metrics, results
+        return metrics["cost_B"], metrics, results
 
     def cost_multiple_lambdas(self, S, lambdas):
         solver, bs = self.get_regcoil_solver(S=S)
@@ -367,9 +364,9 @@ def to_float(dict_):
 
 def get_b_field_err(em_cost, coil_surf, err: str = "rmse_n"):
     b_field = em_cost.get_b_field(coil_surf)
-    b_field_gt =  em_cost.Sp.get_gt_b_field(surface_labels=-1)[:, : em_cost.Sp.integration_par.num_points_v]
+    b_field_gt = em_cost.Sp.get_gt_b_field(surface_labels=-1)[:, : em_cost.Sp.integration_par.num_points_v]
     norm_b = np.sqrt(em_cost.Sp.integrate(np.linalg.norm(b_field_gt, axis=-1) ** 2))
     if err == "rmse_n":
         return np.sqrt(em_cost.Sp.integrate(np.linalg.norm(b_field - b_field_gt, axis=-1) ** 2)) / norm_b
     elif err == "max_n":
-        return np.max(np.linalg.norm(b_field_gt - b_field, axis=-1)) / np.max(np.linalg.norm(b_field_gt , axis=-1))
+        return np.max(np.linalg.norm(b_field_gt - b_field, axis=-1)) / np.max(np.linalg.norm(b_field_gt, axis=-1))
