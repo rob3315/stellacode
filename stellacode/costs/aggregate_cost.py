@@ -33,12 +33,13 @@ class AggregateCost(AbstractCost):
         cost = 0.0
         metrics_d: dict = {}
         for elt in self.costs:
-            tic = time()
+            # tic = time()
             new_cost, metrics, results_ = elt.cost(S, results=results)
             metrics_d = {**metrics_d, **metrics}
             merge_dataclasses(results, results_)
 
             cost += new_cost
             # print(elt.__class__.__name__, time() - tic)
+        metrics_d["total_cost"] = cost
 
         return cost, metrics_d, results
