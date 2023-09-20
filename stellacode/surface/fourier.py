@@ -12,7 +12,7 @@ from stellacode import np
 from stellacode.surface.utils import fourier_coefficients
 from stellacode.tools.vmec import VMECIO
 
-from .abstract_surface import AbstractSurface, IntegrationParams
+from .abstract_surface import AbstractSurfaceModule, IntegrationParams
 from .cylindrical import CylindricalSurface
 from .tore import ToroidalSurface
 from .utils import (
@@ -25,7 +25,7 @@ from .utils import (
 from stellacode.tools.bnorm import get_bnorm
 
 
-class FourierSurface(AbstractSurface):
+class FourierSurface(AbstractSurfaceModule):
     """A class used to represent a toroidal surface with Fourier coefficients
 
     :param params: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
@@ -36,16 +36,17 @@ class FourierSurface(AbstractSurface):
     :type Np: int
     """
 
-    mf: ArrayLike
-    nf: ArrayLike
+    # mf: ArrayLike
+    # nf: ArrayLike
+    # file_path: str
     Rmn: ArrayLike
     Zmn: ArrayLike
-    file_path: str
 
-    trainable_params: tp.List[str] = [
-        "Rmn",
-        "Zmn",
-    ]
+
+    # trainable_params: tp.List[str] = [
+    #     "Rmn",
+    #     "Zmn",
+    # ]
 
     @classmethod
     def from_file(

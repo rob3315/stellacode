@@ -8,13 +8,14 @@ from pydantic import BaseModel
 from stellacode import np
 import jax
 from .abstract_surface import IntegrationParams
+import equinox as eqx
 
 
 def _stack(a, b):
     return 2 * onp.pi * onp.stack((a, b), axis=-1)
 
 
-class AbstractCurrent(BaseModel):
+class AbstractCurrent(eqx.Module):
     num_pol: int
     num_tor: int
     net_currents: ArrayLike
@@ -34,38 +35,6 @@ class AbstractCurrent(BaseModel):
             num_dims *= 2
         self.phi_mn = onp.zeros(num_dims)
 
-    # def phi(self, uv):
-    #     raise NotImplementedError
-
-    # def get_phi_on_grid(self, grid):
-    #     grid_ = np.reshape(grid, (2, -1))
-    #     _, lu, lv = grid.shape
-    #     surf = jax.vmap(self.get_phi, in_axes=1, out_axes=0)
-    #     surf_res = surf(grid_)
-    #     phi = np.reshape(surf_res, (lu, lv))
-
-    #     return phi
-
-    # def get_jac_phi_on_grid(self, grid):
-    #     grid_ = np.reshape(grid, (2, -1))
-    #     _, lu, lv = grid.shape
-
-    #     jac_surf = jax.jacobian(self.get_phi, argnums=0)
-    #     jac_surf_vmap = jax.vmap(jac_surf, in_axes=1, out_axes=0)
-    #     jac_surf_res = jac_surf_vmap(grid_)
-    #     jac_phi = np.reshape(jac_surf_res, (lu, lv, 2))
-
-    #     return jac_phi
-
-    # def get_hess_phi_on_grid(self, grid):
-    #     grid_ = np.reshape(grid, (2, -1))
-    #     _, lu, lv = grid.shape
-
-    #     hess_surf = jax.hessian(self.get_phi, argnums=0, holomorphic=False)
-    #     hess_surf_vmap = jax.vmap(hess_surf, in_axes=1, out_axes=0)
-    #     hess_surf_res = hess_surf_vmap(grid_)
-
-    #     return np.reshape(hess_surf_res, (lu, lv, 2, 2))
 
     def get_integration_params(self, factor: float = 4):
         return IntegrationParams(num_points_u=self.num_pol * factor, num_points_v=self.num_tor * factor)

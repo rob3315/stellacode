@@ -4,11 +4,11 @@ from jax.typing import ArrayLike
 
 from stellacode import np
 
-from .abstract_surface import AbstractSurface
+from .abstract_surface import AbstractSurfaceModule
 from .utils import cartesian_to_toroidal, fourier_transform
 
 
-class CylindricalSurface(AbstractSurface):
+class CylindricalSurface(AbstractSurfaceModule):
     fourier_coeffs: ArrayLike = np.zeros((1, 2))
     axis_angle: float = 0.0  # rotates the surface by the given angle
     radius: float = 1.0  # radius of the cylinders
