@@ -56,7 +56,7 @@ class CylindricalSurface(AbstractSurface):
     def plot_cross_section(self, ax=None, **kwargs):
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
-        u_ = np.linspace(0, 1, 100, endpoint=True)
+        u_ = 2 * np.pi * np.linspace(0, 1, 100, endpoint=True)
         _radius = [(fourier_transform(self.fourier_coeffs, u_val) + 1) * self.radius for u_val in u_]
-        ax.plot(u_ * 2 * np.pi, _radius, **kwargs)
+        ax.plot(u_, _radius, **kwargs)
         return ax
