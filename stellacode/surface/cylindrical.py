@@ -5,7 +5,8 @@ from jax.typing import ArrayLike
 from stellacode import np
 
 from .abstract_surface import AbstractSurface
-from .utils import cartesian_to_toroidal, fourier_transform
+from .utils import cartesian_to_toroidal, fourier_transform, cartesian_to_shifted_cylindrical
+import matplotlib.pyplot as plt
 
 
 class CylindricalSurface(AbstractSurface):
@@ -51,3 +52,11 @@ class CylindricalSurface(AbstractSurface):
 
     def cartesian_to_toroidal(self):
         return cartesian_to_toroidal(xyz=self.xyz, tore_radius=self.distance, height=0.0)
+
+    def plot_cross_section(self, ax=None, **kwargs):
+        if ax is None:
+            fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+        u_ = np.linspace(0, 1, 100, endpoint=True)
+        _radius = [(fourier_transform(self.fourier_coeffs, u_val) + 1) * self.radius for u_val in u_]
+        ax.plot(u_ * 2 * np.pi, _radius, **kwargs)
+        return ax
