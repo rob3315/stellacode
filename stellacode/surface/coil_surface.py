@@ -182,9 +182,10 @@ class CoilSurface(AbstractSurface):
 
         return 0.5 * np.cross(j_3d, b_avg)
 
-    def laplace_force(self):
+    def laplace_force(self, phi_mn=None):
+
         return laplace_force(
-            j_3d=self.get_j_3D(),
+            j_3d=self.get_j_3D(phi_mn=phi_mn),
             xyz=self.xyz,
             normal_unit=self.normal_unit,
             ds=self.ds,
