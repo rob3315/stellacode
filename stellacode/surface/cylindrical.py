@@ -20,7 +20,6 @@ class CylindricalSurface(AbstractSurface):
         "fourier_coeffs",
         "axis_angle",
         "radius",
-        "scale_length",
         "distance",
     ]
 
