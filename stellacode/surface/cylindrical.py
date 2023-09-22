@@ -1,31 +1,49 @@
 import typing as tp
 
 from jax.typing import ArrayLike
+from jax import Array
 
 from stellacode import np
 
-from .abstract_surface import AbstractSurface
+from .abstract_surface import AbstractSurfaceFactory, IntegrationParams
 from .utils import cartesian_to_toroidal, fourier_transform, cartesian_to_shifted_cylindrical
 import matplotlib.pyplot as plt
 
 
-class CylindricalSurface(AbstractSurface):
-    fourier_coeffs: ArrayLike = np.zeros((1, 2))
-    axis_angle: float = 0.0  # rotates the surface by the given angle
-    radius: float = 1.0  # radius of the cylinders
-    scale_length: float = 1.0  # The cylinder is scaled by the scale_length factor
-    distance: float = 3  # distance between the center of the cylinder and the coordinate center
-    make_joints: bool = True
-    trainable_params: tp.List[str] = [
-        "fourier_coeffs",
-        "axis_angle",
-        "radius",
-        "distance",
-    ]
+class CylindricalSurface(AbstractSurfaceFactory):
+    fourier_coeffs: Array
+    axis_angle: float
+    radius: float
+    scale_length: float
+    distance: float
+    make_joints: bool
+    integration_par: IntegrationParams
+    num_tor_symmetry: int
+
+    def __init__(
+        self,
+        integration_par: IntegrationParams,
+        num_tor_symmetry: int=1,
+        fourier_coeffs: ArrayLike = np.zeros((1, 2)),
+        axis_angle: float = 0.0,  # rotates the surface by the given angle
+        radius: float = 1.0,  # radius of the cylinders
+        scale_length: float = 1.0,  # The cylinder is scaled by the scale_length factor
+        distance: float = 3,  # distance between the center of the cylinder and the coordinate center
+        make_joints: bool = True,
+
+    ):
+        self.fourier_coeffs = fourier_coeffs
+        self.axis_angle = axis_angle
+        self.radius = radius
+        self.scale_length = scale_length
+        self.distance = distance
+        self.make_joints = make_joints
+        self.integration_par = integration_par
+        self.num_tor_symmetry = num_tor_symmetry
 
     def get_xyz(self, uv):
         u_ = 2 * np.pi * uv[0]  # poloidal variable
-        v_ = uv[1] - 0.5 + 0.5 / self.nbpts[1]  # length variable
+        v_ = uv[1] - 0.5 + 0.5 / self.integration_par.num_points_v  # length variable
 
         axis_a = np.pi / 2 + np.pi / self.num_tor_symmetry + self.axis_angle
 

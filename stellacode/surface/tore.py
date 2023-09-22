@@ -1,24 +1,37 @@
 import typing as tp
 
 from jax.typing import ArrayLike
+from jax import Array
 
 from stellacode import np
 
-from .abstract_surface import AbstractSurface
+from .abstract_surface import AbstractSurfaceFactory, IntegrationParams
 from .utils import cartesian_to_toroidal, fourier_transform
 
 
-class ToroidalSurface(AbstractSurface):
-    major_radius: float = 5.0
-    minor_radius: float = 1.0
-    fourier_coeffs: ArrayLike = np.zeros((4, 2))
-    axis_angle: float = 0.0
+class ToroidalSurface(AbstractSurfaceFactory):
+    major_radius: float
+    minor_radius: float
+    fourier_coeffs: Array
+    axis_angle: float
+    integration_par: IntegrationParams
+    num_tor_symmetry: int
 
-    trainable_params: tp.List[str] = [
-        "major_radius",
-        "minor_radius",
-        "fourier_coeffs",
-    ]
+    def __init__(
+        self,
+        integration_par: IntegrationParams,
+        num_tor_symmetry: int,
+        major_radius: float = 5.0,
+        minor_radius: float = 1.0,
+        fourier_coeffs: ArrayLike = np.zeros((4, 2)),
+        axis_angle: float = 0.0,
+    ):
+        self.major_radius = major_radius
+        self.minor_radius = minor_radius
+        self.fourier_coeffs = fourier_coeffs
+        self.axis_angle = axis_angle
+        self.integration_par = integration_par
+        self.num_tor_symmetry = num_tor_symmetry
 
     def get_xyz(self, uv):
         u_ = 2 * np.pi * uv[0]  # poloidal angle

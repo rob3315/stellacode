@@ -9,7 +9,7 @@ from pydantic import BaseModel, Extra
 
 from stellacode.costs.abstract_cost import Results
 from stellacode.costs.aggregate_cost import AggregateCost
-from stellacode.surface.coil_surface import CoilSurface
+from stellacode.surface.coil_surface import CoilSurface, Surface
 from stellacode.surface.imports import get_cws
 from stellacode.tools.concat_dict import ScaleDictArray
 from autograd_minimize import minimize
@@ -41,7 +41,7 @@ def tostr_jax(res_dict):
 
 class Optimizer(BaseModel):
     cost: AggregateCost
-    coil_surface: CoilSurface
+    coil_surface: Any
     loss: Any
     init_param: Any
     scaler: Optional[ScaleDictArray] = None
@@ -104,7 +104,39 @@ class Optimizer(BaseModel):
         freeze_params: list = [],
         **kwargs,
     ):
-        init_param = coil_surface.get_trainable_params()
+        # init_param = coil_surface.get_trainable_params()
+        import equinox as eqx
+
+        # eqx.partition(coil_surface, eqx.is_array)
+        # eqx.tree_pprint(coil_surface)
+
+        def pytree_to_dict(pytree):
+            flattened, treedef = jax.tree_util.tree_flatten_with_path(pytree)
+            return {str(k): v for k, v in flattened}, treedef
+
+        def pytree_from_dict(dict_, treedef):
+            return jax.tree_util.tree_unflatten(treedef, [v for k, v in dict_.items()])
+
+        # def pytree_to_dict(pytree):
+        #     flattened, treedef = jax.tree_util.tree_flatten(pytree)
+        #     return flattened, treedef
+
+        # def pytree_from_dict(dict_, treedef):
+        #     return jax.tree_util.tree_unflatten(treedef, dict_)
+
+        parms_pytree, static = eqx.partition(coil_surface, eqx.is_array)
+        init_param, treedef = pytree_to_dict(parms_pytree)
+        # flattened, treedef = jax.tree_util.tree_flatten_with_path(coil_surface)
+        # new_pt = pytree_from_dict(init_param, treedef)
+        # import pdb;pdb.set_trace()
+
+        
+        # new_coil_surface= jax.tree_util.tree_unflatten(treedef, flattened)
+
+        # tree_unflatten(treedef, leaves)
+        # dict_val = pytree_to_dict(coil_surface)
+        # pytree_to_dict(eqx.partition(coil_surface, eqx.is_array)[0])
+
         init_param = {k: v for k, v in init_param.items() if k not in freeze_params}
         if set_scales:
             scaler = ScaleDictArray(scales=preset_scales)
@@ -116,10 +148,16 @@ class Optimizer(BaseModel):
             if scaler is not None:
                 kwargs = scaler.unapply(kwargs)
             # tic = time()
-            coil_surface.update_params(**kwargs)
+            kwargs = {k: kwargs[k] for k in init_param.keys()}
+            new_params = pytree_from_dict(kwargs, treedef)
+            
+            new_coil_surface = eqx.combine(new_params, static)(Surface())
+            # import pdb;pdb.set_trace()
+            # new_coil_surface.update_params(**kwargs)
+
             # print("Surface", time() - tic)
 
-            res, metrics, results = cost.cost(coil_surface, results=Results())
+            res, metrics, results = cost.cost(new_coil_surface, results=Results())
 
             jax.debug.print(tostr_jax(metrics), **metrics)
             # print(metrics)

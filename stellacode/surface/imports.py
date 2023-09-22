@@ -5,7 +5,7 @@ from stellacode import np
 from stellacode.tools.vmec import VMECIO
 import os
 
-from .abstract_surface import AbstractSurface, IntegrationParams
+from .abstract_surface import Surface, IntegrationParams
 from .current import Current
 from .fourier import FourierSurface
 from .rotated_surface import RotatedCoil
@@ -61,7 +61,7 @@ def get_cws_grid(config):
     n_pol_coil = int(config["geometry"]["ntheta_coil"])
     n_tor_coil = int(config["geometry"]["nzeta_coil"])
 
-    return AbstractSurface.get_uvgrid(n_pol_coil, n_tor_coil)
+    return Surface.get_uvgrid(n_pol_coil, n_tor_coil)
 
 
 def get_net_current(plasma_path):

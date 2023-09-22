@@ -17,6 +17,7 @@ from stellacode.tools.vmec import VMECIO
 
 def get_toroidal_surface(
     surf_plasma: FourierSurface,
+    plasma_path: str,
     n_harmonics: int = 16,
     factor: int = 6,
     match_surface: bool = False,
@@ -25,7 +26,7 @@ def get_toroidal_surface(
     sin_basis: bool = True,
     cos_basis: bool = True,
 ):
-    net_currents = get_net_current(surf_plasma.file_path)
+    net_currents = get_net_current(plasma_path)
     current = Current(
         num_pol=n_harmonics,
         num_tor=n_harmonics,
@@ -45,16 +46,20 @@ def get_toroidal_surface(
             minor_radius=minor_radius + distance,
             integration_par=current.get_integration_params(factor=factor),
         )
-    return RotatedCoil(
-        surface=tor_surf,
+    from equinox import nn
+    return nn.Sequential([
+        tor_surf,
+        RotatedCoil(
+        # surface=tor_surf,
         num_tor_symmetry=surf_plasma.num_tor_symmetry,
         rotate_diff_current=1,
         current=current,
-    )
+    )])
 
 
 def get_pwc_surface(
     surf_plasma: FourierSurface,
+    plasma_path: str,
     n_harmonics: int = 16,
     factor: int = 6,
     rotate_diff_current: int = 3,
@@ -67,7 +72,7 @@ def get_pwc_surface(
     convex: bool = True,
     match_surface: bool = False,
 ):
-    net_currents = get_net_current(surf_plasma.file_path)
+    net_currents = get_net_current(plasma_path)
     if common_current_on_each_rot:
         current: AbstractCurrent = Current(
             num_pol=n_harmonics,

@@ -12,6 +12,7 @@ from stellacode.surface import (
 )
 from stellacode.surface.cylindrical import CylindricalSurface
 from stellacode.surface.tore import ToroidalSurface
+from stellacode.surface.abstract_surface import Surface
 
 
 def test_compare_axisymmetric_vs_cylindrical():
@@ -34,35 +35,46 @@ def test_compare_axisymmetric_vs_cylindrical():
     current = Current(num_pol=8, num_tor=8, net_currents=net_currents)
     n_pol_coil = 32
     n_tor_coil = 32
-    num_tor_symmetry = em_cost.Sp.num_tor_symmetry * rotate_diff_current
-    surface=CylindricalSurface(
-            integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil // rotate_diff_current),
-            num_tor_symmetry=num_tor_symmetry,
-            make_joints=False,
-            distance=major_radius,
-            radius=minor_radius,
-            axis_angle=1.57079631 - (np.pi / 2 + np.pi / num_tor_symmetry),
-        )
-    surf_pwc = RotatedCoil(
-        surface=surface,
-        num_tor_symmetry=em_cost.Sp.num_tor_symmetry,
-        rotate_diff_current=rotate_diff_current,
-        current=current,
-        common_current_on_each_rot=True,
+    total_num_rot = num_tor_symmetry * rotate_diff_current
+    surface = CylindricalSurface(
+        integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil // rotate_diff_current),
+        num_tor_symmetry=total_num_rot,
+        make_joints=False,
+        distance=major_radius,
+        radius=minor_radius,
+        axis_angle=1.57079631 - (np.pi / 2 + np.pi / total_num_rot),
     )
+    import equinox as eqx
 
-    tor_surf = ToroidalSurface(
-        num_tor_symmetry=em_cost.Sp.num_tor_symmetry,
-        major_radius=major_radius,
-        minor_radius=minor_radius,
-        integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
-    )
-    surf_axi = RotatedCoil(
-        surface=tor_surf,
-        num_tor_symmetry=em_cost.Sp.num_tor_symmetry,
-        rotate_diff_current=1,
-        current=current,
-    )
+    surf_pwc = eqx.nn.Sequential(
+        [
+            surface,
+            RotatedCoil(
+                # surface=surface,
+                num_tor_symmetry=num_tor_symmetry,
+                rotate_diff_current=rotate_diff_current,
+                current=current,
+                common_current_on_each_rot=True,
+            ),
+        ]
+    )(Surface())
+
+    surf_axi = eqx.nn.Sequential(
+        [
+            ToroidalSurface(
+                num_tor_symmetry=num_tor_symmetry,
+                major_radius=major_radius,
+                minor_radius=minor_radius,
+                integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
+            ),
+            RotatedCoil(
+                # surface=tor_surf,
+                num_tor_symmetry=num_tor_symmetry,
+                rotate_diff_current=1,
+                current=current,
+            ),
+        ]
+    )(Surface())
 
     # rtp_pwc = surf_pwc.cartesian_to_toroidal()
     # rtp_axi = surf_axi.cartesian_to_toroidal()

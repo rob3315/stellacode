@@ -4,6 +4,7 @@ from os import sep
 import numpy as onp
 from concave_hull import concave_hull
 from jax.typing import ArrayLike
+from jax import Array
 from scipy.interpolate import CubicSpline, interp1d
 from scipy.io import netcdf_file
 from scipy.spatial import ConvexHull
@@ -12,7 +13,7 @@ from stellacode import np
 from stellacode.surface.utils import fourier_coefficients
 from stellacode.tools.vmec import VMECIO
 
-from .abstract_surface import AbstractSurface, IntegrationParams
+from .abstract_surface import AbstractSurfaceFactory, IntegrationParams, Surface
 from .cylindrical import CylindricalSurface
 from .tore import ToroidalSurface
 from .utils import (
@@ -25,7 +26,7 @@ from .utils import (
 from stellacode.tools.bnorm import get_bnorm
 
 
-class FourierSurface(AbstractSurface):
+class FourierSurface(AbstractSurfaceFactory):
     """A class used to represent a toroidal surface with Fourier coefficients
 
     :param params: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
@@ -36,16 +37,36 @@ class FourierSurface(AbstractSurface):
     :type Np: int
     """
 
-    mf: ArrayLike
-    nf: ArrayLike
-    Rmn: ArrayLike
-    Zmn: ArrayLike
+    Rmn: Array
+    Zmn: Array
+    mf: Array
+    nf: Array
     file_path: str
+    integration_par: IntegrationParams
+    num_tor_symmetry: int
 
-    trainable_params: tp.List[str] = [
-        "Rmn",
-        "Zmn",
-    ]
+    def __init__(
+        self,
+        mf: Array,
+        nf: Array,
+        Rmn: Array,
+        Zmn: Array,
+        file_path: str,
+        num_tor_symmetry: int,
+        integration_par: IntegrationParams,
+    ):
+        self.mf = mf
+        self.nf = nf
+        self.Rmn = Rmn
+        self.Zmn = Zmn
+        self.file_path = file_path
+        self.integration_par = integration_par
+        self.num_tor_symmetry = num_tor_symmetry
+
+    # trainable_params: tp.List[str] = [
+    #     "Rmn",
+    #     "Zmn",
+    # ]
 
     @classmethod
     def from_file(
@@ -119,6 +140,20 @@ class FourierSurface(AbstractSurface):
         assert self.mf[0] == 0 and self.nf[0] == 0
         return self.Rmn[0]
 
+    def __call__(self, **kwargs):
+        surface = super().__call__(**kwargs)
+        surface = FourierSurfaceF(major_radius=self.get_major_radius(), num_tor_symmetry=self.num_tor_symmetry, **dict(surface))
+        
+        return surface
+
+
+class FourierSurfaceF(Surface):
+    major_radius: float
+    num_tor_symmetry: int
+
+    def get_major_radius(self):
+        return self.major_radius
+
     def get_minor_radius(self):
         return np.max(self.cartesian_to_toroidal()[:, :, 0])
 
@@ -131,7 +166,7 @@ class FourierSurface(AbstractSurface):
         return cartesian_to_toroidal(
             xyz=xyz,
             tore_radius=self.get_major_radius(),
-            height=self.Zmn[0],
+            # height=self.Zmn[0],
         )
 
     def cartesian_to_shifted_cylindrical(self, xyz=None, num_cyl: int = 1, angle: float = 0.0):

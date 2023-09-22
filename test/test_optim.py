@@ -55,6 +55,7 @@ def test_current_optim(surface_name):
     if surface_name == "axisym":
         coil_surf = get_toroidal_surface(
             em_cost.Sp,
+            plasma_path=w7x_plasma.path_plasma,
             n_harmonics=n_harmonics,
             factor=factor,
             distance=0.5,
@@ -62,6 +63,7 @@ def test_current_optim(surface_name):
     else:
         coil_surf = get_pwc_surface(
             em_cost.Sp,
+            plasma_path=w7x_plasma.path_plasma,
             n_harmonics=n_harmonics,
             factor=factor,
             distance=0.5,

@@ -10,7 +10,7 @@ import stellacode.tools.bnorm as bnorm
 from stellacode import mu_0_fac, np
 from stellacode.costs.abstract_cost import AbstractCost, Results
 from stellacode.definitions import PlasmaConfig
-from stellacode.surface import AbstractSurface, FourierSurface, IntegrationParams
+from stellacode.surface import Surface, FourierSurface, IntegrationParams
 from stellacode.surface.imports import get_cws, get_plasma_surface
 from stellacode.tools import biot_et_savart, biot_et_savart_op
 from stellacode.tools.vmec import VMECIO
@@ -67,7 +67,7 @@ class RegCoilSolver(BaseModel):
 
 
 class MSEBField(AbstractCost):
-    Sp: AbstractSurface
+    Sp: Surface
     bnorm: ArrayLike = 0.0
     use_mu_0_factor: bool = False
     slow_metrics: bool = True
@@ -159,7 +159,7 @@ class EMCost(AbstractCost):
     """
 
     lamb: float
-    Sp: AbstractSurface
+    Sp: Surface
     bnorm: ArrayLike = 0.0
     use_mu_0_factor: bool = False
     slow_metrics: bool = True
@@ -171,6 +171,7 @@ class EMCost(AbstractCost):
         curpol = float(config["other"]["curpol"])
         if Sp is None:
             Sp = get_plasma_surface(config)
+        Sp = Sp(Surface())
         bnorm_ = -curpol * bnorm.get_bnorm(str(config["other"]["path_bnorm"]), Sp)
 
         if not use_mu_0_factor:
@@ -196,7 +197,7 @@ class EMCost(AbstractCost):
         surface_label=-1,
     ):
         if Sp is None:
-            Sp = FourierSurface.from_file(plasma_config.path_plasma, integration_par=integration_par)
+            Sp = FourierSurface.from_file(plasma_config.path_plasma, integration_par=integration_par)(surface=Surface())
 
         vmec = VMECIO.from_grid(
             plasma_config.path_plasma,
@@ -230,7 +231,7 @@ class EMCost(AbstractCost):
             phi_mn = solver.solve_lambda(lamb=self.lamb)
             bnorm_pred = bs.get_b_field(phi_mn)
         else:
-            phi_mn = S.current.get_phi_mn()
+            phi_mn = S.j_surface
 
             # old way, much more memory intensive
             # bs = self.get_bs_operator(S=S)
@@ -245,7 +246,9 @@ class EMCost(AbstractCost):
             solver = None
 
         cost, metrics, results_ = self.get_results(
-            bnorm_pred=bnorm_pred, solver=solver, phi_mn=phi_mn, S=S, lamb=self.lamb
+            bnorm_pred=bnorm_pred, solver=solver, 
+            phi_mn=phi_mn, 
+            S=S, lamb=self.lamb
         )
         return cost, metrics, merge_dataclasses(results, results_)
 
@@ -274,9 +277,9 @@ class EMCost(AbstractCost):
         else:
             add_dim = ""
 
-        if S.current.net_currents is not None:
+        if S.net_currents is not None:
             BS_R = BS[2:]
-            bnorm_ = self.bnorm - np.einsum(f"tpq{add_dim},t->pq{add_dim}", BS[:2], S.current.net_currents)
+            bnorm_ = self.bnorm - np.einsum(f"tpq{add_dim},t->pq{add_dim}", BS[:2], S.net_currents)
         else:
             BS_R = BS
             bnorm_ = self.bnorm
@@ -284,8 +287,8 @@ class EMCost(AbstractCost):
 
         rhs = np.einsum(f"hpq{add_dim},pq{add_dim}->h", BS_dagger, bnorm_)
 
-        if S.current.net_currents is not None:
-            rhs_reg = current_basis_dot_prod[2:, :2] @ S.current.net_currents
+        if S.net_currents is not None:
+            rhs_reg = current_basis_dot_prod[2:, :2] @ S.net_currents
         else:
             rhs_reg = None
 
@@ -299,7 +302,7 @@ class EMCost(AbstractCost):
                 matrix_reg=matrix_reg,
                 rhs=rhs,
                 rhs_reg=rhs_reg,
-                net_currents=S.current.net_currents,
+                net_currents=S.net_currents,
                 use_mu_0_factor=self.use_mu_0_factor,
             ),
             bs,
@@ -329,9 +332,9 @@ class EMCost(AbstractCost):
             metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
             results.j_3d = j_3D
 
-            j_2D = S.get_j_surface(phi_mn)
-            metrics["min_j_pol"] = j_2D[:, :, 0].min()
-            results.j_s = j_2D
+            # j_2D = S.get_j_surface(phi_mn)
+            # metrics["min_j_pol"] = j_2D[:, :, 0].min()
+            # results.j_s = j_2D
 
         return metrics["cost_B"], metrics, results
 
