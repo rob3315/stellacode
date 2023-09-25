@@ -12,7 +12,7 @@ from stellacode import np
 from stellacode.surface.utils import fourier_coefficients
 from stellacode.tools.vmec import VMECIO
 
-from .abstract_surface import AbstractSurface, IntegrationParams
+from .abstract_surface import AbstractSurfaceFactory, IntegrationParams, Surface
 from .cylindrical import CylindricalSurface
 from .tore import ToroidalSurface
 from .utils import (
@@ -25,7 +25,7 @@ from .utils import (
 from stellacode.tools.bnorm import get_bnorm
 
 
-class FourierSurface(AbstractSurface):
+class FourierSurface(AbstractSurfaceFactory):
     """A class used to represent a toroidal surface with Fourier coefficients
 
     :param params: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
@@ -119,6 +119,58 @@ class FourierSurface(AbstractSurface):
         assert self.mf[0] == 0 and self.nf[0] == 0
         return self.Rmn[0]
 
+    def plot_cross_sections(
+        self,
+        num_cyl: tp.Optional[int] = None,
+        num: int = 5,
+        convex_envelope: bool = True,
+        concave_envelope: bool = False,
+        scale_envelope: float = 1.0,
+        ax=None,
+    ):
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+
+        u = np.linspace(0, 1, 100, endpoint=True)
+        v = np.linspace(0, 1, num, endpoint=True)
+        ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
+        surf = self()
+        xyz = self.get_xyz_on_grid(np.stack((ugrid, vgrid)))
+
+        rtheta = surf._get_rtheta(xyz=xyz)
+
+        for i in range(num):
+            rphi = np.concatenate((rtheta[:, i, :], rtheta[:, i, :]), axis=0)
+            ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] + [float((i + 1) / (num + 1))])
+
+        if convex_envelope:
+            env = surf.get_envelope(num_cyl=num_cyl, convex=True)
+            ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="r", linewidth=3)
+        if concave_envelope:
+            env = surf.get_envelope(num_cyl=num_cyl, convex=False)
+            ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
+        return ax
+
+    def __call__(self, surface: Surface = Surface(), **kwargs):
+        surface = super().__call__(surface=surface, **kwargs)
+        surface = FourierSurfaceF(
+            major_radius=self.get_major_radius(),
+            file_path=self.file_path,
+            **dict(surface),
+        )
+        return surface
+
+
+class FourierSurfaceF(Surface):
+    major_radius: ArrayLike
+    num_tor_symmetry: int
+    file_path: str
+
+    def get_major_radius(self):
+        return self.major_radius
+
     def get_minor_radius(self):
         return np.max(self.cartesian_to_toroidal()[:, :, 0])
 
@@ -131,7 +183,6 @@ class FourierSurface(AbstractSurface):
         return cartesian_to_toroidal(
             xyz=xyz,
             tore_radius=self.get_major_radius(),
-            height=self.Zmn[0],
         )
 
     def cartesian_to_shifted_cylindrical(self, xyz=None, num_cyl: int = 1, angle: float = 0.0):
@@ -244,38 +295,6 @@ class FourierSurface(AbstractSurface):
                 radius=minor_radius,
                 fourier_coeffs=coefs / minor_radius,
             )
-
-    def plot_cross_sections(
-        self,
-        num_cyl: tp.Optional[int] = None,
-        num: int = 5,
-        convex_envelope: bool = True,
-        concave_envelope: bool = False,
-        scale_envelope: float = 1.0,
-        ax=None,
-    ):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
-
-        u = np.linspace(0, 1, 100, endpoint=True)
-        v = np.linspace(0, 1, num, endpoint=True)
-        ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
-        xyz = self.get_xyz_on_grid(np.stack((ugrid, vgrid)))
-        rtheta = self._get_rtheta(xyz=xyz)
-
-        for i in range(num):
-            rphi = np.concatenate((rtheta[:, i, :], rtheta[:, i, :]), axis=0)
-            ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] + [float((i + 1) / (num + 1))])
-
-        if convex_envelope:
-            env = self.get_envelope(num_cyl=num_cyl, convex=True)
-            ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="r", linewidth=3)
-        if concave_envelope:
-            env = self.get_envelope(num_cyl=num_cyl, convex=False)
-            ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
-        return ax
 
     def get_gt_b_field(self, surface_labels: int = -1, b_norm_file: tp.Optional[str] = None):
         vmec = VMECIO.from_grid(

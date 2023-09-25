@@ -19,6 +19,7 @@ from stellacode.surface.imports import get_net_current
 from stellacode.surface import CylindricalSurface, RotatedCoil, FourierSurface
 from stellacode.surface.factories import get_original_cws
 from stellacode.tools.laplace_force import laplace_force
+from stellacode.surface.rotated_surface import Sequential
 
 
 def test_laplace_force():
@@ -29,7 +30,7 @@ def test_laplace_force():
     # coil_surf = get_original_cws(path_cws=ncsx_plasma.path_cws,
     #                              path_plasma=ncsx_plasma.path_plasma, n_harmonics = 2, factor = 4)
 
-    coil_surf = FourierSurface.from_file(
+    fourier_factory = FourierSurface.from_file(
         ncsx_plasma.path_cws,
         integration_par=IntegrationParams(num_points_u=lu, num_points_v=lv),
         n_fp=5,
@@ -38,11 +39,13 @@ def test_laplace_force():
     import numpy as onp
 
     onp.random.seed(987)
-    coil_surf = RotatedCoil(
-        surface=coil_surf,
+    factory = Sequential(surface_factories=[
+        fourier_factory,
+    RotatedCoil(
         current=Current(num_pol=2, num_tor=2, cos_basis=True, net_currents=np.array([I, G])),
-        num_tor_symmetry=coil_surf.num_tor_symmetry,
+        num_tor_symmetry=fourier_factory.num_tor_symmetry,
     )
+    ])
 
     # current_n_coeff = 8
     # n_points = current_n_coeff * 4
@@ -62,7 +65,8 @@ def test_laplace_force():
     l = 2 * (m * (2 * n + 1) + n)
     lst_coeff = 1e3 * (2 * onp.random.random(l) - 1) / (onp.arange(1, l + 1) ** 2)
 
-    coil_surf.current.phi_mn = lst_coeff / 1e8  # because of the scaling, a setter would be better.
+    factory.surface_factories[1].current.phi_mn = lst_coeff / 1e8  # because of the scaling, a setter would be better.
+    coil_surf = factory()
     force = coil_surf.naive_laplace_force(
         epsilon=np.min(np.linalg.norm(coil_surf.xyz[1:] - coil_surf.xyz[:-1], axis=-1)) * 2
     )

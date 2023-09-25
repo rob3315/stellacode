@@ -17,6 +17,7 @@ class Results(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+        extra = Extra.forbid
 
 
 class AbstractCost(BaseModel):

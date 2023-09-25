@@ -19,7 +19,7 @@ class AggregateCost(AbstractCost):
     @classmethod
     def from_config(cls, config, Sp=None):
         if Sp is None:
-            Sp = get_plasma_surface(config)
+            Sp = get_plasma_surface(config)()
         costs = [EMCost.from_config(config, Sp=Sp)]
         if config["optimization_parameters"]["d_min"] == "True":
             costs.append(DistanceCost.from_config(config, Sp=Sp))

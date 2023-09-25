@@ -5,10 +5,10 @@ from stellacode import np
 from stellacode.tools.vmec import VMECIO
 import os
 
-from .abstract_surface import AbstractSurface, IntegrationParams
+from .abstract_surface import Surface, IntegrationParams
 from .current import Current
 from .fourier import FourierSurface
-from .rotated_surface import RotatedCoil
+from .rotated_surface import RotatedCoil, Sequential
 from stellacode.definitions import PlasmaConfig
 
 
@@ -21,11 +21,13 @@ def get_cws(config):
         path_cws, integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil), n_fp=n_fp
     )
 
-    cws = RotatedCoil.from_surface(
-        surface=cws,
+    rotator = RotatedCoil(
         current=get_current_potential(config),
+        num_tor_symmetry=n_fp,
     )
-    return cws
+    surface_factory = Sequential(surface_factories=[cws, rotator])
+
+    return surface_factory
 
 
 def get_cws_from_plasma_config(
@@ -49,10 +51,14 @@ def get_cws_from_plasma_config(
         num_tor=n_harmonics_current,
         net_currents=get_net_current(plasma_config.path_plasma),
     )
-    cws = RotatedCoil(
-        surface=cws,
-        current=current,
-        num_tor_symmetry=num_tor_symmetry,
+    cws = Sequential(
+        surface_factories=[
+            cws,
+            RotatedCoil(
+                current=current,
+                num_tor_symmetry=num_tor_symmetry,
+            ),
+        ]
     )
     return cws
 
@@ -61,7 +67,7 @@ def get_cws_grid(config):
     n_pol_coil = int(config["geometry"]["ntheta_coil"])
     n_tor_coil = int(config["geometry"]["nzeta_coil"])
 
-    return AbstractSurface.get_uvgrid(n_pol_coil, n_tor_coil)
+    return Surface.get_uvgrid(n_pol_coil, n_tor_coil)
 
 
 def get_net_current(plasma_path):

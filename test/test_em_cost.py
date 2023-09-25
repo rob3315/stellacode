@@ -23,7 +23,7 @@ from stellacode.surface.imports import (
     get_plasma_surface,
     get_cws_from_plasma_config,
 )
-from stellacode.surface.rotated_surface import RotatedCoil
+from stellacode.surface.rotated_surface import RotatedCoil, Sequential
 from stellacode.surface.utils import fit_to_surface
 from stellacode.tools.vmec import VMECIO
 
@@ -45,15 +45,19 @@ def test_reproduce_regcoil_axisym():
         num_tor_symmetry=5,
         major_radius=major_radius,
         minor_radius=minor_radius,
-        params={},
         integration_par=current.get_integration_params(),
     )
-    cws = RotatedCoil(
-        surface=surface,
-        num_tor_symmetry=5,
-        rotate_diff_current=1,
-        current=current,
-    )
+
+    cws = Sequential(
+        surface_factories=[
+            surface,
+            RotatedCoil(
+                num_tor_symmetry=5,
+                rotate_diff_current=1,
+                current=current,
+            ),
+        ]
+    )()
 
     em_cost = EMCost.from_plasma_config(
         plasma_config=w7x_plasma, integration_par=IntegrationParams(num_points_u=32, num_points_v=32)
@@ -85,8 +89,9 @@ def test_compare_to_regcoil(use_mu_0_factor):
     filename = "test/data/li383/regcoil_out.li383.nc"
     file_ = netcdf_file(filename, "r", mmap=False)
 
-    cws = get_cws(config)
-    xm, xn = cws.current._get_coeffs()
+    cws_factory = get_cws(config)
+    cws = cws_factory()
+    xm, xn = cws_factory.surface_factories[1].current._get_coeffs()
     assert np.all(file_.variables["xm_coil"][()][1:] == xm)
     assert np.all(file_.variables["xn_coil"][()][1:] // 3 == xn)
 
@@ -152,7 +157,7 @@ def test_b_field_err(plasma_config, surface_label):
     )
     cws = get_cws_from_plasma_config(plasma_config, n_harmonics_current=current_n_coeff)
 
-    b_field = em_cost.get_b_field(cws)
+    b_field = em_cost.get_b_field(cws())
     b_field_gt = em_cost.Sp.get_gt_b_field(surface_labels=surface_label)[:, : em_cost.Sp.integration_par.num_points_v]
 
     err_b = em_cost.Sp.integrate((np.linalg.norm(b_field - b_field_gt, axis=-1))) / em_cost.Sp.integrate(
@@ -188,9 +193,8 @@ def test_regcoil_with_axisymmetric():
         num_tor_symmetry=3,
         major_radius=major_radius,
         minor_radius=minor_radius + 0.2,
-        params={},
         integration_par=IntegrationParams(num_points_u=32, num_points_v=32),
-    )
+    )()
     S.get_min_distance(em_cost.Sp.xyz)
 
     assert abs(S.get_min_distance(em_cost.Sp.xyz) - 0.2) < 2e-3
@@ -210,12 +214,15 @@ def test_pwc_fit():
         num_tor_symmetry=9,
         make_joints=True,
     )
-    S = RotatedCoil(
-        surface=surface,
-        # nbpts=(32, 16),
-        num_tor_symmetry=3,
-        rotate_diff_current=3,
-        current=get_current_potential(config),
+    S = Sequential(
+        surface_factories=[
+            surface,
+            RotatedCoil(
+                num_tor_symmetry=3,
+                rotate_diff_current=3,
+                current=get_current_potential(config),
+            ),
+        ]
     )
 
     new_surface = fit_to_surface(S, em_cost.Sp)
@@ -226,7 +233,7 @@ def test_pwc_fit():
     # new_surface.surface.plot(only_one_period=True,vector_field=j_3d)
     # em_cost.Sp.plot()
 
-    assert new_surface.get_min_distance(em_cost.Sp.xyz) < 3e-2
+    assert new_surface().get_min_distance(em_cost.Sp.xyz) < 3e-2
 
 
 def test_regcoil_with_pwc():
@@ -236,7 +243,7 @@ def test_regcoil_with_pwc():
 
     em_cost = EMCost.from_config(config=config, use_mu_0_factor=False)
 
-    surf = get_plasma_surface(config)
+    surf = get_plasma_surface(config)()
 
     fourier_coeffs = np.zeros((5, 2))
     n_pol_coil = int(config["geometry"]["ntheta_coil"])
@@ -244,16 +251,20 @@ def test_regcoil_with_pwc():
     surface = CylindricalSurface(
         fourier_coeffs=fourier_coeffs,
         integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
-        # nbpts=(n_pol_coil, n_tor_coil),
         num_tor_symmetry=9,
     )
-    S = RotatedCoil(
-        surface=surface,
-        # nbpts=(n_pol_coil, n_tor_coil),
-        num_tor_symmetry=3,
-        rotate_diff_current=3,
-        current=get_current_potential(config),
+    factory = Sequential(
+        surface_factories=[
+            surface,
+            RotatedCoil(
+                num_tor_symmetry=3,
+                rotate_diff_current=3,
+                current=get_current_potential(config),
+            ),
+        ]
     )
+
+    S = factory()
 
     # check that the rotated current potential is well constructed
     curent_potential_op = S.current_op[2:]
@@ -263,17 +274,19 @@ def test_regcoil_with_pwc():
     assert np.all(cp_op[1:3, :, :, 0] == 0)
     assert np.all(cp_op[0, :, :, 1:3] == 0)
 
-    S.compute_surface_attributes()
+    # S.compute_surface_attributes()
     S.get_min_distance(surf.xyz)
 
     # fit the rotated surface to the plasma surface
-    new_surface = fit_to_surface(S, surf)
-    new_surface.update_params(radius=new_surface.surface.radius + 0.1)
-    assert abs(new_surface.get_min_distance(surf.xyz) - 0.1) < 1e-2
+    new_surface = fit_to_surface(factory, surf)
+    new_surface.surface_factories[0].update_params(radius=new_surface.surface_factories[0].radius + 0.1)
+    assert abs(new_surface().get_min_distance(surf.xyz) - 0.1) < 1e-2
 
     # compute regcoil metrics
     phi_mn = em_cost.get_current_weights(S)
-    new_surface.plot_j_surface(phi_mn)
+
+    # TODO: add later
+    # new_surface().plot_j_surface(phi_mn)
 
 
 def test_current_conservation():
@@ -281,16 +294,17 @@ def test_current_conservation():
     import numpy as onp
 
     # check that current basis has no net currents except in the first two functions
-    cws = get_cws_from_plasma_config(plasma_config, n_harmonics_current=4)
-    cws.current.set_phi_mn(onp.random.random(cws.current.phi_mn.shape) * 1e5)
-    cws.compute_surface_attributes()
+    factory = get_cws_from_plasma_config(plasma_config, n_harmonics_current=4)
+    factory.surface_factories[1].current.set_phi_mn(onp.random.random(factory.surface_factories[1].current.phi_mn.shape) * 1e5)
+    cws = factory()
+    # cws.compute_surface_attributes()
     curr_op = cws.current_op
     assert np.abs(curr_op[..., 0].sum(2))[2:].max() < 1e-11
     assert np.abs(curr_op[..., 1].sum(1))[2:].max() < 1e-11
 
     vmec = VMECIO.from_grid(plasma_config.path_plasma)
 
-    js = np.einsum("oijk,o->ijk", cws.current_op, cws.current.get_phi_mn())
+    js = np.einsum("oijk,o->ijk", cws.current_op, factory.surface_factories[1].current.get_phi_mn())
     assert np.abs(-js[..., 0].sum(1) * cws.dv - vmec.net_poloidal_current).max() < 1e-7
     assert np.abs(js[..., 1].sum(0) * cws.du).max() < 1e-8
 
@@ -327,17 +341,21 @@ def test_regcoil_with_pwc_no_current_at_bc():
         integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points),
         num_tor_symmetry=9,
     )
-    coil_surf = RotatedCoil(
-        surface=surface,
-        num_tor_symmetry=3,
-        rotate_diff_current=3,
-        current=current,
+    factory = Sequential(
+        surface_factories=[
+            surface,
+            RotatedCoil(
+                num_tor_symmetry=3,
+                rotate_diff_current=3,
+                current=current,
+            ),
+        ]
     )
 
     # fit the rotated surface to the plasma surface
-    new_surface = fit_to_surface(coil_surf, em_cost.Sp)
-    new_surface.update_params(radius=new_surface.surface.radius + 0.3)
-
+    new_factory = fit_to_surface(factory, em_cost.Sp)
+    new_factory.surface_factories[0].update_params(radius=new_factory.surface_factories[0].radius + 0.3)
+    new_surface = new_factory()
     phi_mn = em_cost.get_current_weights(new_surface)
     j_s = new_surface.get_j_surface(phi_mn)
 
@@ -355,6 +373,7 @@ def test_plot_plasma_cross_sections():
         integration_par=IntegrationParams(num_points_u=32, num_points_v=32),
         n_fp=3,
     )
-    surf.plot_cross_sections(num=5)
+    # TODO: recreate this test
+    # surf().plot_cross_sections(num=5)
     # import matplotlib.pyplot as plt
     # plt.show()

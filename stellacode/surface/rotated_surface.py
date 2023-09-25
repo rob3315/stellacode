@@ -2,23 +2,28 @@ import collections
 
 from stellacode import np
 from stellacode.tools.rotate_n_times import RotateNTimes
-from .abstract_surface import AbstractSurface
+from .abstract_surface import AbstractSurfaceFactory, Surface, AbstractBaseFactory
 from .coil_surface import CoilSurface
+
 from .utils import cartesian_to_toroidal
 import typing as tp
+import equinox as eqx
+from .current import AbstractCurrent
+from pydantic import BaseModel, Extra
 
 
-class RotatedSurface(CoilSurface):
+class RotatedSurface(AbstractBaseFactory):
     """ """
 
-    surface: AbstractSurface
     rotate_n: RotateNTimes = RotateNTimes(1)
 
-    def compute_surface_attributes(self, deg=2):
+    def __call__(self, surface: Surface = Surface(), key=None):
         """ """
 
-        self.surface.compute_surface_attributes(deg=deg)
-
+        new_surface = type(surface)(
+            integration_par=surface.integration_par,
+            grids=surface.grids,
+        )
         for k in [
             "xyz",
             "jac_xyz",
@@ -31,31 +36,31 @@ class RotatedSurface(CoilSurface):
             "j_surface",
         ]:
             stack_dim = None
-            if k in dir(self.surface):
+            if k in dir(surface):
                 if k == "j_surface":
                     stack_dim = 1
-                val = getattr(self.surface, k)
+                val = getattr(surface, k)
                 if val is not None:
-                    setattr(self, k, self.rotate_n(val, stack_dim=stack_dim))
-
-    def get_trainable_params(self):
-        return self.surface.get_trainable_params()
-
-    def update_params(self, **kwargs):
-        self.surface.update_params(**kwargs)
-        self.compute_surface_attributes(deg=2)
+                    setattr(new_surface, k, self.rotate_n(val, stack_dim=stack_dim))
+        return new_surface
 
 
-class ConcatSurfaces(CoilSurface):
+class ConcatSurfaces(AbstractBaseFactory):
     """ """
 
-    surfaces: tp.List[AbstractSurface]
+    surface_factories: tp.List[AbstractBaseFactory]
 
-    def compute_surface_attributes(self, deg=2):
+    def __call__(self, surface: Surface = Surface(), key=None):
         """ """
-        for surface in self.surfaces:
-            surface.compute_surface_attributes(deg=deg)
 
+        surfaces = []
+        for surface_factory in self.surface_factories:
+            surfaces.append(surface_factory())
+
+        new_surface = type(surfaces[0])(
+            integration_par=surfaces[0].integration_par,
+            grids=surfaces[0].grids,
+        )
         for k in [
             "xyz",
             "jac_xyz",
@@ -67,22 +72,21 @@ class ConcatSurfaces(CoilSurface):
             "principle_min",
             "j_surface",
         ]:
-            if k in dir(self.surfaces[0]) and getattr(self.surfaces[0], k) is not None:
-                val = np.concatenate([getattr(surface, k) for surface in self.surfaces], axis=1)
-                setattr(self, k, val)
+            if k in dir(surfaces[0]) and getattr(surfaces[0], k) is not None:
+                val = np.concatenate([getattr(surface, k) for surface in surfaces], axis=1)
+                setattr(new_surface, k, val)
+        return new_surface
 
     def get_trainable_params(self):
         params = {}
-        for i, surface in enumerate(self.surfaces):
-            params = {**params, **{f"{i}.{k}": v for k, v in surface.get_trainable_params().items()}}
+        for i, surface_factory in enumerate(self.surface_factories):
+            params = {**params, **{f"{i}.{k}": v for k, v in surface_factory.get_trainable_params().items()}}
         return params
 
     def update_params(self, **kwargs):
-        for i in range(len(self.surfaces)):
-            _kwargs = {k.split(".")[1]: v for k, v in kwargs.items() if int(k.split(".")[0]) == i}
-            self.surfaces[i].update_params(**_kwargs)
-
-        self.compute_surface_attributes(deg=2)
+        for i in range(len(self.surface_factories)):
+            _kwargs = {".".join(k.split(".")[1:]): v for k, v in kwargs.items() if int(k.split(".")[0]) == i}
+            self.surface_factories[i].update_params(**_kwargs)
 
     def __getattribute__(self, name: str):
         if name in ["integration_par", "grids", "dudv"]:
@@ -91,13 +95,47 @@ class ConcatSurfaces(CoilSurface):
             return super().__getattribute__(name)
 
 
-class RotatedCoil(CoilSurface):
+class Sequential(AbstractBaseFactory):
+    """ """
+
+    surface_factories: tp.List[AbstractBaseFactory]
+
+    def __call__(self, surface: Surface = Surface(), key=None):
+        """ """
+
+        for surface_factory in self.surface_factories:
+            surface = surface_factory(surface)
+
+        return surface
+
+    def get_trainable_params(self):
+        params = {}
+        for i, surface in enumerate(self.surface_factories):
+            params = {**params, **{f"{i}.{k}": v for k, v in surface.get_trainable_params().items()}}
+        return params
+
+    def update_params(self, **kwargs):
+        for i in range(len(self.surface_factories)):
+            _kwargs = {".".join(k.split(".")[1:]): v for k, v in kwargs.items() if int(k.split(".")[0]) == i}
+            self.surface_factories[i].update_params(**_kwargs)
+
+        # self.compute_surface_attributes(deg=2)
+
+    def __getattribute__(self, name: str):
+        if name in ["integration_par", "grids", "dudv"]:
+            return getattr(self.surfaces[0], name)
+        else:
+            return super().__getattribute__(name)
+
+
+class RotatedCoil(AbstractBaseFactory):
     """A class used to:
     * represent an abstract surfaces
     * computate of the magnetic field generated by a current carried by the surface.
     * visualize surfaces
     """
 
+    current: AbstractCurrent
     num_tor_symmetry: int = 1
     rotate_diff_current: int = 1
     common_current_on_each_rot: bool = False
@@ -106,8 +144,14 @@ class RotatedCoil(CoilSurface):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.rotate_n = RotateNTimes.from_nfp(self.num_tor_symmetry * self.rotate_diff_current)
-        self.compute_surface_attributes()
-        assert self.num_tor_symmetry * self.rotate_diff_current == self.surface.num_tor_symmetry
+
+    def get_trainable_params(self):
+        return self.current.get_trainable_params()
+
+    def update_params(self, **kwargs):
+        for k, v in kwargs.items():
+            if k in type(self.current).__fields__:
+                setattr(self.current, k, v)
 
     @property
     def dudv(self):
@@ -151,12 +195,8 @@ class RotatedCoil(CoilSurface):
 
         return np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
 
-    def compute_surface_attributes(self, deg=2):
-        """compute surface elements used in the shape optimization up
-        to degree deg
-        deg is 0,1 or 2"""
-
-        self.surface.compute_surface_attributes(deg=deg)
+    def __call__(self, surface: tp.List[Surface] = Surface(), key=None):
+        """ """
 
         for k in [
             "xyz",
@@ -168,11 +208,27 @@ class RotatedCoil(CoilSurface):
             "principle_max",
             "principle_min",
         ]:
-            val = getattr(self.surface, k)
+            val = getattr(surface, k)
             if val is not None:
-                setattr(self, k, self.rotate_n(val))
+                setattr(surface, k, self.rotate_n(val))
 
-        self.current_op = self._get_curent_op(grids=self.surface.grids)
+        coil_surf = CoilSurface.from_surface(surface)
+
+        coil_surf.current_op = self._get_curent_op(grids=coil_surf.grids)
+        coil_surf.net_currents = self.current.net_currents
+        coil_surf.num_tor_symmetry = self.num_tor_symmetry
+
+        coil_surf.phi_mn = self.current.get_phi_mn()
+        if self.common_current_on_each_rot:
+            coil_surf.integration_par = coil_surf.integration_par.copy(
+                update=dict(num_points_v=surface.integration_par.num_points_v * self.rotate_diff_current),
+            )
+        return coil_surf
+
+    def get_j_surface(self, phi_mn=None):
+        # if phi_mn is None:
+        #     phi_mn = self.phi_mn
+        return np.einsum("oijk,o->ijk", self.current_op, self.current.get_phi_mn())
 
     def cartesian_to_toroidal(self):
         try:

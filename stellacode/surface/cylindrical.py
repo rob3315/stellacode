@@ -4,12 +4,12 @@ from jax.typing import ArrayLike
 
 from stellacode import np
 
-from .abstract_surface import AbstractSurface
+from .abstract_surface import AbstractSurfaceFactory
 from .utils import cartesian_to_toroidal, fourier_transform, cartesian_to_shifted_cylindrical
 import matplotlib.pyplot as plt
 
 
-class CylindricalSurface(AbstractSurface):
+class CylindricalSurface(AbstractSurfaceFactory):
     fourier_coeffs: ArrayLike = np.zeros((1, 2))
     axis_angle: float = 0.0  # rotates the surface by the given angle
     radius: float = 1.0  # radius of the cylinders
@@ -25,7 +25,7 @@ class CylindricalSurface(AbstractSurface):
 
     def get_xyz(self, uv):
         u_ = 2 * np.pi * uv[0]  # poloidal variable
-        v_ = uv[1] - 0.5 + 0.5 / self.nbpts[1]  # length variable
+        v_ = uv[1] - 0.5 + 0.5 / self.integration_par.num_points_v  # length variable
 
         axis_a = np.pi / 2 + np.pi / self.num_tor_symmetry + self.axis_angle
 

@@ -27,10 +27,10 @@ def test_surface_envelope_fourier_series(num_cyl, convex):
     path_config_file = "test/data/li383/config.ini"
     config = configparser.ConfigParser()
     config.read(path_config_file)
-    surf = get_plasma_surface(config)
-
+    factory = get_plasma_surface(config)
+    surf = factory()
     coil_surf = surf.get_surface_envelope(num_coeff=10, num_cyl=num_cyl, convex=convex)
-    ax = surf.plot_cross_sections(num_cyl=num_cyl, convex_envelope=True, concave_envelope=True)
+    ax = factory.plot_cross_sections(num_cyl=num_cyl, convex_envelope=True, concave_envelope=True)
     if isinstance(coil_surf, ToroidalSurface):
         coil_surf.plot_cross_section(ax=ax)
     # import matplotlib.pyplot as plt

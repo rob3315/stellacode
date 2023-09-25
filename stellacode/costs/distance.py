@@ -25,7 +25,7 @@ class DistanceCost(AbstractCost):
         Sp=None,
     ):
         if Sp is None:
-            Sp = get_plasma_surface(config)
+            Sp = get_plasma_surface(config)()
         min_val = float(config["optimization_parameters"]["d_min_hard"])
         min_soft = float(config["optimization_parameters"]["d_min_soft"])
         return cls(

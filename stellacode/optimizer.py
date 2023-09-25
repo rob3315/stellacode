@@ -13,6 +13,7 @@ from stellacode.surface.coil_surface import CoilSurface
 from stellacode.surface.imports import get_cws
 from stellacode.tools.concat_dict import ScaleDictArray
 from autograd_minimize import minimize
+from stellacode.surface.abstract_surface import AbstractBaseFactory
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ def tostr_jax(res_dict):
 
 class Optimizer(BaseModel):
     cost: AggregateCost
-    coil_surface: CoilSurface
+    coil_surface: AbstractBaseFactory
     loss: Any
     init_param: Any
     scaler: Optional[ScaleDictArray] = None
@@ -119,7 +120,7 @@ class Optimizer(BaseModel):
             coil_surface.update_params(**kwargs)
             # print("Surface", time() - tic)
 
-            res, metrics, results = cost.cost(coil_surface, results=Results())
+            res, metrics, results = cost.cost(coil_surface(), results=Results())
 
             jax.debug.print(tostr_jax(metrics), **metrics)
             # print(metrics)
@@ -154,7 +155,7 @@ class Optimizer(BaseModel):
         optimized_params = optim_res.x
 
         self.coil_surface.update_params(**optimized_params)
-        cost, metrics, results = self.cost.cost(self.coil_surface)
+        cost, metrics, results = self.cost.cost(self.coil_surface())
         return cost, metrics, results, optimized_params
 
 

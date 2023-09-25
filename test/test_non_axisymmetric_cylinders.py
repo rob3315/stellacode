@@ -14,7 +14,8 @@ from stellacode.surface import CylindricalSurface, FourierSurface
 from stellacode.surface.imports import (
     get_net_current,
 )
-from stellacode.surface.rotated_surface import RotatedCoil, RotatedSurface, RotateNTimes, ConcatSurfaces
+from stellacode.surface.coil_surface import CoilFactory
+from stellacode.surface.rotated_surface import RotatedCoil, RotatedSurface, RotateNTimes, ConcatSurfaces, Sequential
 from stellacode.surface.utils import fit_to_surface
 from stellacode.tools.vmec import VMECIO
 from stellacode.surface.coil_surface import CoilSurface
@@ -78,16 +79,22 @@ def test_non_axisymmetric_cylinders():
         # surface = em_cost.Sp.get_surface_envelope(num_cyl=3, num_coeff=5, convex=True)
         # surface.update_params(radius=surface.radius*1.5)
 
-        coil_surf = CoilSurface(surface=surface, current=current)
-        coil_surf = RotatedSurface(
-            surface=coil_surf,
-            rotate_n=RotateNTimes(angle=angle, max_num=n + 1, min_num=n),
+        coil_surf = Sequential(
+            surface_factories=[
+                surface,
+                CoilFactory(current=current),
+                RotatedSurface(
+                    rotate_n=RotateNTimes(angle=angle, max_num=n + 1, min_num=n),
+                ),
+            ]
         )
         surfaces.append(coil_surf)
-    coil_surf = ConcatSurfaces(surfaces=surfaces)
-    coil_surf = RotatedSurface(
-        surface=coil_surf,
-        rotate_n=RotateNTimes(angle=2 * np.pi / num_tor_symmetry, max_num=num_tor_symmetry),
+
+    coil_surf = Sequential(
+        surface_factories=[
+            ConcatSurfaces(surface_factories=surfaces),
+            RotatedSurface(rotate_n=RotateNTimes(angle=2 * np.pi / num_tor_symmetry, max_num=num_tor_symmetry)),
+        ]
     )
     opt = Optimizer.from_cost(
         agg_cost,

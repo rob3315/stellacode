@@ -13,10 +13,12 @@ from stellacode.surface.imports import get_net_current
 from stellacode.surface.tore import ToroidalSurface
 from stellacode.surface.utils import fit_to_surface
 from stellacode.tools.vmec import VMECIO
+from stellacode.surface.rotated_surface import Sequential
 
 
 def get_toroidal_surface(
     surf_plasma: FourierSurface,
+    plasma_path: str,
     n_harmonics: int = 16,
     factor: int = 6,
     match_surface: bool = False,
@@ -25,7 +27,7 @@ def get_toroidal_surface(
     sin_basis: bool = True,
     cos_basis: bool = True,
 ):
-    net_currents = get_net_current(surf_plasma.file_path)
+    net_currents = get_net_current(plasma_path)
     current = Current(
         num_pol=n_harmonics,
         num_tor=n_harmonics,
@@ -45,16 +47,22 @@ def get_toroidal_surface(
             minor_radius=minor_radius + distance,
             integration_par=current.get_integration_params(factor=factor),
         )
-    return RotatedCoil(
-        surface=tor_surf,
-        num_tor_symmetry=surf_plasma.num_tor_symmetry,
-        rotate_diff_current=1,
-        current=current,
+
+    return Sequential(
+        surface_factories=[
+            tor_surf,
+            RotatedCoil(
+                num_tor_symmetry=surf_plasma.num_tor_symmetry,
+                rotate_diff_current=1,
+                current=current,
+            ),
+        ]
     )
 
 
 def get_pwc_surface(
     surf_plasma: FourierSurface,
+    plasma_path: str,
     n_harmonics: int = 16,
     factor: int = 6,
     rotate_diff_current: int = 3,
@@ -67,7 +75,7 @@ def get_pwc_surface(
     convex: bool = True,
     match_surface: bool = False,
 ):
-    net_currents = get_net_current(surf_plasma.file_path)
+    net_currents = get_net_current(plasma_path)
     if common_current_on_each_rot:
         current: AbstractCurrent = Current(
             num_pol=n_harmonics,
@@ -103,12 +111,16 @@ def get_pwc_surface(
             num_tor_symmetry=surf_plasma.num_tor_symmetry * rotate_diff_current,
         )
 
-    surf_coil = RotatedCoil(
-        surface=surf_coil,
-        num_tor_symmetry=surf_plasma.num_tor_symmetry,
-        rotate_diff_current=rotate_diff_current,
-        current=current,
-        common_current_on_each_rot=common_current_on_each_rot,
+    surf_coil = Sequential(
+        surface_factories=[
+            surf_coil,
+            RotatedCoil(
+                num_tor_symmetry=surf_plasma.num_tor_symmetry,
+                rotate_diff_current=rotate_diff_current,
+                current=current,
+                common_current_on_each_rot=common_current_on_each_rot,
+            ),
+        ]
     )
     if not match_surface:
         surf_coil = fit_to_surface(surf_coil, surf_plasma, distance=distance)
