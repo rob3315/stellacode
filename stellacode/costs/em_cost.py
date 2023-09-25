@@ -319,10 +319,12 @@ class EMCost(AbstractCost):
         if self.fit_b_3d:
             b_err = np.sum(b_err, axis=-1)
         metrics["cost_B"] = self.Sp.integrate(b_err)
+        metrics["em_cost"] = metrics["cost_B"]
         if solver is not None:
             metrics["cost_J"] = S.num_tor_symmetry * np.einsum(
                 "i,ij,j->", phi_mn, solver.current_basis_dot_prod, phi_mn
             )
+            metrics["em_cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
         if self.slow_metrics:
             j_3D = S.get_j_3D(phi_mn)
@@ -333,7 +335,7 @@ class EMCost(AbstractCost):
             metrics["min_j_pol"] = j_2D[:, :, 0].min()
             results.j_s = j_2D
 
-        return metrics["cost_B"], metrics, results
+        return metrics["em_cost"], metrics, results
 
     def cost_multiple_lambdas(self, S, lambdas):
         solver, bs = self.get_regcoil_solver(S=S)
