@@ -150,7 +150,6 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
         surface.xyz = self.get_xyz_on_grid(uv_grid)
         surface.integration_par = self.integration_par
         surface.grids = grids
-        surface.num_tor_symmetry = self.num_tor_symmetry
 
         # We also compute surface element dS and derivatives dS_u and dS_v:
         if deg >= 1:
@@ -187,7 +186,6 @@ class Surface(BaseModel):
 
     integration_par: tp.Optional[IntegrationParams] = None
     grids: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
-    num_tor_symmetry: int = 1
     xyz: tp.Optional[ArrayLike] = None
     jac_xyz: tp.Optional[ArrayLike] = None
     hess_xyz: tp.Optional[ArrayLike] = None

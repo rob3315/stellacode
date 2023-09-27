@@ -159,6 +159,7 @@ class FourierSurface(AbstractSurfaceFactory):
             major_radius=self.get_major_radius(),
             file_path=self.file_path,
             **dict(surface),
+            num_tor_symmetry=self.num_tor_symmetry
         )
         return surface
 
