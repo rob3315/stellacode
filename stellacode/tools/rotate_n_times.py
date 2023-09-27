@@ -27,9 +27,9 @@ class RotateNTimes:
         tensor dimensions are always: poloidal x toroidal x 3 x others
         """
         if stack_dim is not None:
-            return np.concatenate([ten] * (self.max_num - self.min_num), axis=stack_dim)
+            return np.concatenate([ten] * self.n_rot, axis=stack_dim)
         elif len(ten.shape) == 2:
-            return np.concatenate([ten] * (self.max_num - self.min_num), axis=1)
+            return np.concatenate([ten] * self.n_rot, axis=1)
         elif len(ten.shape) == 3:
             assert ten.shape[2] == 3
             return np.reshape(
@@ -50,3 +50,7 @@ class RotateNTimes:
             )
         else:
             raise NotImplementedError
+
+    @property
+    def n_rot(self):
+        return self.max_num - self.min_num

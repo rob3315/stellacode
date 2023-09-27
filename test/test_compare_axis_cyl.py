@@ -7,12 +7,12 @@ from stellacode.surface import (
     Current,
     CylindricalSurface,
     IntegrationParams,
-    RotatedCoil,
     ToroidalSurface,
 )
 from stellacode.surface.cylindrical import CylindricalSurface
 from stellacode.surface.tore import ToroidalSurface
 from stellacode.surface.rotated_surface import Sequential
+
 
 def test_compare_axisymmetric_vs_cylindrical():
     path_config = "test/data/w7x/config.ini"
@@ -43,15 +43,23 @@ def test_compare_axisymmetric_vs_cylindrical():
         radius=minor_radius,
         axis_angle=1.57079631 - (np.pi / 2 + np.pi / total_num_rot),
     )
+    from stellacode.surface.rotated_surface import rotate_coil
 
     surf_pwc = Sequential(
         surface_factories=[
-            surface,
-            RotatedCoil(
-                num_tor_symmetry=num_tor_symmetry,
-                rotate_diff_current=rotate_diff_current,
+            ToroidalSurface(
+                num_tor_symmetry=total_num_rot,
+                major_radius=major_radius,
+                minor_radius=minor_radius,
+                integration_par=IntegrationParams(
+                    num_points_u=n_pol_coil, num_points_v=n_tor_coil // rotate_diff_current
+                ),
+            ),
+            rotate_coil(
                 current=current,
-                common_current_on_each_rot=True,
+                num_tor_symmetry=num_tor_symmetry,
+                num_surf_per_period=rotate_diff_current,
+                continuous_current_in_period=True,
             ),
         ]
     )()
@@ -64,10 +72,11 @@ def test_compare_axisymmetric_vs_cylindrical():
                 minor_radius=minor_radius,
                 integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
             ),
-            RotatedCoil(
-                num_tor_symmetry=num_tor_symmetry,
-                rotate_diff_current=1,
+            rotate_coil(
                 current=current,
+                num_tor_symmetry=num_tor_symmetry,
+                num_surf_per_period=1,
+                continuous_current_in_period=False,
             ),
         ]
     )()
@@ -75,8 +84,8 @@ def test_compare_axisymmetric_vs_cylindrical():
     # rtp_pwc = surf_pwc.cartesian_to_toroidal()
     # rtp_axi = surf_axi.cartesian_to_toroidal()
     # print(np.abs(surf_pwc.xyz - surf_axi.xyz).max() / np.abs(surf_pwc.xyz).mean())
-    # print(np.abs(surf_pwc.jac_xyz - surf_axi.jac_xyz).max() / np.abs(surf_pwc.jac_xyz).mean())
-    # print(np.abs(surf_pwc.ds - surf_axi.ds).max() / np.abs(surf_axi.ds).mean())
+    # print(np.abs(surf_pwc.jac_xyz[...,1] - surf_axi.jac_xyz[...,1]/32).max() / np.abs(surf_pwc.jac_xyz).mean())
+    # print(np.abs(surf_pwc.ds - surf_axi.ds/32).max() / np.abs(surf_axi.ds).mean())
     # print(np.abs(surf_pwc.normal - surf_axi.normal).max() / np.abs(surf_axi.normal).mean())
     # print(np.abs(surf_pwc.normal_unit - surf_axi.normal_unit).max() / np.abs(surf_axi.normal_unit).mean())
     # print(np.abs(surf_pwc.npts - surf_axi.npts))

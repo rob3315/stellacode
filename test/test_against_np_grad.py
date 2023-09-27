@@ -20,9 +20,11 @@ def test_full_grad_against_original_np_grad():
 
     def fun(par):
         factory.update_params(**par)
-        return full_grad.cost(factory())[0]
+        metrics = full_grad.cost(factory())[1]
 
-    cost = full_grad.cost(factory())[0]
+        return metrics["cost_B"] + full_grad.costs[0].lamb * 3 * metrics["cost_J"]
+
+    cost = fun(factory.get_trainable_params())
     assert onp.abs(cost - 0.04940551129939265) < 1e-15
 
     gradf = grad(fun)

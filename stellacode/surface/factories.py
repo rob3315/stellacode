@@ -5,9 +5,9 @@ from stellacode.surface import (
     CylindricalSurface,
     FourierSurface,
     IntegrationParams,
-    RotatedCoil,
     ToroidalSurface,
 )
+from stellacode.surface.rotated_surface import rotate_coil
 from stellacode.surface.cylindrical import CylindricalSurface
 from stellacode.surface.imports import get_net_current
 from stellacode.surface.tore import ToroidalSurface
@@ -51,11 +51,12 @@ def get_toroidal_surface(
     return Sequential(
         surface_factories=[
             tor_surf,
-            RotatedCoil(
-                num_tor_symmetry=surf_plasma.num_tor_symmetry,
-                rotate_diff_current=1,
+            rotate_coil(
                 current=current,
-            ),
+                num_tor_symmetry=surf_plasma.num_tor_symmetry,
+                num_surf_per_period=1,
+                continuous_current_in_period=False,
+            ),            
         ]
     )
 
@@ -90,7 +91,7 @@ def get_pwc_surface(
             num_tor=n_harmonics // rotate_diff_current,
             sin_basis=sin_basis,
             cos_basis=cos_basis,
-            net_currents=net_currents,
+            net_currents=net_currents / rotate_diff_current,
         )
     integration_par = IntegrationParams(
         num_points_u=n_harmonics * factor,
@@ -114,11 +115,11 @@ def get_pwc_surface(
     surf_coil = Sequential(
         surface_factories=[
             surf_coil,
-            RotatedCoil(
-                num_tor_symmetry=surf_plasma.num_tor_symmetry,
-                rotate_diff_current=rotate_diff_current,
+            rotate_coil(
                 current=current,
-                common_current_on_each_rot=common_current_on_each_rot,
+                num_tor_symmetry=surf_plasma.num_tor_symmetry,
+                num_surf_per_period=rotate_diff_current,
+                continuous_current_in_period=common_current_on_each_rot,
             ),
         ]
     )
@@ -139,11 +140,16 @@ def get_original_cws(path_cws: str, path_plasma: str, n_harmonics: int = 16, fac
         n_fp=num_tor_symmetry,
     )
 
-    cws = RotatedCoil(
-        surface=cws,
-        current=Current(num_pol=n_harmonics, num_tor=n_harmonics, net_currents=get_net_current(path_plasma)),
-        num_tor_symmetry=cws.num_tor_symmetry,
+    cws = Sequential(
+        surface_factories=[
+            cws,
+            rotate_coil(
+                current=Current(num_pol=n_harmonics, num_tor=n_harmonics, net_currents=get_net_current(path_plasma)),
+                num_tor_symmetry=cws.num_tor_symmetry,
+            ),
+        ]
     )
+
     return cws
 
 

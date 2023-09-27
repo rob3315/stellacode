@@ -15,7 +15,7 @@ from stellacode.surface.imports import (
     get_net_current,
 )
 from stellacode.surface.coil_surface import CoilFactory
-from stellacode.surface.rotated_surface import RotatedCoil, RotatedSurface, RotateNTimes, ConcatSurfaces, Sequential
+from stellacode.surface.rotated_surface import RotatedSurface, RotateNTimes, ConcatSurfaces, Sequential
 from stellacode.surface.utils import fit_to_surface
 from stellacode.tools.vmec import VMECIO
 from stellacode.surface.coil_surface import CoilSurface

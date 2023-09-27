@@ -9,9 +9,9 @@ def laplace_force(
     normal_unit: np.ndarray,
     ds: np.ndarray,
     g_up_map: np.ndarray,
-    num_tor_symmetry: int,
     du: float,
     dv: float,
+    num_tor_symmetry: int=1,    
     end_u: int = 1000000,
     end_v: int = 1000000,
 ) -> np.ndarray:

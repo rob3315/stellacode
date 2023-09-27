@@ -2,8 +2,8 @@ import collections
 
 from stellacode import np
 from stellacode.tools.rotate_n_times import RotateNTimes
-from .abstract_surface import AbstractSurfaceFactory, Surface, AbstractBaseFactory
-from .coil_surface import CoilSurface
+from .abstract_surface import AbstractSurfaceFactory, Surface, AbstractBaseFactory, IntegrationParams
+from .coil_surface import CoilSurface, CoilFactory
 
 from .utils import cartesian_to_toroidal
 import typing as tp
@@ -13,16 +13,27 @@ from pydantic import BaseModel, Extra
 
 
 class RotatedSurface(AbstractBaseFactory):
-    """ """
+    """ 
+    Rotate and duplicate a surface N times
+
+    Args:
+        * rotate_n: rotator
+        * different_current: use different current pattern for each surface 
+            Warning:only used for the current operator, 
+            it will not apply to the currents.
+    """
 
     rotate_n: RotateNTimes = RotateNTimes(1)
+    different_currents: bool = False
 
     def __call__(self, surface: Surface = Surface(), key=None):
         """ """
 
-        new_surface = type(surface)(
-            integration_par=surface.integration_par,
-            grids=surface.grids,
+        integration_par = IntegrationParams.sum_toroidally([surface.integration_par] * self.rotate_n.n_rot)
+        grids = integration_par.get_uvgrid()
+        kwargs = dict(
+            integration_par=integration_par,
+            grids=grids,
         )
         for k in [
             "xyz",
@@ -41,8 +52,34 @@ class RotatedSurface(AbstractBaseFactory):
                     stack_dim = 1
                 val = getattr(surface, k)
                 if val is not None:
-                    setattr(new_surface, k, self.rotate_n(val, stack_dim=stack_dim))
-        return new_surface
+                    kwargs[k] = self.rotate_n(val, stack_dim=stack_dim)
+                print(k, kwargs[k].shape)
+
+            if "current_op" in dir(surface) and getattr(surface, "current_op") is not None:
+                if self.different_currents:
+                    kwargs["current_op"] = self._get_current_op(surface.current_op)
+                else:
+                    kwargs["current_op"] = np.concatenate([surface.current_op] * self.rotate_n.n_rot, axis=2)
+
+            for k in ["net_currents", "phi_mn"]:
+                if k in dir(surface) and getattr(surface, k) is not None:
+                    kwargs[k] = surface.net_currents
+
+        return type(surface)(**kwargs)
+
+    def _get_current_op(self, single_curent_op):
+        current_op_ = single_curent_op[2:]
+
+        inner_blocks = collections.deque([current_op_] + [np.zeros_like(current_op_)] * (self.rotate_n.n_rot - 1))
+        blocks = []
+        for _ in range(len(inner_blocks)):
+            blocks.append(np.concatenate(inner_blocks, axis=0))
+            inner_blocks.rotate(1)
+
+        # This is a hack because the status of the first two coefficients is
+        # special (constant currents not regressed)
+        blocks = np.concatenate(blocks, axis=2)
+        return np.concatenate((np.concatenate([single_curent_op[:2]] * len(inner_blocks), axis=2), blocks), axis=0)
 
 
 class ConcatSurfaces(AbstractBaseFactory):
@@ -57,9 +94,11 @@ class ConcatSurfaces(AbstractBaseFactory):
         for surface_factory in self.surface_factories:
             surfaces.append(surface_factory())
 
-        new_surface = type(surfaces[0])(
-            integration_par=surfaces[0].integration_par,
-            grids=surfaces[0].grids,
+        integration_par = IntegrationParams.sum_toroidally([surf.integration_par for surf in surfaces])
+        grids = integration_par.get_uvgrid()
+        kwargs = dict(
+            integration_par=integration_par,
+            grids=grids,
         )
         for k in [
             "xyz",
@@ -73,9 +112,9 @@ class ConcatSurfaces(AbstractBaseFactory):
             "j_surface",
         ]:
             if k in dir(surfaces[0]) and getattr(surfaces[0], k) is not None:
-                val = np.concatenate([getattr(surface, k) for surface in surfaces], axis=1)
-                setattr(new_surface, k, val)
-        return new_surface
+                kwargs[k] = np.concatenate([getattr(surface, k) for surface in surfaces], axis=1)
+
+        return type(surfaces[0])(**kwargs)
 
     def get_trainable_params(self):
         params = {}
@@ -126,6 +165,24 @@ class Sequential(AbstractBaseFactory):
             return getattr(self.surfaces[0], name)
         else:
             return super().__getattribute__(name)
+
+
+def rotate_coil(
+    current: AbstractCurrent,
+    num_tor_symmetry: int,
+    num_surf_per_period: int = 1,
+    continuous_current_in_period: bool = False,
+):
+    rot_common_current = RotatedSurface(
+        rotate_n=RotateNTimes(angle=2 * np.pi / (num_surf_per_period * num_tor_symmetry), max_num=num_surf_per_period),
+        different_currents=not continuous_current_in_period
+    )
+    rot_nfp = RotatedSurface(rotate_n=RotateNTimes.from_nfp(num_tor_symmetry))
+    coil_factory = CoilFactory(current=current)
+    if continuous_current_in_period:
+        return Sequential(surface_factories=[rot_common_current, coil_factory, rot_nfp])
+    else:
+        return Sequential(surface_factories=[coil_factory, rot_common_current, rot_nfp])
 
 
 class RotatedCoil(AbstractBaseFactory):
@@ -195,9 +252,17 @@ class RotatedCoil(AbstractBaseFactory):
 
         return np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
 
-    def __call__(self, surface: tp.List[Surface] = Surface(), key=None):
+    def __call__(self, surface: Surface):
         """ """
 
+        current_op = self._get_curent_op(grids=surface.grids)
+
+        integration_par = IntegrationParams.sum_toroidally([surface.integration_par] * self.rotate_n.n_rot)
+        grids = integration_par.get_uvgrid()
+        kwargs = dict(
+            integration_par=integration_par,
+            grids=grids,
+        )
         for k in [
             "xyz",
             "jac_xyz",
@@ -210,11 +275,11 @@ class RotatedCoil(AbstractBaseFactory):
         ]:
             val = getattr(surface, k)
             if val is not None:
-                setattr(surface, k, self.rotate_n(val))
+                kwargs[k] = self.rotate_n(val)
 
-        coil_surf = CoilSurface.from_surface(surface)
+        coil_surf = CoilSurface(**kwargs)
 
-        coil_surf.current_op = self._get_curent_op(grids=coil_surf.grids)
+        coil_surf.current_op = current_op
         coil_surf.net_currents = self.current.net_currents
         coil_surf.num_tor_symmetry = self.num_tor_symmetry
 

@@ -26,14 +26,31 @@ class IntegrationParams(BaseModel):
 
     num_points_u: int
     num_points_v: int
+    max_val_u: float = 1.0
     max_val_v: float = 1.0
 
     @classmethod
     def from_current_potential(cls, current_pot):
         return cls(current_pot.num_pol * 4, current_pot.num_tor * 4)
 
+    @classmethod
+    def sum_toroidally(cls, int_pars: list):
+        nptu = {par.num_points_u for par in int_pars}
+        assert len(nptu) == 1
+        maxu = {par.max_val_u for par in int_pars}
+        assert len(maxu) == 1
+        nptv = sum([par.num_points_v for par in int_pars])
+        maxv = {par.max_val_v for par in int_pars}
+        assert len(maxv) == 1
+        return cls(
+            num_points_u=int_pars[0].num_points_u,
+            num_points_v=nptv,
+            max_val_u=int_pars[0].max_val_u,
+            max_val_v=sum([par.max_val_v for par in int_pars])
+        )
+
     def get_uvgrid(self):
-        u = np.linspace(0, 1, self.num_points_u, endpoint=False)
+        u = np.linspace(0, self.max_val_u, self.num_points_u, endpoint=False)
         v = np.linspace(0, self.max_val_v, self.num_points_v, endpoint=False)
 
         ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
@@ -50,7 +67,7 @@ class IntegrationParams(BaseModel):
     @property
     def du(self):
         """Integration surface element in the poloidal, u direction"""
-        return 1 / self.num_points_u
+        return self.max_val_u / self.num_points_u
 
     @property
     def dv(self):
@@ -183,6 +200,33 @@ class Surface(BaseModel):
     class Config:
         arbitrary_types_allowed = True
         extra = Extra.forbid
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        shu = set()
+        shv = set()
+        for k in self.field_keys:
+            if getattr(self, k) is not None:
+                shape = getattr(self, k).shape
+                shu.add(shape[0])
+                shv.add(shape[1])
+                assert len(shu) in [0, 1]
+                assert len(shv) in [0, 1]
+        if self.grids is not None:
+            for grid in self.grids:
+                shu.add(grid.shape[0])
+                shv.add(grid.shape[1])
+                assert len(shu) in [0, 1]
+                assert len(shv) in [0, 1]
+        if self.integration_par is not None:
+            shu.add(self.integration_par.num_points_u)
+            shv.add(self.integration_par.num_points_v)
+            assert len(shu) in [0, 1]
+            assert len(shv) in [0, 1]
+
+    @property
+    def field_keys(self):
+        return ["xyz", "jac_xyz", "hess_xyz", "normal", "normal_unit", "ds", "principle_max", "principle_min"]
 
     @property
     def nbpts(self):

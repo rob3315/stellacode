@@ -181,7 +181,7 @@ class EMCost(AbstractCost):
             bnorm_ /= mu_0_fac
 
         return cls(
-            lamb=float(config["other"]["lamb"]),
+            lamb=float(config["other"]["lamb"])/int(config["geometry"]["Np"]),
             bnorm=bnorm_,
             Sp=Sp,
             use_mu_0_factor=use_mu_0_factor,
@@ -234,7 +234,7 @@ class EMCost(AbstractCost):
             phi_mn = solver.solve_lambda(lamb=self.lamb)
             bnorm_pred = bs.get_b_field(phi_mn)
         else:
-            phi_mn = S.j_surface
+            phi_mn = None
 
             # old way, much more memory intensive
             # bs = self.get_bs_operator(S=S)
@@ -325,9 +325,10 @@ class EMCost(AbstractCost):
         metrics["cost_B"] = self.Sp.integrate(b_err)
         metrics["em_cost"] = metrics["cost_B"]
         if solver is not None:
-            metrics["cost_J"] = S.num_tor_symmetry * np.einsum(
-                "i,ij,j->", phi_mn, solver.current_basis_dot_prod, phi_mn
-            )
+            if phi_mn is not None:
+                metrics["cost_J"] = np.einsum(
+                    "i,ij,j->", phi_mn, solver.current_basis_dot_prod, phi_mn
+                )
             metrics["em_cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
         if self.slow_metrics:

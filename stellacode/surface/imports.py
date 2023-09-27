@@ -4,11 +4,11 @@ Imports for the surface module.
 from stellacode import np
 from stellacode.tools.vmec import VMECIO
 import os
-
-from .abstract_surface import Surface, IntegrationParams
+from stellacode.surface.rotated_surface import RotateNTimes, RotatedSurface, CoilFactory
+from .abstract_surface import Surface, IntegrationParams, AbstractBaseFactory
 from .current import Current
 from .fourier import FourierSurface
-from .rotated_surface import RotatedCoil, Sequential
+from .rotated_surface import Sequential, rotate_coil
 from stellacode.definitions import PlasmaConfig
 
 
@@ -21,11 +21,9 @@ def get_cws(config):
         path_cws, integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil), n_fp=n_fp
     )
 
-    rotator = RotatedCoil(
-        current=get_current_potential(config),
-        num_tor_symmetry=n_fp,
-    )
-    surface_factory = Sequential(surface_factories=[cws, rotator])
+    rot_nfp = RotatedSurface(rotate_n=RotateNTimes.from_nfp(n_fp))
+    coil_factory = CoilFactory(current=get_current_potential(config))
+    surface_factory = Sequential(surface_factories=[cws, coil_factory, rot_nfp])
 
     return surface_factory
 
@@ -54,9 +52,9 @@ def get_cws_from_plasma_config(
     cws = Sequential(
         surface_factories=[
             cws,
-            RotatedCoil(
+            rotate_coil(
                 current=current,
-                num_tor_symmetry=num_tor_symmetry,
+                num_tor_symmetry=cws.num_tor_symmetry,
             ),
         ]
     )
