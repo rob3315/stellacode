@@ -7,26 +7,24 @@ from .coil_surface import CoilSurface, CoilFactory
 
 from .utils import cartesian_to_toroidal
 import typing as tp
-import equinox as eqx
 from .current import AbstractCurrent
-from pydantic import BaseModel, Extra
 
 
 class RotatedSurface(AbstractBaseFactory):
-    """ 
+    """
     Rotate and duplicate a surface N times
 
     Args:
         * rotate_n: rotator
-        * different_current: use different current pattern for each surface 
-            Warning:only used for the current operator, 
+        * different_current: use different current pattern for each surface
+            Warning:only used for the current operator,
             it will not apply to the currents.
     """
 
     rotate_n: RotateNTimes = RotateNTimes(1)
     different_currents: bool = False
 
-    def __call__(self, surface: Surface = Surface(), key=None):
+    def __call__(self, surface: Surface, key=None):
         """ """
 
         integration_par = IntegrationParams.sum_toroidally([surface.integration_par] * self.rotate_n.n_rot)
@@ -35,17 +33,7 @@ class RotatedSurface(AbstractBaseFactory):
             integration_par=integration_par,
             grids=grids,
         )
-        for k in [
-            "xyz",
-            "jac_xyz",
-            "normal",
-            "ds",
-            "normal_unit",
-            "hess_xyz",
-            "principle_max",
-            "principle_min",
-            "j_surface",
-        ]:
+        for k in surface.field_keys:
             stack_dim = None
             if k in dir(surface):
                 if k == "j_surface":
@@ -87,12 +75,15 @@ class ConcatSurfaces(AbstractBaseFactory):
 
     surface_factories: tp.List[AbstractBaseFactory]
 
-    def __call__(self, surface: Surface = Surface(), key=None):
+    def __call__(self, surface: tp.Optional[Surface] = None):
         """ """
 
         surfaces = []
         for surface_factory in self.surface_factories:
-            surfaces.append(surface_factory())
+            if surface is None:
+                surfaces.append(surface_factory())
+            else:
+                surfaces.append(surface_factory(surface))
 
         integration_par = IntegrationParams.sum_toroidally([surf.integration_par for surf in surfaces])
         grids = integration_par.get_uvgrid()
@@ -100,17 +91,7 @@ class ConcatSurfaces(AbstractBaseFactory):
             integration_par=integration_par,
             grids=grids,
         )
-        for k in [
-            "xyz",
-            "jac_xyz",
-            "normal",
-            "ds",
-            "normal_unit",
-            "hess_xyz",
-            "principle_max",
-            "principle_min",
-            "j_surface",
-        ]:
+        for k in surfaces[0].field_keys:
             if k in dir(surfaces[0]) and getattr(surfaces[0], k) is not None:
                 kwargs[k] = np.concatenate([getattr(surface, k) for surface in surfaces], axis=1)
 
@@ -139,11 +120,14 @@ class Sequential(AbstractBaseFactory):
 
     surface_factories: tp.List[AbstractBaseFactory]
 
-    def __call__(self, surface: Surface = Surface(), key=None):
+    def __call__(self, surface: tp.Optional[Surface] = None):
         """ """
 
         for surface_factory in self.surface_factories:
-            surface = surface_factory(surface)
+            if surface is None:
+                surface = surface_factory()
+            else:
+                surface = surface_factory(surface)
 
         return surface
 
@@ -157,8 +141,6 @@ class Sequential(AbstractBaseFactory):
         for i in range(len(self.surface_factories)):
             _kwargs = {".".join(k.split(".")[1:]): v for k, v in kwargs.items() if int(k.split(".")[0]) == i}
             self.surface_factories[i].update_params(**_kwargs)
-
-        # self.compute_surface_attributes(deg=2)
 
     def __getattribute__(self, name: str):
         if name in ["integration_par", "grids", "dudv"]:
@@ -175,7 +157,7 @@ def rotate_coil(
 ):
     rot_common_current = RotatedSurface(
         rotate_n=RotateNTimes(angle=2 * np.pi / (num_surf_per_period * num_tor_symmetry), max_num=num_surf_per_period),
-        different_currents=not continuous_current_in_period
+        different_currents=not continuous_current_in_period,
     )
     rot_nfp = RotatedSurface(rotate_n=RotateNTimes.from_nfp(num_tor_symmetry))
     coil_factory = CoilFactory(current=current)

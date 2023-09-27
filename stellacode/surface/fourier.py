@@ -153,13 +153,13 @@ class FourierSurface(AbstractSurfaceFactory):
             ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
         return ax
 
-    def __call__(self, surface: Surface = Surface(), **kwargs):
-        surface = super().__call__(surface=surface, **kwargs)
+    def __call__(self, **kwargs):
+        surface = super().__call__(**kwargs)
         surface = FourierSurfaceF(
             major_radius=self.get_major_radius(),
             file_path=self.file_path,
             **dict(surface),
-            num_tor_symmetry=self.num_tor_symmetry
+            num_tor_symmetry=self.num_tor_symmetry,
         )
         return surface
 

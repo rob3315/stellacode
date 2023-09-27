@@ -200,7 +200,7 @@ class EMCost(AbstractCost):
         surface_label=-1,
     ):
         if Sp is None:
-            Sp = FourierSurface.from_file(plasma_config.path_plasma, integration_par=integration_par)(surface=Surface())
+            Sp = FourierSurface.from_file(plasma_config.path_plasma, integration_par=integration_par)()
 
         vmec = VMECIO.from_grid(
             plasma_config.path_plasma,

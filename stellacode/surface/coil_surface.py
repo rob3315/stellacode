@@ -43,7 +43,7 @@ class CoilFactory(AbstractBaseFactory):
 
         surf.j_surface = surf.get_j_surface(self.current.get_phi_mn())
         surf.net_currents = self.current.net_currents
-        surf.phi_mn = self.current.get_phi_mn()        
+        surf.phi_mn = self.current.get_phi_mn()
         return surf
 
 
@@ -64,24 +64,30 @@ class CoilSurface(Surface):
     def from_surface(cls, surface: Surface):
         return cls(**{k: v for k, v in dict(surface).items() if k in cls.__fields__.keys()})
 
+    @property
+    def field_keys(self):
+        return super().field_keys + ["j_surface"]
+
     def get_current_basis_dot_prod(self):
         lu, lv = self.ds.shape
-        cb =  np.einsum( "oija,ijda,ijdk,pijk->op", self.current_op, self.jac_xyz, self.jac_xyz, self.current_op)
-        js = np.einsum( "oija,ijda->oijd", self.current_op, self.jac_xyz)
-        np.einsum( "oijd,pijd->op",js, js)
+        cb = np.einsum("oija,ijda,ijdk,pijk->op", self.current_op, self.jac_xyz, self.jac_xyz, self.current_op)
+        js = np.einsum("oija,ijda->oijd", self.current_op, self.jac_xyz)
+        np.einsum("oijd,pijd->op", js, js)
 
-        cb =  np.einsum(
-            "oija,ijda,ijdk,pijk,ij->op",
-            self.current_op,
-            self.jac_xyz,
-            self.jac_xyz,
-            self.current_op,
-            1 / self.ds,
-            optimize=True,
-        )   *self.dudv
+        cb = (
+            np.einsum(
+                "oija,ijda,ijdk,pijk,ij->op",
+                self.current_op,
+                self.jac_xyz,
+                self.jac_xyz,
+                self.current_op,
+                1 / self.ds,
+                optimize=True,
+            )
+            * self.dudv
+        )
 
         return cb
-
 
     def get_j_3D(self, phi_mn=None, scale_by_ds: bool = True):
         # phi_mn is a vector containing the components of the best scalar current potential.
@@ -120,7 +126,7 @@ class CoilSurface(Surface):
         xyz_plasma: ArrayLike,
         plasma_normal: tp.Optional[ArrayLike] = None,
     ):
-        bf =  mu_0_fac * biot_et_savart(
+        bf = mu_0_fac * biot_et_savart(
             xyz_plasma=xyz_plasma,
             xyz_coil=self.xyz,
             j_3d=self.get_j_3D(scale_by_ds=False),
@@ -129,6 +135,7 @@ class CoilSurface(Surface):
         )
 
         return bf
+
     def get_b_field_op(
         self, xyz_plasma: ArrayLike, plasma_normal: tp.Optional[ArrayLike] = None, scale_by_mu0: bool = False
     ):
@@ -155,7 +162,7 @@ class CoilSurface(Surface):
 
         return 0.5 * np.cross(j_3d, b_avg)
 
-    def laplace_force(self, num_tor_symmetry:int, phi_mn=None):
+    def laplace_force(self, num_tor_symmetry: int, phi_mn=None):
         return laplace_force(
             j_3d=self.get_j_3D(phi_mn=phi_mn),
             xyz=self.xyz,

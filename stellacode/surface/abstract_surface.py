@@ -46,7 +46,7 @@ class IntegrationParams(BaseModel):
             num_points_u=int_pars[0].num_points_u,
             num_points_v=nptv,
             max_val_u=int_pars[0].max_val_u,
-            max_val_v=sum([par.max_val_v for par in int_pars])
+            max_val_v=sum([par.max_val_v for par in int_pars]),
         )
 
     def get_uvgrid(self):
@@ -138,16 +138,18 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
 
         return np.reshape(hess_surf_res, (lu, lv, 3, 2, 2))
 
-    def __call__(self, surface=None, deg: int = 2):
+    def __call__(self, deg: int = 2):
         """compute surface elements used in the shape optimization up
         to degree deg
         deg is 0,1 or 2"""
-        if surface is None:
-            surface = Surface()
         grids = self.integration_par.get_uvgrid()
         uv_grid = np.stack(grids, axis=0)
+        surface = Surface(
+            integration_par=self.integration_par,
+            grids=grids,
+            xyz=self.get_xyz_on_grid(uv_grid),
+        )
 
-        surface.xyz = self.get_xyz_on_grid(uv_grid)
         surface.integration_par = self.integration_par
         surface.grids = grids
 
@@ -184,9 +186,9 @@ class Surface(BaseModel):
         * normal_unit: normalized surface normal vector pointing inside the surface
     """
 
-    integration_par: tp.Optional[IntegrationParams] = None
-    grids: tp.Optional[tp.Tuple[ArrayLike, ArrayLike]] = None
-    xyz: tp.Optional[ArrayLike] = None
+    integration_par: IntegrationParams
+    grids: tp.Tuple[ArrayLike, ArrayLike]
+    xyz: ArrayLike
     jac_xyz: tp.Optional[ArrayLike] = None
     hess_xyz: tp.Optional[ArrayLike] = None
     normal: tp.Optional[ArrayLike] = None
