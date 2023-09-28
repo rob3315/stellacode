@@ -4,11 +4,11 @@ Imports for the surface module.
 from stellacode import np
 from stellacode.tools.vmec import VMECIO
 import os
-from stellacode.surface.rotated_surface import RotateNTimes, RotatedSurface, CoilFactory
+from stellacode.surface.factory_tools import RotateNTimes, RotatedSurface, CoilFactory
 from .abstract_surface import Surface, IntegrationParams, AbstractBaseFactory
 from .current import Current
 from .fourier import FourierSurface
-from .rotated_surface import Sequential, rotate_coil
+from .factory_tools import Sequential, rotate_coil
 from stellacode.definitions import PlasmaConfig
 
 

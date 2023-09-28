@@ -24,7 +24,7 @@ class RotatedSurface(AbstractBaseFactory):
     rotate_n: RotateNTimes = RotateNTimes(1)
     different_currents: bool = False
 
-    def __call__(self, surface: Surface, key=None):
+    def __call__(self, surface: Surface, **kwargs):
         """ """
 
         integration_par = IntegrationParams.sum_toroidally([surface.integration_par] * self.rotate_n.n_rot)
@@ -41,7 +41,6 @@ class RotatedSurface(AbstractBaseFactory):
                 val = getattr(surface, k)
                 if val is not None:
                     kwargs[k] = self.rotate_n(val, stack_dim=stack_dim)
-                print(k, kwargs[k].shape)
 
             if "current_op" in dir(surface) and getattr(surface, "current_op") is not None:
                 if self.different_currents:
@@ -75,15 +74,15 @@ class ConcatSurfaces(AbstractBaseFactory):
 
     surface_factories: tp.List[AbstractBaseFactory]
 
-    def __call__(self, surface: tp.Optional[Surface] = None):
+    def __call__(self, surface: tp.Optional[Surface] = None, **kwargs):
         """ """
 
         surfaces = []
         for surface_factory in self.surface_factories:
             if surface is None:
-                surfaces.append(surface_factory())
+                surfaces.append(surface_factory(**kwargs))
             else:
-                surfaces.append(surface_factory(surface))
+                surfaces.append(surface_factory(surface, **kwargs))
 
         integration_par = IntegrationParams.sum_toroidally([surf.integration_par for surf in surfaces])
         grids = integration_par.get_uvgrid()
@@ -120,14 +119,14 @@ class Sequential(AbstractBaseFactory):
 
     surface_factories: tp.List[AbstractBaseFactory]
 
-    def __call__(self, surface: tp.Optional[Surface] = None):
+    def __call__(self, surface: tp.Optional[Surface] = None, **kwargs):
         """ """
 
         for surface_factory in self.surface_factories:
             if surface is None:
-                surface = surface_factory()
+                surface = surface_factory(**kwargs)
             else:
-                surface = surface_factory(surface)
+                surface = surface_factory(surface, **kwargs)
 
         return surface
 
@@ -141,12 +140,6 @@ class Sequential(AbstractBaseFactory):
         for i in range(len(self.surface_factories)):
             _kwargs = {".".join(k.split(".")[1:]): v for k, v in kwargs.items() if int(k.split(".")[0]) == i}
             self.surface_factories[i].update_params(**_kwargs)
-
-    def __getattribute__(self, name: str):
-        if name in ["integration_par", "grids", "dudv"]:
-            return getattr(self.surfaces[0], name)
-        else:
-            return super().__getattribute__(name)
 
 
 def rotate_coil(
@@ -234,7 +227,7 @@ class RotatedCoil(AbstractBaseFactory):
 
         return np.concatenate([blocks] * self.num_tor_symmetry, axis=2)
 
-    def __call__(self, surface: Surface):
+    def __call__(self, surface: Surface, **kwargs):
         """ """
 
         current_op = self._get_curent_op(grids=surface.grids)

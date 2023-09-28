@@ -19,7 +19,7 @@ from stellacode.surface.imports import get_net_current
 from stellacode.surface import CylindricalSurface, rotate_coil, FourierSurface
 from stellacode.surface.factories import get_original_cws
 from stellacode.tools.laplace_force import laplace_force
-from stellacode.surface.rotated_surface import Sequential
+from stellacode.surface.factory_tools import Sequential
 
 
 def test_laplace_force():

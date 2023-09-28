@@ -11,7 +11,7 @@ from stellacode.surface import (
 )
 from stellacode.surface.cylindrical import CylindricalSurface
 from stellacode.surface.tore import ToroidalSurface
-from stellacode.surface.rotated_surface import Sequential
+from stellacode.surface.factory_tools import Sequential
 
 
 def test_compare_axisymmetric_vs_cylindrical():
@@ -43,7 +43,7 @@ def test_compare_axisymmetric_vs_cylindrical():
         radius=minor_radius,
         axis_angle=1.57079631 - (np.pi / 2 + np.pi / total_num_rot),
     )
-    from stellacode.surface.rotated_surface import rotate_coil
+    from stellacode.surface.factory_tools import rotate_coil
 
     surf_pwc = Sequential(
         surface_factories=[

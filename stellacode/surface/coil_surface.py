@@ -33,7 +33,7 @@ class CoilFactory(AbstractBaseFactory):
             if k in type(self.current).__fields__:
                 setattr(self.current, k, v)
 
-    def __call__(self, surface: Surface, key=None):
+    def __call__(self, surface: Surface, **kwargs):
         """compute surface elements used in the shape optimization up
         to degree deg
         deg is 0,1 or 2"""

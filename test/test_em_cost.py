@@ -23,7 +23,7 @@ from stellacode.surface.imports import (
     get_plasma_surface,
     get_cws_from_plasma_config,
 )
-from stellacode.surface.rotated_surface import Sequential, rotate_coil
+from stellacode.surface.factory_tools import Sequential, rotate_coil
 from stellacode.surface.utils import fit_to_surface
 from stellacode.tools.vmec import VMECIO
 
