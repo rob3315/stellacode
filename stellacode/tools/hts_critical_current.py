@@ -13,11 +13,12 @@ class HTSCriticalCurrent:
     B_MIN = 0.1
     EPS = 1e-15
 
-    def __init__(self, tapeLabel: str = "JeroenThesis", hts_database_path: Optional[str] = None):
+    def __init__(self, tapeLabel: str = "JeroenThesis", hts_database_path: Optional[str] = None, unit: str = "A/m²"):
         if hts_database_path is None:
             hts_database_path = self.HTS_DATABASE_PATH
         data = pd.read_excel(hts_database_path, index_col="label")
         self.par = data[tapeLabel]
+        self.unit = unit
 
     @classmethod
     def available_tapes(cls) -> str:
@@ -31,11 +32,12 @@ class HTSCriticalCurrent:
         Args:
             * b_field: the self field is neglected (in Tesla), therefore the discontinuity
                 of the tangent field is negligible.
-            * theta: angle (from surface normal to magnetic field?) in degrees
+            * theta: angle (from surface normal to magnetic field) in degrees
+                theta=90 (b field parallel to the surface) gives a maximal critical current
             * temperature: in Kelvin
 
         Returns:
-            * Critical current: in A/m²
+            * Critical current: in A/m² or A/m
         """
         # prevent zero field at which an anomalous behaviour occurs
         assert np.all(b_field >= self.B_MIN)
@@ -72,4 +74,10 @@ class HTSCriticalCurrent:
         theta = np.where(theta_per <= np.pi / 2, theta_per, np.pi - theta_per)
 
         # critical current
-        return np.minimum(Jc_c, Jc_ab) + np.maximum(0, Jc_ab - Jc_c) / (1 + ((np.pi / 2 - theta) / g) ** self.par.nu)
+        crit_curr = np.minimum(Jc_c, Jc_ab) + np.maximum(0, Jc_ab - Jc_c) / (
+            1 + ((np.pi / 2 - theta) / g) ** self.par.nu
+        )
+        if self.unit == "A/m²":
+            return crit_curr
+        elif self.unit == "A/m":
+            return crit_curr * self.par.tSc  # tSc is the superconductor material width
