@@ -29,16 +29,6 @@ def biot_et_savart_op(
     T = xyz_plasma[None, None, ...] - xyz_coil[:, :, None, None]
     K = T / (np.linalg.norm(T, axis=-1) ** 3)[..., np.newaxis]
 
-    # if plasma_normal is not None:
-    #     B = np.einsum(
-    #         "ijpqa,tijh,ijbh, dab,dpq->tpq",
-    #         K,
-    #         surface_current,
-    #         jac_xyz_coil,
-    #         eijk,
-    #         plasma_normal,
-    #     )
-    # else:
     sc_jac = np.einsum("tijh,ijah->ijat", surface_current, jac_xyz_coil)
     B = np.einsum("ijpqa,ijbt,dba->tpqd", K, sc_jac, eijk)
 
