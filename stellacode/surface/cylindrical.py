@@ -5,7 +5,7 @@ from jax.typing import ArrayLike
 from stellacode import np
 
 from .abstract_surface import AbstractSurfaceFactory
-from .utils import cartesian_to_toroidal, fourier_transform, cartesian_to_shifted_cylindrical
+from .utils import cartesian_to_toroidal, fourier_transform, cartesian_to_shifted_cylindrical, cartesian_to_cylindrical
 import matplotlib.pyplot as plt
 
 
@@ -26,11 +26,9 @@ class CylindricalSurface(AbstractSurfaceFactory):
     def get_xyz(self, uv):
         u_ = 2 * np.pi * uv[0]  # poloidal variable
         v_ = uv[1] - 0.5 + 0.5 / self.integration_par.num_points_v  # length variable
-
-        axis_a = np.pi / 2 + np.pi / self.num_tor_symmetry + self.axis_angle
-
         # rotate along the cylinder base
-        axis_orth = np.array([np.sin(axis_a), -np.cos(axis_a), 0.0])
+        axis_orth, cyl_axis = self.get_axes()
+        # axis_orth = np.array([np.sin(axis_a), -np.cos(axis_a), 0.0])
         z_dir = np.array([0.0, 0.0, 1.0])
         _radius = (fourier_transform(self.fourier_coeffs, u_) + 1) * self.radius
         circle = _radius * (axis_orth * np.cos(u_) + z_dir * np.sin(u_))
@@ -45,12 +43,25 @@ class CylindricalSurface(AbstractSurfaceFactory):
             _length = _length * p_dist / (self.distance - self.radius)
 
         # shift along the cylinder
-        cyl_axis = np.array([np.cos(axis_a), np.sin(axis_a), 0.0]) * v_ * _length
+        return cyl_axis * v_ * _length + circle + self.distance * axis_orth
 
-        return cyl_axis + circle + self.distance * axis_orth
+    def get_axes(self):
+        axis_a = np.pi / 2 + np.pi / self.num_tor_symmetry + self.axis_angle
+        axis_orth = np.array([np.sin(axis_a), -np.cos(axis_a), 0.0])
+        cyl_axis = np.array([np.cos(axis_a), np.sin(axis_a), 0.0])
+        return axis_orth, cyl_axis
+
+    def to_cyl_frame_mat(self):
+        axis_orth, cyl_axis = self.get_axes()
+        return np.stack((np.cross(cyl_axis, axis_orth), axis_orth, cyl_axis), axis=1)
 
     def cartesian_to_toroidal(self):
         return cartesian_to_toroidal(xyz=self.xyz, tore_radius=self.distance, height=0.0)
+
+    def to_cylindrical(self, xyz):
+        rot_mat = self.to_cyl_frame_mat()
+        xyz_in_frame = np.einsum("ab, ija->ijb", rot_mat, xyz - self.distance * rot_mat[:, 1])
+        return cartesian_to_cylindrical(xyz_in_frame)
 
     def plot_cross_section(self, ax=None, **kwargs):
         if ax is None:
