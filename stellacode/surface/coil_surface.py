@@ -69,12 +69,8 @@ class CoilSurface(Surface):
         return super().field_keys + ["j_surface"]
 
     def get_current_basis_dot_prod(self):
-        lu, lv = self.ds.shape
-        cb = np.einsum("oija,ijda,ijdk,pijk->op", self.current_op, self.jac_xyz, self.jac_xyz, self.current_op)
-        js = np.einsum("oija,ijda->oijd", self.current_op, self.jac_xyz)
-        np.einsum("oijd,pijd->op", js, js)
 
-        cb = (
+        return (
             np.einsum(
                 "oija,ijda,ijdk,pijk,ij->op",
                 self.current_op,
@@ -87,7 +83,6 @@ class CoilSurface(Surface):
             * self.dudv
         )
 
-        return cb
 
     def get_j_3D(self, phi_mn=None, scale_by_ds: bool = True):
         # phi_mn is a vector containing the components of the best scalar current potential.
