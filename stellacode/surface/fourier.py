@@ -190,16 +190,17 @@ class FourierSurfaceF(Surface):
         if xyz is None:
             xyz = self.xyz
         num_tor = xyz.shape[1]
-        num_pt_cyl = num_tor // num_cyl
+        points = np.linspace(0, num_tor, num_cyl, dtype=int)
         rphiz_l = []
-        for ind in range(num_cyl):
-            xyz = xyz[:, (ind * num_pt_cyl) : ((ind + 1) * num_pt_cyl)]
+        for ind, first, last in zip(range(num_cyl), points[:-1], points[1:]):
+            xyz_ = xyz[:, first:last]
             cyl_angle = -np.pi * (2 * ind + 1) / (self.num_tor_symmetry * num_cyl) + angle
-            rphiz = cartesian_to_shifted_cylindrical(xyz=xyz, angle=cyl_angle, distance=self.get_major_radius())
+            rphiz = cartesian_to_shifted_cylindrical(xyz=xyz_, angle=cyl_angle, distance=self.get_major_radius())
 
             rphiz_l.append(rphiz)
 
-        return onp.concatenate(rphiz_l, axis=1)
+        rphiz_l =onp.concatenate(rphiz_l, axis=1)
+        return rphiz_l
 
     def _get_rtheta(self, xyz=None, num_cyl: tp.Optional[int] = None, angle: float = 0.0):
         if xyz is None:
