@@ -281,14 +281,14 @@ class Surface(BaseModel):
         g_up = self.get_g_upper_contravariant()
         return np.einsum("...kl,...ak->...al", g_up, self.jac_xyz)
 
-    def expand_for_plot_part(self):
+    def expand_for_plot_part(self, num_tor_pts=100000000000):
         """Returns X, Y, Z arrays of one field period, adding redundancy of first column."""
         import numpy as np
 
-        P = np.array(self.xyz)
+        P = np.array(self.xyz[:,:num_tor_pts])
         return [np.concatenate((P, P[:1]), axis=0)]
 
-    def expand_for_plot_whole(self, detach_parts: bool = False):
+    def expand_for_plot_whole(self, detach_parts: bool = False, num_tor_pts=100000000000):
         """Returns X, Y, Z arrays of the whole Stellarator."""
         import numpy as np
 
@@ -319,20 +319,22 @@ class Surface(BaseModel):
             scale_factor=0.1,
         ),
         mesh_kwargs: dict = dict(),
+        num_tor_pts: int=1000000000000,
+        reduce_res: int=1
     ):
         """Plot the surface"""
         import numpy as np
         from mayavi import mlab
 
         if only_one_period:
-            xyz = self.expand_for_plot_part()
+            xyz = self.expand_for_plot_part(num_tor_pts=num_tor_pts)
         else:
-            xyz = self.expand_for_plot_whole(detach_parts)
+            xyz = self.expand_for_plot_whole(detach_parts, num_tor_pts=num_tor_pts)
 
         kwargs = mesh_kwargs
         if scalar is not None:
             scalar_ = np.concatenate((scalar, scalar[0:1]), axis=0)
-            kwargs["scalars"] = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)
+            kwargs["scalars"] = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[::reduce_res,::reduce_res]
 
         index = 0
         for xyz_ in xyz:
@@ -354,12 +356,12 @@ class Surface(BaseModel):
                     xyz_c = xyz_[:-1, :-1]
 
                 mlab.quiver3d(
-                    xyz_c[:, :, 0],
-                    xyz_c[:, :, 1],
-                    xyz_c[:, :, 2],
-                    vector_field[:, index : (index + max_tor), 0],
-                    vector_field[:, index : (index + max_tor), 1],
-                    vector_field[:, index : (index + max_tor), 2],
+                    xyz_c[::reduce_res, ::reduce_res, 0],
+                    xyz_c[::reduce_res, ::reduce_res, 1],
+                    xyz_c[::reduce_res, ::reduce_res, 2],
+                    vector_field[::reduce_res, index : (index + max_tor):reduce_res, 0],
+                    vector_field[::reduce_res, index : (index + max_tor):reduce_res, 1],
+                    vector_field[::reduce_res, index : (index + max_tor):reduce_res, 2],
                     **quiver_kwargs,
                 )
 
