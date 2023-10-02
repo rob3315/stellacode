@@ -1,6 +1,7 @@
 import typing as tp
 
 from jax.typing import ArrayLike
+from jax import nn
 
 from stellacode import np
 
@@ -11,6 +12,7 @@ import matplotlib.pyplot as plt
 
 class CylindricalSurface(AbstractSurfaceFactory):
     fourier_coeffs: ArrayLike = np.zeros((1, 2))
+    points: tp.Optional[ArrayLike] = None#np.ones(10)
     axis_angle: float = 0.0  # rotates the surface by the given angle
     radius: float = 1.0  # radius of the cylinders
     scale_length: float = 1.0  # The cylinder is scaled by the scale_length factor
@@ -30,7 +32,10 @@ class CylindricalSurface(AbstractSurfaceFactory):
         axis_orth, cyl_axis = self.get_axes()
         # axis_orth = np.array([np.sin(axis_a), -np.cos(axis_a), 0.0])
         z_dir = np.array([0.0, 0.0, 1.0])
-        _radius = (fourier_transform(self.fourier_coeffs, u_) + 1) * self.radius
+        if self.points is not None:
+            _radius = np.interp(u_, np.linspace(0,1, len(self.points), endpoint=False), nn.softmax(self.points)*len(self.points)) * self.radius
+        else:
+            _radius = (fourier_transform(self.fourier_coeffs, u_) + 1) * self.radius
         circle = _radius * (axis_orth * np.cos(u_) + z_dir * np.sin(u_))
 
         # elongate along the cylinder height
