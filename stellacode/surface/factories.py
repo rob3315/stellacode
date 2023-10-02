@@ -19,6 +19,8 @@ from stellacode.surface.factory_tools import RotatedSurface, ConcatSurfaces, Rot
 from .coil_surface import CoilFactory
 from jax.typing import ArrayLike
 import jax
+import typing as tp
+import matplotlib.pyplot as plt
 
 
 def get_toroidal_surface(
@@ -68,7 +70,6 @@ def get_toroidal_surface(
 
 def get_pwc_surface(
     surf_plasma: FourierSurface,
-    plasma_path: str = None,
     n_harmonics: int = 16,
     factor: int = 6,
     rotate_diff_current: int = 3,
@@ -162,11 +163,42 @@ from .abstract_surface import AbstractBaseFactory
 from .coil_surface import CoilFactory
 
 
+# class AbstractToroidalCoils(AbstractBaseFactory):
+#     coil_factory: AbstractBaseFactory
+
+#     def get_trainable_params(self):
+#         return self.coil_factory.get_trainable_params()
+
+#     def update_params(self, **kwargs):
+#         self.coil_factory.update_params(**kwargs)
+
+#     @property
+#     def minor_radius(self):
+#         raise NotImplementedError
+
+#     @property
+#     def major_radius(self):
+#         raise NotImplementedError
+
+#     def set_phi_mn(self, phi_mn):
+#         raise NotImplementedError
+
+#     def get_phi_mn(self):
+#         raise NotImplementedError
+
+#     def plot_cross_section(self):
+#         raise NotImplementedError
+
+#     def scale_minor_radius(self, scale: float):
+#         raise NotImplementedError
+
+
 class FreeCylinders(AbstractBaseFactory):
     net_current: ArrayLike
     tor_currents_w: ArrayLike
     pol_currents_w: ArrayLike
     coil_factory: AbstractBaseFactory
+    constrain_tor_current: bool = True
 
     @classmethod
     def from_plasma(
@@ -177,6 +209,7 @@ class FreeCylinders(AbstractBaseFactory):
         n_harmonics_u: int = 8,
         n_harmonics_v: int = 4,
         factor: int = 6,
+        constrain_tor_current: bool = True,
     ):
         num_sym_by_cyl = surf_plasma.num_tor_symmetry * num_cyl
         angle = 2 * np.pi / num_sym_by_cyl
@@ -197,15 +230,13 @@ class FreeCylinders(AbstractBaseFactory):
                 num_tor_symmetry=num_sym_by_cyl,
                 radius=minor_radius + distance,
                 distance=major_radius,
+                axis_angle=angle * n,
             )
 
             coil_fac_ = Sequential(
                 surface_factories=[
                     surface,
                     CoilFactory(current=current),
-                    RotatedSurface(
-                        rotate_n=RotateNTimes(angle=angle, max_num=n + 1, min_num=n),
-                    ),
                 ]
             )
             surfaces.append(coil_fac_)
@@ -226,14 +257,117 @@ class FreeCylinders(AbstractBaseFactory):
             net_current=get_net_current(surf_plasma.file_path),
             tor_currents_w=np.zeros(num_cyl),
             pol_currents_w=np.zeros(num_cyl),
+            constrain_tor_current=constrain_tor_current,
         )
 
     def __call__(self, **kwargs):
         pol_currents = self.net_current[0] * jax.nn.softmax(self.pol_currents_w)
-        tor_currents = self.net_current[1] * jax.nn.softmax(self.tor_currents_w)
+        if self.constrain_tor_current:
+            tor_currents = self.net_current[1] * jax.nn.softmax(self.tor_currents_w)
+        else:
+            tor_currents = self.tor_currents_w * 1e7
+
         coils = self.coil_factory.surface_factories[0].surface_factories
         for i in range(len(coils)):
             coils[i].surface_factories[1].current.net_currents = np.array([pol_currents[i], tor_currents[i]])
+
+        return self.coil_factory(**kwargs)
+
+    def get_trainable_params(self):
+        return {
+            **dict(tor_currents_w=self.tor_currents_w, pol_currents_w=self.pol_currents_w),
+            **self.coil_factory.get_trainable_params(),
+        }
+
+    def update_params(self, **kwargs):
+        for k, v in kwargs.items():
+            if k in dir(self):
+                setattr(self, k, v)
+        kwargs = {k: v for k, v in kwargs.items() if k not in ["tor_currents_w", "pol_currents_w"]}
+        self.coil_factory.update_params(**kwargs)
+
+    def plot_cross_section(self, **kwargs):
+        coils = self.coil_factory.surface_factories[0].surface_factories
+        fig, axes = plt.subplots(len(coils), subplot_kw={"projection": "polar"})
+        for i in range(len(coils)):
+            coils[i].surface_factories[0].plot_cross_section(ax=axes[i], **kwargs)
+        return axes
+
+    def scale_minor_radius(self, scale: float):
+        coils = self.coil_factory.surface_factories[0].surface_factories
+        for i in range(len(coils)):
+            coils[i].surface_factories[0].radius *= scale
+
+    def set_base_current_par(self, **kwargs):
+        coils = self.coil_factory.surface_factories[0].surface_factories
+        for i in range(len(coils)):
+            for k, v in kwargs.items():
+                current = coils[i].surface_factories[1].current
+                setattr(current, k, v)
+
+
+class StackedToroidalCoils(AbstractBaseFactory):
+    coil_factory: ConcatSurfaces
+    net_current: ArrayLike
+    tor_currents_w: ArrayLike
+    pol_currents_w: ArrayLike
+    distance_between_coils: float
+    constrain_tor_current: bool = True
+
+    @classmethod
+    def from_surface(
+        cls,
+        surf_plasma,
+        distance_to_plasma: float,
+        distance_between_coils: float,
+        n_harmonics: int = 8,
+        factor: int = 6,
+        constrain_tor_current: bool = True,
+    ):
+        surf_factory = get_toroidal_surface(
+            surf_plasma=surf_plasma,
+            plasma_path=surf_plasma.path_plasma,
+            n_harmonics=n_harmonics,
+            factor=factor,
+            distance=distance_to_plasma,
+        )
+
+        current = Current(
+            num_pol=n_harmonics,
+            num_tor=n_harmonics,
+            net_currents=np.zeros(2),
+        )
+
+        coil_factory = Sequential(
+            surface_factories=[
+                surf_factory,
+                CoilFactory(current=current),
+                RotatedSurface(rotate_n=RotateNTimes.from_nfp(surf_plasma.num_tor_symmetry)),
+            ]
+        )
+
+        return cls(
+            coil_factory=ConcatSurfaces(surface_factories=[coil_factory, coil_factory.copy()]),
+            net_current=get_net_current(surf_plasma.file_path),
+            tor_currents_w=np.zeros(2),
+            pol_currents_w=np.zeros(2),
+            constrain_tor_current=constrain_tor_current,
+            distance_between_coils=distance_between_coils,
+        )
+
+    def __call__(self, **kwargs):
+        pol_currents = self.net_current[0] * jax.nn.softmax(self.pol_currents_w)
+        if self.constrain_tor_current:
+            tor_currents = self.net_current[1] * jax.nn.softmax(self.tor_currents_w)
+        else:
+            tor_currents = self.tor_currents_w * 1e7
+        fac = self.coil_factories.surface_factories
+        for i in range(len(fac)):
+            fac[i].surface_factories[1].current.net_currents = np.array([pol_currents[i], tor_currents[i]])
+
+        fac[1].surface_factories[0].minor_radius = (
+            fac[0].surface_factories[0].minor_radius + self.distance_between_coils
+        )
 
         return self.coil_factory(**kwargs)
 
