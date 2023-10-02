@@ -140,17 +140,20 @@ class FourierSurface(AbstractSurfaceFactory):
         surf = self()
         xyz = self.get_xyz_on_grid(np.stack((ugrid, vgrid)))
 
-        rtheta = surf._get_rtheta(xyz=xyz)
+        rtheta = surf._get_rtheta(xyz=xyz, num_cyl=num_cyl)
 
         for i in range(num):
             rphi = np.concatenate((rtheta[:, i, :], rtheta[:, i, :]), axis=0)
             ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] + [float((i + 1) / (num + 1))])
 
         if convex_envelope:
-            env = surf.get_envelope(num_cyl=num_cyl, convex=True)
+            env, rtheta = surf.get_envelope(num_cyl=num_cyl, convex=True)
+            # ax.scatter(rtheta[:, 1], rtheta[:, 0], c="k")
             ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="r", linewidth=3)
+
         if concave_envelope:
-            env = surf.get_envelope(num_cyl=num_cyl, convex=False)
+            env, rtheta = surf.get_envelope(num_cyl=num_cyl, convex=False)
+            # ax.scatter(rtheta[:, 1], rtheta[:, 0], c="k")            
             ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
         return ax
 
@@ -192,16 +195,16 @@ class FourierSurfaceF(Surface):
             xyz = self.xyz
         num_tor = xyz.shape[1]
         num_pol = xyz.shape[0]
-        points = np.linspace(0, num_tor, num_cyl, dtype=int)
+        points = np.linspace(0, num_tor, num_cyl + 1, dtype=int)
         rphiz_l = []
         for ind, first, last in zip(range(num_cyl), points[:-1], points[1:]):
             xyz_ = xyz[:, first:last]
-            cyl_angle = np.pi / 2 - (np.pi / 2 + np.pi * (-2 * ind + 1) / (self.num_tor_symmetry * num_cyl))
+            cyl_angle = np.pi / 2 - (np.pi / 2 + np.pi * (-2 * ind + 1) / (self.num_tor_symmetry * num_cyl))+np.pi /(self.num_tor_symmetry * num_cyl)
             surf = CylindricalSurface(
                 integration_par=IntegrationParams(num_points_u=num_pol, num_points_v=last - first),
                 make_joints=False,
                 axis_angle=cyl_angle,
-                num_tor_symmetry=num_cyl,
+                num_tor_symmetry=num_cyl * self.num_tor_symmetry,
                 distance=self.get_major_radius(),
             )
             rphiz2 = surf.to_cylindrical(xyz_)
@@ -209,11 +212,12 @@ class FourierSurfaceF(Surface):
             # fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
             # ax.plot(rphiz[:,0, 1], rphiz[:,0, 0])
             # plt.show()
-
+            # surf().plot(only_one_period=True)
             rphiz_l.append(rphiz)
 
         rphiz_l = onp.concatenate(rphiz_l, axis=1)
-
+        # self.plot(only_one_period=True)
+        # import pdb;pdb.set_trace()
         # rphiz_l = np.reshape(rphiz_l, (-1, 3))
         # fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
         # ax.scatter(rphiz_l[:, 1], rphiz_l[:, 0])
@@ -255,7 +259,7 @@ class FourierSurfaceF(Surface):
             r, th = to_polar(sel_xy_points[:, 0], sel_xy_points[:, 1])
             rth = np.stack((r, th), axis=1)
             rth = rth[rth[:, 1].argsort()]
-            return np.concatenate((rth, rth[:1]))
+            return np.concatenate((rth, rth[:1])), points
 
     def get_envelope_fourier_coeff(
         self,
@@ -264,7 +268,7 @@ class FourierSurfaceF(Surface):
         convex: bool = False,
         angle: float = 0.0,
     ):
-        xy = self.get_envelope(num_cyl=num_cyl, polar_coords=False, convex=convex, angle=angle)
+        xy = self.get_envelope(num_cyl=num_cyl, polar_coords=False, convex=convex, angle=angle)[0]
         # import matplotlib.pyplot as plt;import seaborn as sns;import matplotlib;matplotlib.use('TkAgg')
         # plt.scatter(xy[:, 0], xy[:, 1]);plt.show()
         # import pdb;pdb.set_trace()
