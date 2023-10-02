@@ -25,7 +25,6 @@ import matplotlib.pyplot as plt
 
 def get_toroidal_surface(
     surf_plasma: FourierSurface,
-    plasma_path: str,
     n_harmonics: int = 16,
     factor: int = 6,
     match_surface: bool = False,
@@ -34,7 +33,7 @@ def get_toroidal_surface(
     sin_basis: bool = True,
     cos_basis: bool = True,
 ):
-    net_currents = get_net_current(plasma_path)
+    net_currents = get_net_current(surf_plasma.file_path)
     current = Current(
         num_pol=n_harmonics,
         num_tor=n_harmonics,
