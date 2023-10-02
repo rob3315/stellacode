@@ -254,7 +254,7 @@ class FourierSurfaceF(Surface):
             sel_xy_points = np.stack(sel_xy_points)
 
         if not polar_coords:
-            return sel_xy_points
+            return sel_xy_points, points
         else:
             r, th = to_polar(sel_xy_points[:, 0], sel_xy_points[:, 1])
             rth = np.stack((r, th), axis=1)
