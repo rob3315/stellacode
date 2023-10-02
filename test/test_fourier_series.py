@@ -37,4 +37,4 @@ def test_surface_envelope_fourier_series(num_cyl, convex):
     # plt.show()
 
     # surf.plot(only_one_period=True)
-    # coil_surf.plot(only_one_period=True)
+    # coil_surf().plot(only_one_period=True)

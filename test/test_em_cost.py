@@ -227,8 +227,8 @@ def test_pwc_fit():
     # phi_mn = em_cost.get_current_weights(new_surface)
     # j_3d = new_surface().get_j_3D()
     # S.plot(only_one_period=True, vector_field=j_3d)
-    new_surface.surface_factories[0]().plot(only_one_period=True,)
-    em_cost.Sp.plot()
+    # new_surface.surface_factories[0]().plot(only_one_period=True,)
+    # em_cost.Sp.plot()
 
     assert new_surface().get_min_distance(em_cost.Sp.xyz) < 3e-2
 
@@ -370,7 +370,7 @@ def test_plot_plasma_cross_sections():
         integration_par=IntegrationParams(num_points_u=32, num_points_v=32),
         n_fp=3,
     )
-    # TODO: recreate this test
+
     surf.plot_cross_sections(num_cyl=3, num=5, concave_envelope=True)
     # import matplotlib.pyplot as plt
     # plt.show()
