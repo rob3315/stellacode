@@ -7,6 +7,7 @@ from stellacode.surface import (
     IntegrationParams,
     ToroidalSurface,
 )
+from stellacode.surface.abstract_surface import AbstractBaseFactory
 from stellacode.surface.factory_tools import rotate_coil
 from stellacode.surface.cylindrical import CylindricalSurface
 from stellacode.surface.imports import get_net_current
@@ -18,9 +19,124 @@ import jax.numpy as np
 from stellacode.surface.factory_tools import RotatedSurface, ConcatSurfaces, RotateNTimes
 from .coil_surface import CoilFactory
 from jax.typing import ArrayLike
+from jax import Array
 import jax
 import typing as tp
 import matplotlib.pyplot as plt
+
+from .abstract_surface import AbstractBaseFactory
+from .coil_surface import CoilFactory
+
+
+class AbstractToroidalCoils(AbstractBaseFactory):
+    def plot_cross_section(self, **kwargs):
+        raise NotImplementedError
+
+    def scale_minor_radius(self, scale: float):
+        raise NotImplementedError
+
+    def set_base_current_par(self, **kwargs):
+        raise NotImplementedError
+
+
+class WrappedCoil(AbstractToroidalCoils):
+    coil_factory: AbstractBaseFactory
+
+    @classmethod
+    def from_plasma(
+        cls,
+        surf_plasma: FourierSurface,
+        surf_type: str = "cylindrical",
+        n_harmonics: int = 16,
+        factor: int = 6,
+        rotate_diff_current: int = 3,
+        make_joints: bool = True,
+        common_current_on_each_rot: bool = False,
+        axis_angle: float = 0.0,
+        distance: float = 0.0,
+        sin_basis: bool = True,
+        cos_basis: bool = True,
+        convex: bool = True,
+        match_surface: bool = False,
+        build_coils: bool = False,
+    ):
+        if surf_type == "cylindrical":
+            return cls(
+                coil_factory=get_pwc_surface(
+                    surf_plasma=surf_plasma,
+                    n_harmonics=n_harmonics,
+                    factor=factor,
+                    rotate_diff_current=rotate_diff_current,
+                    make_joints=make_joints,
+                    common_current_on_each_rot=common_current_on_each_rot,
+                    axis_angle=axis_angle,
+                    distance=distance,
+                    sin_basis=sin_basis,
+                    cos_basis=cos_basis,
+                    convex=convex,
+                    match_surface=match_surface,
+                    build_coils=build_coils,
+                )
+            )
+        elif surf_type == "toroidal":
+            return cls(
+                coil_factory=get_toroidal_surface(
+                    surf_plasma=surf_plasma,
+                    n_harmonics=n_harmonics,
+                    factor=factor,
+                    match_surface=match_surface,
+                    convex=convex,
+                    distance=distance,
+                    sin_basis=sin_basis,
+                    cos_basis=cos_basis,
+                    build_coils=build_coils,
+                )
+            )
+
+        else:
+            raise NotImplementedError
+
+    def __call__(self, **kwargs):
+        return self.coil_factory(**kwargs)
+
+    def get_trainable_params(self):
+        return self.coil_factory.get_trainable_params()
+
+    def update_params(self, **kwargs):
+        self.coil_factory.update_params(**kwargs)
+
+    def plot_cross_section(self, **kwargs):
+        fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+        self._get_base_surface().plot_cross_section(ax=ax, **kwargs)
+        return ax
+
+    def scale_minor_radius(self, scale: float):
+        try:
+            self._get_base_surface().radius *= scale
+        except:
+            self._get_base_surface().minor_radius *= scale
+
+    def set_base_current_par(self, **kwargs):
+        current = self._get_current()
+        for k, v in kwargs.items():
+            setattr(current, k, v)
+
+    def set_phi_mn(self, phi_mn: Array):
+        current = self._get_current()
+        current.set_phi_mn(phi_mn=phi_mn)
+
+    def get_phi_mn(self):
+        current = self._get_current()
+        return current.get_phi_mn()
+
+    def _get_current(self):
+        if isinstance(self.coil_factory.surface_factories[1].surface_factories[0], AbstractCurrent):
+            return self.coil_factory.surface_factories[1].surface_factories[0].current
+        else:
+            return self.coil_factory.surface_factories[1].surface_factories[1].current
+
+    def _get_base_surface(self):
+        return self.coil_factory.surface_factories[0]
 
 
 def get_toroidal_surface(
@@ -162,41 +278,7 @@ def get_original_cws(path_cws: str, path_plasma: str, n_harmonics: int = 16, fac
     return cws
 
 
-from .abstract_surface import AbstractBaseFactory
-from .coil_surface import CoilFactory
-
-
-# class AbstractToroidalCoils(AbstractBaseFactory):
-#     coil_factory: AbstractBaseFactory
-
-#     def get_trainable_params(self):
-#         return self.coil_factory.get_trainable_params()
-
-#     def update_params(self, **kwargs):
-#         self.coil_factory.update_params(**kwargs)
-
-#     @property
-#     def minor_radius(self):
-#         raise NotImplementedError
-
-#     @property
-#     def major_radius(self):
-#         raise NotImplementedError
-
-#     def set_phi_mn(self, phi_mn):
-#         raise NotImplementedError
-
-#     def get_phi_mn(self):
-#         raise NotImplementedError
-
-#     def plot_cross_section(self):
-#         raise NotImplementedError
-
-#     def scale_minor_radius(self, scale: float):
-#         raise NotImplementedError
-
-
-class FreeCylinders(AbstractBaseFactory):
+class FreeCylinders(AbstractToroidalCoils):
     net_current: ArrayLike
     tor_currents_w: ArrayLike
     pol_currents_w: ArrayLike

@@ -147,7 +147,7 @@ class CoilSurface(Surface):
 
     j_surface: Array
     j_3d: Array
-    net_currents: Array
+    net_currents: tp.Optional[Array]
 
     @classmethod
     def from_surface(cls, surface: Surface):

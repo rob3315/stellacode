@@ -3,6 +3,7 @@ import typing as tp
 import numpy as onp
 import pandas as pd
 from jax.typing import ArrayLike
+from jax import Array
 from pydantic import BaseModel
 
 from stellacode import np
@@ -94,7 +95,7 @@ class AbstractCurrent(BaseModel):
             phi_mn = np.concatenate((self.net_currents, phi_mn))
         return phi_mn
 
-    def set_phi_mn(self, phi_mn: float):
+    def set_phi_mn(self, phi_mn: Array):
         self.phi_mn = phi_mn / self.scale_phi_mn
 
     def get_trainable_params(self):
