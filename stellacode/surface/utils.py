@@ -127,7 +127,7 @@ def get_principles(hess_xyz, jac_xyz, normal_unit):
 
 
 def get_net_current(coil_surf, toroidal: bool = True):
-    j_3d = coil_surf.get_j_3D()
+    j_3d = coil_surf.j_3d
     vec_u = coil_surf.jac_xyz[..., 0]
     vec_v = coil_surf.jac_xyz[..., 1]
     if toroidal:

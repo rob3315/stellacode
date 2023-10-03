@@ -118,7 +118,7 @@ def test_compare_to_regcoil(use_mu_0_factor):
     phi_mn = solver.solve_lambda(lambdas[2])
     js_reg = -file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]
     assert np.abs(js_reg - phi_mn[2:]).max() / js_reg.max() < 2.7e-4
-    j_3d = cws.get_j_3D(phi_mn)
+    j_3d = cws.get_j_3d(phi_mn)
 
     phi_mn = solver.solve_lambda(1e-30)
     bs = em_cost.get_bs_operator(cws, normal_b_field=False)
@@ -225,7 +225,7 @@ def test_pwc_fit():
     new_surface = fit_to_surface(S, em_cost.Sp)
 
     # phi_mn = em_cost.get_current_weights(new_surface)
-    # j_3d = new_surface().get_j_3D()
+    # j_3d = new_surface().get_j_3d()
     # S.plot(vector_field=j_3d)
     # new_surface.surface_factories[0]().plot()
     # em_cost.Sp.plot()
@@ -306,11 +306,11 @@ def test_current_conservation():
 
     # Check the computation of the net currents
     from stellacode.surface.utils import get_net_current
-
-    net_pol_curr = get_net_current(cws, toroidal=False)
+    coil = cws.get_coil(current.get_phi_mn())
+    net_pol_curr = get_net_current(coil, toroidal=False)
     assert np.max(np.abs(-net_pol_curr - vmec.net_poloidal_current)) < 1e-7
 
-    net_tor_curr = get_net_current(cws, toroidal=True)
+    net_tor_curr = get_net_current(coil, toroidal=True)
     assert np.max(np.abs(net_tor_curr)) < 1e-8
 
 
@@ -359,7 +359,7 @@ def test_regcoil_with_pwc_no_current_at_bc():
     # exactly at the boundary, the current is zero
     assert np.max(np.abs(j_s[:, 0, 1]) / np.max(np.abs(j_s))) < 0.1
 
-    j_3d = new_surface.get_j_3D(phi_mn)
+    j_3d = new_surface.get_j_3d(phi_mn)
     # new_surface.plot(vector_field=j_3d)
     # new_surface.surface.plot(vector_field=j_3d, detach_parts=True)
 

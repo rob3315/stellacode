@@ -12,7 +12,7 @@ from .factory_tools import Sequential, rotate_coil
 from stellacode.definitions import PlasmaConfig
 
 
-def get_cws(config):
+def get_cws(config, build_coils: bool = False):
     n_fp = int(config["geometry"]["Np"])
     n_pol_coil = int(config["geometry"]["ntheta_coil"])
     n_tor_coil = int(config["geometry"]["nzeta_coil"])
@@ -22,7 +22,7 @@ def get_cws(config):
     )
 
     rot_nfp = RotatedSurface(rotate_n=RotateNTimes.from_nfp(n_fp))
-    coil_factory = CoilFactory(current=get_current_potential(config))
+    coil_factory = CoilFactory(current=get_current_potential(config), build_coils=build_coils)
     surface_factory = Sequential(surface_factories=[cws, coil_factory, rot_nfp])
 
     return surface_factory

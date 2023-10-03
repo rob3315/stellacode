@@ -13,6 +13,7 @@ from stellacode.costs import (
     DistanceCost,
     EMCost,
     NegTorCurvatureCost,
+    MSEBField
 )
 from stellacode.costs.utils import Constraint
 from stellacode.definitions import w7x_plasma
@@ -37,11 +38,11 @@ def test_current_optim(surface_name):
     num_points = n_harmonics * factor
     method = "quadratic"
 
-    em_cost = EMCost.from_plasma_config(
+    em_cost = MSEBField.from_plasma_config(
         plasma_config=w7x_plasma,
         integration_par=IntegrationParams(num_points_u=num_points, num_points_v=num_points),
         use_mu_0_factor=False,
-        train_currents=True,
+        # train_currents=True,
     )
 
     distance = DistanceCost(
@@ -57,6 +58,7 @@ def test_current_optim(surface_name):
             n_harmonics=n_harmonics,
             factor=factor,
             distance=0.5,
+            build_coils=True
         )
     else:
         coil_surf = get_pwc_surface(
@@ -66,6 +68,7 @@ def test_current_optim(surface_name):
             distance=0.5,
             rotate_diff_current=3,
             common_current_on_each_rot=True,
+            build_coils=True
         )
     agg_cost.cost(coil_surf())
     opt = Optimizer.from_cost(

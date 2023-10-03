@@ -1,5 +1,6 @@
 import pandas as pd
 from jax.typing import ArrayLike
+from jax import Array
 from pydantic import BaseModel
 import typing as tp
 
@@ -26,7 +27,7 @@ class BiotSavartOperator(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    bs: ArrayLike
+    bs: Array
     use_mu_0_factor: bool = False
 
     def get_b_field(self, phi_mn):
@@ -229,7 +230,7 @@ class MSEBField(AbstractCost):
         metrics["cost"] = metrics["cost_B"]
 
         if self.slow_metrics:
-            j_3D = S.get_j_3D()
+            j_3D = S.j_3d
             metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
             results.j_3d = j_3D
 
@@ -382,7 +383,7 @@ class EMCost(AbstractCost):
             metrics["em_cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
         if self.slow_metrics:
-            j_3D = S.get_j_3D(phi_mn)
+            j_3D = S.get_j_3d(phi_mn)
             metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
             results.j_3d = j_3D
 

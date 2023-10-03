@@ -45,6 +45,7 @@ def test_laplace_force():
             rotate_coil(
                 current=Current(num_pol=2, num_tor=2, cos_basis=True, net_currents=np.array([I, G])),
                 nfp=fourier_factory.nfp,
+                build_coils=True
             ),
         ]
     )
@@ -76,7 +77,7 @@ def test_laplace_force():
     np.max(np.linalg.norm(force, axis=-1))
 
     force2 = laplace_force(
-        j_3d=coil_surf.get_j_3D(),
+        j_3d=coil_surf.j_3d,
         xyz=coil_surf.xyz,
         normal_unit=coil_surf.normal_unit,
         ds=coil_surf.ds,
@@ -168,7 +169,7 @@ def f_laplace(surf, i, j, Np, lu, lv):
     ds = surf.ds[:, :lv]
     g_upper = surf.get_g_upper_contravariant()[:, :lv]
 
-    j2 = np.array(surf.get_j_3D())[:, :lv, :]
+    j2 = np.array(surf.j_3d)[:, :lv, :]
 
     j1 = j2[i, j, :]
     rot = np.array(

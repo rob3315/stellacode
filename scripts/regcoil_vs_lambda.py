@@ -69,7 +69,7 @@ def regcoil_vs_lambda(config, lambdas):
         # np.mean(np.abs(em_cost.bnorm+vmec.B_s[-1]))/np.mean(np.abs(vmec.B_s[-1]))
         # vmec.B_s
         # import pdb;pdb.set_trace()
-        # j_3D = em_cost.get_j_3D(j_S=j_S, S=S)
+        # j_3D = em_cost.get_j_3d(j_S=j_S, S=S)
 
     return pd.DataFrame(results)
 

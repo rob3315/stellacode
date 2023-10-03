@@ -2,10 +2,9 @@ import collections
 
 from stellacode import np
 from stellacode.tools.rotate_n_times import RotateNTimes
-from .abstract_surface import AbstractSurfaceFactory, Surface, AbstractBaseFactory, IntegrationParams
-from .coil_surface import CoilSurface, CoilFactory
+from .abstract_surface import Surface, AbstractBaseFactory, IntegrationParams
+from .coil_surface import CoilFactory
 
-from .utils import cartesian_to_toroidal
 import typing as tp
 from .current import AbstractCurrent
 
@@ -149,13 +148,15 @@ def rotate_coil(
     nfp: int,
     num_surf_per_period: int = 1,
     continuous_current_in_period: bool = False,
+    build_coils: bool=False
 ):
     rot_common_current = RotatedSurface(
         rotate_n=RotateNTimes(angle=2 * np.pi / (num_surf_per_period * nfp), max_num=num_surf_per_period),
         different_currents=not continuous_current_in_period,
     )
     rot_nfp = RotatedSurface(rotate_n=RotateNTimes.from_nfp(nfp))
-    coil_factory = CoilFactory(current=current)
+    coil_factory = CoilFactory(current=current, build_coils=build_coils)
+
     if continuous_current_in_period:
         return Sequential(surface_factories=[rot_common_current, coil_factory, rot_nfp])
     else:

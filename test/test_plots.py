@@ -22,7 +22,7 @@ import numpy as onp
 def test_plot_current():
     cws = get_cws_from_plasma_config(w7x_plasma, n_harmonics_current=4)
     cws.current.set_phi_mn(onp.random.random(cws.current.phi_mn.shape) * 1e1)
-    j_3d = cws.get_j_3D()
+    j_3d = cws.get_j_3d()
     cws.surface.plot(colormap="Blues", vector_field=j_3d)
     cws.plot_j_surface()
     # plt.show()
