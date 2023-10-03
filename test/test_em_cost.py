@@ -109,7 +109,7 @@ def test_compare_to_regcoil(use_mu_0_factor):
     assert np.all(np.abs(metrics.cost_J.values[1:] - chi_j[1:]) / chi_j[1:] < 5e-6)
 
     em_cost.lamb = lambdas[-1]
-    solver = em_cost.get_regcoil_solver(cws)[0]
+    solver = em_cost.get_regcoil_solver(cws)
     phi_mn = solver.solve_lambda(lambdas[-1])
     js_reg = -file_.variables["single_valued_current_potential_mn"][()].astype(float)[-1]
     assert np.abs(js_reg - phi_mn[2:]).max() / js_reg.max() < 1e-14

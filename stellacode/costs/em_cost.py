@@ -40,7 +40,6 @@ class RegCoilSolver(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
-        # extra = Extra.allow  # allow extra fields
 
     current_basis_dot_prod: ArrayLike
     matrix: ArrayLike
@@ -48,6 +47,7 @@ class RegCoilSolver(BaseModel):
     rhs: ArrayLike
     rhs_reg: ArrayLike
     net_currents: ArrayLike
+    biot_et_savart_op: BiotSavartOperator
     use_mu_0_factor: bool = False
 
     def solve_lambda(self, lamb: float = 0.0):
@@ -64,6 +64,57 @@ class RegCoilSolver(BaseModel):
             return np.concatenate((self.net_currents, phi_mn))
         else:
             return phi_mn
+
+    @classmethod
+    def from_surfaces(cls, S, Sp, bnorm, fit_b_3d, normal_b_field, use_mu_0_factor):
+        if normal_b_field:
+            kwargs = dict(plasma_normal=Sp.normal_unit)
+        else:
+            kwargs = {}
+        BS = S.get_b_field_op(xyz_plasma=Sp.xyz, **kwargs, scale_by_mu0=use_mu_0_factor)
+
+        bs = BiotSavartOperator(bs=BS, use_mu_0_factor=use_mu_0_factor)
+        BS = bs.bs
+
+        # Now we have to compute the best current components.
+        # This is a technical part, one should read the paper :
+        # "Optimal shape of stellarators for magnetic confinement fusion"
+        # in order to understand what's going on.
+
+        current_basis_dot_prod = S.get_current_basis_dot_prod()
+        if fit_b_3d:
+            add_dim = "a"
+        else:
+            add_dim = ""
+
+        if S.net_currents is not None:
+            BS_R = BS[2:]
+            bnorm_ = bnorm - np.einsum(f"tpq{add_dim},t->pq{add_dim}", BS[:2], S.net_currents)
+        else:
+            BS_R = BS
+            bnorm_ = bnorm
+        BS_dagger = np.einsum(f"uij{add_dim},ij->uij{add_dim}", BS_R, Sp.ds / Sp.npts)
+
+        rhs = np.einsum(f"hpq{add_dim},pq{add_dim}->h", BS_dagger, bnorm_)
+
+        if S.net_currents is not None:
+            rhs_reg = current_basis_dot_prod[2:, :2] @ S.net_currents
+        else:
+            rhs_reg = None
+
+        matrix = np.einsum(f"tpq{add_dim},upq{add_dim}->tu", BS_dagger, BS_R)
+        matrix_reg = current_basis_dot_prod[2:, 2:]
+
+        return cls(
+            current_basis_dot_prod=current_basis_dot_prod,
+            matrix=matrix,
+            matrix_reg=matrix_reg,
+            rhs=rhs,
+            rhs_reg=rhs_reg,
+            net_currents=S.net_currents,
+            use_mu_0_factor=use_mu_0_factor,
+            biot_et_savart_op=bs,
+        )
 
 
 class MSEBField(AbstractCost):
@@ -159,6 +210,7 @@ class EMCost(AbstractCost):
         * use_mu_0_factor: Multiply by the mu_0 factor.
         * slow_metrics: compute metrics that take time.
         * train_currents: use current parameters to compute the currents
+        * the 3D field is plotted instead of the normal magnetic field
     """
 
     lamb: float
@@ -181,7 +233,7 @@ class EMCost(AbstractCost):
             bnorm_ /= mu_0_fac
 
         return cls(
-            lamb=float(config["other"]["lamb"])/int(config["geometry"]["Np"]),
+            lamb=float(config["other"]["lamb"]) / int(config["geometry"]["Np"]),
             bnorm=bnorm_,
             Sp=Sp,
             use_mu_0_factor=use_mu_0_factor,
@@ -230,9 +282,9 @@ class EMCost(AbstractCost):
 
     def cost(self, S, results: Results = Results()):
         if not self.train_currents:
-            solver, bs = self.get_regcoil_solver(S=S)
+            solver = self.get_regcoil_solver(S=S)
             phi_mn = solver.solve_lambda(lamb=self.lamb)
-            bnorm_pred = bs.get_b_field(phi_mn)
+            bnorm_pred = solver.biot_et_savart_op.get_b_field(phi_mn)
         else:
             phi_mn = None
 
@@ -263,50 +315,13 @@ class EMCost(AbstractCost):
         return BiotSavartOperator(bs=BS, use_mu_0_factor=self.use_mu_0_factor)
 
     def get_regcoil_solver(self, S):
-        bs = self.get_bs_operator(S, normal_b_field=not self.fit_b_3d)
-        BS = bs.bs
-        Sp = self.Sp
-
-        # Now we have to compute the best current components.
-        # This is a technical part, one should read the paper :
-        # "Optimal shape of stellarators for magnetic confinement fusion"
-        # in order to understand what's going on.
-
-        current_basis_dot_prod = S.get_current_basis_dot_prod()
-        if self.fit_b_3d:
-            add_dim = "a"
-        else:
-            add_dim = ""
-
-        if S.net_currents is not None:
-            BS_R = BS[2:]
-            bnorm_ = self.bnorm - np.einsum(f"tpq{add_dim},t->pq{add_dim}", BS[:2], S.net_currents)
-        else:
-            BS_R = BS
-            bnorm_ = self.bnorm
-        BS_dagger = np.einsum(f"uij{add_dim},ij->uij{add_dim}", BS_R, Sp.ds / Sp.npts)
-
-        rhs = np.einsum(f"hpq{add_dim},pq{add_dim}->h", BS_dagger, bnorm_)
-
-        if S.net_currents is not None:
-            rhs_reg = current_basis_dot_prod[2:, :2] @ S.net_currents
-        else:
-            rhs_reg = None
-
-        matrix = np.einsum(f"tpq{add_dim},upq{add_dim}->tu", BS_dagger, BS_R)
-        matrix_reg = current_basis_dot_prod[2:, 2:]
-
-        return (
-            RegCoilSolver(
-                current_basis_dot_prod=current_basis_dot_prod,
-                matrix=matrix,
-                matrix_reg=matrix_reg,
-                rhs=rhs,
-                rhs_reg=rhs_reg,
-                net_currents=S.net_currents,
-                use_mu_0_factor=self.use_mu_0_factor,
-            ),
-            bs,
+        return RegCoilSolver.from_surfaces(
+            S=S,
+            Sp=self.Sp,
+            bnorm=self.bnorm,
+            fit_b_3d=self.fit_b_3d,
+            normal_b_field=not self.fit_b_3d,
+            use_mu_0_factor=self.use_mu_0_factor,
         )
 
     def get_results(self, bnorm_pred, phi_mn, S, solver=None, lamb: float = 0.0):
@@ -326,9 +341,7 @@ class EMCost(AbstractCost):
         metrics["em_cost"] = metrics["cost_B"]
         if solver is not None:
             if phi_mn is not None:
-                metrics["cost_J"] = np.einsum(
-                    "i,ij,j->", phi_mn, solver.current_basis_dot_prod, phi_mn
-                )
+                metrics["cost_J"] = np.einsum("i,ij,j->", phi_mn, solver.current_basis_dot_prod, phi_mn)
             metrics["em_cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
         if self.slow_metrics:
@@ -336,30 +349,26 @@ class EMCost(AbstractCost):
             metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
             results.j_3d = j_3D
 
-            # j_2D = S.get_j_surface(phi_mn)
-            # metrics["min_j_pol"] = j_2D[:, :, 0].min()
-            # results.j_s = j_2D
-
         return metrics["em_cost"], metrics, results
 
     def cost_multiple_lambdas(self, S, lambdas):
-        solver, bs = self.get_regcoil_solver(S=S)
+        solver = self.get_regcoil_solver(S=S)
         metric_results = {}
         results_d = {}
         for lamb in lambdas:
             phi_mn = solver.solve_lambda(lamb=lamb)
-            bnorm_pred = bs.get_b_field(phi_mn)
+            bnorm_pred = solver.biot_et_savart_op.get_b_field(phi_mn)
             metrics, results = self.get_results(bnorm_pred=bnorm_pred, solver=solver, phi_mn=phi_mn, S=S, lamb=lamb)[1:]
             metric_results[float(lamb)] = to_float(metrics)
             results_d[float(lamb)] = results
         return pd.DataFrame(metric_results).T, results_d
 
     def get_current_weights(self, S):
-        solver, bs = self.get_regcoil_solver(S=S)
+        solver = self.get_regcoil_solver(S=S)
         return solver.solve_lambda(lamb=self.lamb)
 
     def get_b_field(self, coil_surf):
-        solver = self.get_regcoil_solver(coil_surf)[0]
+        solver = self.get_regcoil_solver(coil_surf)
         phi_mn = solver.solve_lambda(self.lamb)
         bs = self.get_bs_operator(coil_surf, normal_b_field=False)
         return bs.get_b_field(phi_mn)

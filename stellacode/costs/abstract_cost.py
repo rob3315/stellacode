@@ -25,7 +25,7 @@ class AbstractCost(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
-        extra = Extra.allow  # allow extra fields
+        extra = Extra.forbid
 
     def cost(self, S, results: Results = Results()):
         raise NotImplementedError
