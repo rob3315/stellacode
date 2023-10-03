@@ -10,7 +10,17 @@ from .utils import cartesian_to_toroidal, fourier_transform
 
 
 class ToroidalSurface(AbstractSurfaceFactory):
-    num_tor_symmetry: int
+    """
+    Axisymmetric surface factory
+
+    Args:
+        * nfp: number of field periods
+        * major_radius: major radius of the torus
+        * minor radius: average minor radius of the torus
+        * fourier_coeffs: Fourier representation of the surface cross section
+        * axis_angle: rotate the surface along the toroidal angle by the given axis angle (just there for testing purposes)
+    """
+    nfp: int
     major_radius: float = 5.0
     minor_radius: float = 1.0
     fourier_coeffs: ArrayLike = np.zeros((4, 2))
@@ -24,7 +34,7 @@ class ToroidalSurface(AbstractSurfaceFactory):
 
     def get_xyz(self, uv):
         u_ = 2 * np.pi * uv[0]  # poloidal angle
-        v_ = 2 * np.pi * uv[1] / self.num_tor_symmetry + self.axis_angle  # toroidal angle
+        v_ = 2 * np.pi * uv[1] / self.nfp + self.axis_angle  # toroidal angle
 
         minor_radius = (fourier_transform(self.fourier_coeffs, u_) + 1) * self.minor_radius
 

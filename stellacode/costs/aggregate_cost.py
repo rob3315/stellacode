@@ -12,7 +12,7 @@ from .utils import merge_dataclasses
 
 
 class AggregateCost(AbstractCost):
-    """Put together all the costs"""
+    """Sum a list of costs"""
 
     costs: list
 

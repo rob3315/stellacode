@@ -48,7 +48,7 @@ def get_toroidal_surface(
         minor_radius = surf_plasma.get_minor_radius()
         major_radius = surf_plasma.get_major_radius()
         tor_surf = ToroidalSurface(
-            num_tor_symmetry=surf_plasma.num_tor_symmetry,
+            nfp=surf_plasma.nfp,
             major_radius=major_radius,
             minor_radius=minor_radius + distance,
             integration_par=current.get_integration_params(factor=factor),
@@ -59,7 +59,7 @@ def get_toroidal_surface(
             tor_surf,
             rotate_coil(
                 current=current,
-                num_tor_symmetry=surf_plasma.num_tor_symmetry,
+                nfp=surf_plasma.nfp,
                 num_surf_per_period=1,
                 continuous_current_in_period=False,
             ),
@@ -114,7 +114,7 @@ def get_pwc_surface(
             integration_par=integration_par,
             make_joints=make_joints,
             axis_angle=axis_angle,
-            num_tor_symmetry=surf_plasma.num_tor_symmetry * rotate_diff_current,
+            nfp=surf_plasma.nfp * rotate_diff_current,
         )
 
     surf_coil = Sequential(
@@ -122,7 +122,7 @@ def get_pwc_surface(
             surf_coil,
             rotate_coil(
                 current=current,
-                num_tor_symmetry=surf_plasma.num_tor_symmetry,
+                nfp=surf_plasma.nfp,
                 num_surf_per_period=rotate_diff_current,
                 continuous_current_in_period=common_current_on_each_rot,
             ),
@@ -135,14 +135,14 @@ def get_pwc_surface(
 
 
 def get_original_cws(path_cws: str, path_plasma: str, n_harmonics: int = 16, factor: int = 6):
-    num_tor_symmetry = VMECIO.from_grid(path_plasma).nfp
+    nfp = VMECIO.from_grid(path_plasma).nfp
     cws = FourierSurface.from_file(
         path_cws,
         integration_par=IntegrationParams(
             num_points_u=n_harmonics * factor,
             num_points_v=n_harmonics * factor,
         ),
-        n_fp=num_tor_symmetry,
+        n_fp=nfp,
     )
 
     cws = Sequential(
@@ -150,7 +150,7 @@ def get_original_cws(path_cws: str, path_plasma: str, n_harmonics: int = 16, fac
             cws,
             rotate_coil(
                 current=Current(num_pol=n_harmonics, num_tor=n_harmonics, net_currents=get_net_current(path_plasma)),
-                num_tor_symmetry=cws.num_tor_symmetry,
+                nfp=cws.nfp,
             ),
         ]
     )
@@ -210,7 +210,7 @@ class FreeCylinders(AbstractBaseFactory):
         factor: int = 6,
         constrain_tor_current: bool = True,
     ):
-        num_sym_by_cyl = surf_plasma.num_tor_symmetry * num_cyl
+        num_sym_by_cyl = surf_plasma.nfp * num_cyl
         angle = 2 * np.pi / num_sym_by_cyl
 
         surfaces = []
@@ -226,7 +226,7 @@ class FreeCylinders(AbstractBaseFactory):
                 integration_par=IntegrationParams(
                     num_points_u=n_harmonics_u * factor, num_points_v=n_harmonics_v * factor
                 ),
-                num_tor_symmetry=num_sym_by_cyl,
+                nfp=num_sym_by_cyl,
                 radius=minor_radius + distance,
                 distance=major_radius,
                 axis_angle=angle * n,
@@ -245,7 +245,7 @@ class FreeCylinders(AbstractBaseFactory):
                 ConcatSurfaces(surface_factories=surfaces),
                 RotatedSurface(
                     rotate_n=RotateNTimes(
-                        angle=2 * np.pi / surf_plasma.num_tor_symmetry, max_num=surf_plasma.num_tor_symmetry
+                        angle=2 * np.pi / surf_plasma.nfp, max_num=surf_plasma.nfp
                     )
                 ),
             ]
@@ -341,7 +341,7 @@ class StackedToroidalCoils(AbstractBaseFactory):
             surface_factories=[
                 surf_factory,
                 CoilFactory(current=current),
-                RotatedSurface(rotate_n=RotateNTimes.from_nfp(surf_plasma.num_tor_symmetry)),
+                RotatedSurface(rotate_n=RotateNTimes.from_nfp(surf_plasma.nfp)),
             ]
         )
 
@@ -391,7 +391,7 @@ def get_free_cylinders(
     n_harmonics: int = 8,
     factor: int = 6,
 ):
-    num_sym_by_cyl = surf_plasma.num_tor_symmetry * num_cyl
+    num_sym_by_cyl = surf_plasma.nfp * num_cyl
     angle = 2 * np.pi / num_sym_by_cyl
     num_points = n_harmonics * factor
     surfaces = []
@@ -409,7 +409,7 @@ def get_free_cylinders(
         surface = CylindricalSurface(
             fourier_coeffs=fourier_coeffs,
             integration_par=IntegrationParams(num_points_u=num_points, num_points_v=num_points),
-            num_tor_symmetry=num_sym_by_cyl,
+            nfp=num_sym_by_cyl,
             radius=minor_radius + distance,
             distance=major_radius,
         )
@@ -430,7 +430,7 @@ def get_free_cylinders(
             ConcatSurfaces(surface_factories=surfaces),
             RotatedSurface(
                 rotate_n=RotateNTimes(
-                    angle=2 * np.pi / surf_plasma.num_tor_symmetry, max_num=surf_plasma.num_tor_symmetry
+                    angle=2 * np.pi / surf_plasma.nfp, max_num=surf_plasma.nfp
                 )
             ),
         ]

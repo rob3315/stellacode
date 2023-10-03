@@ -36,7 +36,7 @@ class FourierSurface(AbstractSurfaceFactory):
     :param Np: see `.abstract_surface.Abstract_surface`
     :type Np: int
     """
-
+    nfp: int
     mf: ArrayLike
     nf: ArrayLike
     Rmn: ArrayLike
@@ -105,7 +105,7 @@ class FourierSurface(AbstractSurfaceFactory):
             mf=m,
             nf=n,
             integration_par=integration_par,
-            num_tor_symmetry=n_fp,
+            nfp=n_fp,
             file_path=path_surf,
         )
 
@@ -113,7 +113,7 @@ class FourierSurface(AbstractSurfaceFactory):
         angle = 2 * np.pi * (uv[0] * self.mf + uv[1] * self.nf)
         R = np.tensordot(self.Rmn, np.cos(angle), 1)
         Z = np.tensordot(self.Zmn, np.sin(angle), 1)
-        phi = 2 * np.pi * uv[1] / self.num_tor_symmetry
+        phi = 2 * np.pi * uv[1] / self.nfp
         return np.array([R * np.cos(phi), R * np.sin(phi), Z])
 
     def get_major_radius(self):
@@ -163,14 +163,14 @@ class FourierSurface(AbstractSurfaceFactory):
             major_radius=self.get_major_radius(),
             file_path=self.file_path,
             **dict(surface),
-            num_tor_symmetry=self.num_tor_symmetry,
+            nfp=self.nfp,
         )
         return surface
 
 
 class FourierSurfaceF(Surface):
     major_radius: ArrayLike
-    num_tor_symmetry: int
+    nfp: int
     file_path: str
 
     def get_major_radius(self):
@@ -199,12 +199,12 @@ class FourierSurfaceF(Surface):
         rphiz_l = []
         for ind, first, last in zip(range(num_cyl), points[:-1], points[1:]):
             xyz_ = xyz[:, first:last]
-            cyl_angle = np.pi / 2 - (np.pi / 2 + np.pi * (-2 * ind + 1) / (self.num_tor_symmetry * num_cyl))+np.pi /(self.num_tor_symmetry * num_cyl)
+            cyl_angle = np.pi / 2 - (np.pi / 2 + np.pi * (-2 * ind + 1) / (self.nfp * num_cyl))+np.pi /(self.nfp * num_cyl)
             surf = CylindricalSurface(
                 integration_par=IntegrationParams(num_points_u=num_pol, num_points_v=last - first),
                 make_joints=False,
                 axis_angle=cyl_angle,
-                num_tor_symmetry=num_cyl * self.num_tor_symmetry,
+                nfp=num_cyl * self.nfp,
                 distance=self.get_major_radius(),
             )
             rphiz2 = surf.to_cylindrical(xyz_)
@@ -307,7 +307,7 @@ class FourierSurfaceF(Surface):
         if num_cyl is None:
             return ToroidalSurface(
                 integration_par=self.integration_par,
-                num_tor_symmetry=self.num_tor_symmetry,
+                nfp=self.nfp,
                 major_radius=self.get_major_radius(),
                 minor_radius=minor_radius,
                 fourier_coeffs=coefs / minor_radius,
@@ -315,7 +315,7 @@ class FourierSurfaceF(Surface):
         else:
             return CylindricalSurface(
                 integration_par=self.integration_par,
-                num_tor_symmetry=self.num_tor_symmetry * num_cyl,
+                nfp=self.nfp * num_cyl,
                 distance=self.get_major_radius(),
                 radius=minor_radius,
                 fourier_coeffs=coefs / minor_radius,
@@ -325,7 +325,7 @@ class FourierSurfaceF(Surface):
         vmec = VMECIO.from_grid(
             self.file_path,
             ntheta=self.integration_par.num_points_u,
-            nzeta=self.integration_par.num_points_v * self.num_tor_symmetry,
+            nzeta=self.integration_par.num_points_v * self.nfp,
             surface_label=surface_labels,
         )
         if isinstance(surface_labels, int):

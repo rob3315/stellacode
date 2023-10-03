@@ -1,25 +1,27 @@
-from typing import Optional
-
 import pandas as pd
-from jax import Array
 from jax.typing import ArrayLike
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel
+import typing as tp
 
-import stellacode.tools as tools
-import stellacode.tools.bnorm as bnorm
+from stellacode.tools.bnorm import get_bnorm
 from stellacode import mu_0_fac, np
 from stellacode.costs.abstract_cost import AbstractCost, Results
 from stellacode.definitions import PlasmaConfig
 from stellacode.surface import Surface, FourierSurface, IntegrationParams
-from stellacode.surface.imports import get_cws, get_plasma_surface
-from stellacode.tools import biot_et_savart, biot_et_savart_op
+from stellacode.surface.imports import get_plasma_surface
 from stellacode.tools.vmec import VMECIO
 
 from .utils import merge_dataclasses
 
 
 class BiotSavartOperator(BaseModel):
-    """Interface for any cost"""
+    """
+    Represent a biot et savart operator
+    
+    Args: 
+        * bs: biot est savart operator tensor
+        * use_mu_0_factor: scale the operator tensor by mu_0 factor.
+    """
 
     class Config:
         arbitrary_types_allowed = True
@@ -36,7 +38,20 @@ class BiotSavartOperator(BaseModel):
 
 
 class RegCoilSolver(BaseModel):
-    """Interface for any cost"""
+    """Solve the regcoil problem: 
+
+    (M + \lambda * Mr)\Phi_mn=rhs+\lambda * rhs_reg
+    
+    Args:
+        * current_basis_dot_prod: scalar product matrix of the current basis functions
+        * matrix: M
+        * matrix_reg: Mr
+        * rhs: rhs
+        * rhs_reg: rhs_reg
+        * net_currents: net poloidal and toroidal currents
+        * biot_et_savart_op: biot et savard operator used in building the problem
+        * use_mu_0_factor: divide inputs by mu_0_fac and multply outputs by mu_0_fac
+    """
 
     class Config:
         arbitrary_types_allowed = True
@@ -51,6 +66,9 @@ class RegCoilSolver(BaseModel):
     use_mu_0_factor: bool = False
 
     def solve_lambda(self, lamb: float = 0.0):
+        """
+        Solve regcoil for a given lambda value
+        """
         if not self.use_mu_0_factor:
             lamb /= mu_0_fac**2
         if self.rhs_reg is not None:
@@ -66,7 +84,15 @@ class RegCoilSolver(BaseModel):
             return phi_mn
 
     @classmethod
-    def from_surfaces(cls, S, Sp, bnorm, fit_b_3d, normal_b_field, use_mu_0_factor):
+    def from_surfaces(
+        cls,
+        S,
+        Sp,
+        bnorm: tp.Optional[ArrayLike],
+        normal_b_field: bool = True,
+        use_mu_0_factor: bool = False,
+        fit_b_3d: bool = False,
+    ):
         if normal_b_field:
             kwargs = dict(plasma_normal=Sp.normal_unit)
         else:
@@ -118,6 +144,17 @@ class RegCoilSolver(BaseModel):
 
 
 class MSEBField(AbstractCost):
+    """
+    Mean Squared error on the plasma magnetic field
+
+    Args:
+        * Sp: plasma surface
+        * bnorm: normal magnetic field on the plasma surface
+        * use_mu_0_factor: Multiply by the mu_0 factor.
+        * slow_metrics: compute metrics that take time.
+        * train_currents: use current parameters to compute the currents
+        * fit_b_3d: the 3D field is regressed instead of the normal magnetic field
+    """
     Sp: Surface
     bnorm: ArrayLike = 0.0
     use_mu_0_factor: bool = False
@@ -149,7 +186,7 @@ class MSEBField(AbstractCost):
         )
 
         if plasma_config.path_bnorm is not None:
-            bnorm_ = -vmec.scale_bnorm(bnorm.get_bnorm(plasma_config.path_bnorm, Sp))
+            bnorm_ = -vmec.scale_bnorm(get_bnorm(plasma_config.path_bnorm, Sp))
             if not use_mu_0_factor:
                 bnorm_ /= mu_0_fac
         else:
@@ -210,7 +247,7 @@ class EMCost(AbstractCost):
         * use_mu_0_factor: Multiply by the mu_0 factor.
         * slow_metrics: compute metrics that take time.
         * train_currents: use current parameters to compute the currents
-        * the 3D field is plotted instead of the normal magnetic field
+        * fit_b_3d: the 3D field is regressed instead of the normal magnetic field
     """
 
     lamb: float
@@ -227,7 +264,7 @@ class EMCost(AbstractCost):
         if Sp is None:
             Sp = get_plasma_surface(config)()
 
-        bnorm_ = -curpol * bnorm.get_bnorm(str(config["other"]["path_bnorm"]), Sp)
+        bnorm_ = -curpol * get_bnorm(str(config["other"]["path_bnorm"]), Sp)
 
         if not use_mu_0_factor:
             bnorm_ /= mu_0_fac
@@ -262,7 +299,7 @@ class EMCost(AbstractCost):
         )
 
         if plasma_config.path_bnorm is not None:
-            bnorm_ = -vmec.scale_bnorm(bnorm.get_bnorm(plasma_config.path_bnorm, Sp))
+            bnorm_ = -vmec.scale_bnorm(get_bnorm(plasma_config.path_bnorm, Sp))
             if not use_mu_0_factor:
                 bnorm_ /= mu_0_fac
         else:

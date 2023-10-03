@@ -42,7 +42,7 @@ def test_reproduce_regcoil_axisym():
 
     current = Current(num_pol=8, num_tor=8, net_currents=get_net_current(w7x_plasma.path_plasma))
     surface = ToroidalSurface(
-        num_tor_symmetry=5,
+        nfp=5,
         major_radius=major_radius,
         minor_radius=minor_radius,
         integration_par=current.get_integration_params(),
@@ -53,7 +53,7 @@ def test_reproduce_regcoil_axisym():
             surface,
             rotate_coil(
                 current=current,
-                num_tor_symmetry=5,
+                nfp=5,
             ),
         ]
     )()
@@ -191,7 +191,7 @@ def test_regcoil_with_axisymmetric():
     minor_radius = em_cost.Sp.get_minor_radius()
 
     S = ToroidalSurface(
-        num_tor_symmetry=3,
+        nfp=3,
         major_radius=major_radius,
         minor_radius=minor_radius + 0.2,
         integration_par=IntegrationParams(num_points_u=32, num_points_v=32),
@@ -212,13 +212,13 @@ def test_pwc_fit():
     surface = CylindricalSurface(
         fourier_coeffs=fourier_coeffs,
         integration_par=IntegrationParams(num_points_u=32, num_points_v=16),
-        num_tor_symmetry=9,
+        nfp=9,
         make_joints=True,
     )
     S = Sequential(
         surface_factories=[
             surface,
-            rotate_coil(current=get_current_potential(config), num_tor_symmetry=3, num_surf_per_period=3),
+            rotate_coil(current=get_current_potential(config), nfp=3, num_surf_per_period=3),
         ]
     )
 
@@ -248,12 +248,12 @@ def test_regcoil_with_pwc():
     surface = CylindricalSurface(
         fourier_coeffs=fourier_coeffs,
         integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
-        num_tor_symmetry=9,
+        nfp=9,
     )
     factory = Sequential(
         surface_factories=[
             surface,
-            rotate_coil(current=get_current_potential(config), num_tor_symmetry=3, num_surf_per_period=3),
+            rotate_coil(current=get_current_potential(config), nfp=3, num_surf_per_period=3),
         ]
     )
 
@@ -335,14 +335,14 @@ def test_regcoil_with_pwc_no_current_at_bc():
     surface = CylindricalSurface(
         fourier_coeffs=fourier_coeffs,
         integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points),
-        num_tor_symmetry=9,
+        nfp=9,
     )
     factory = Sequential(
         surface_factories=[
             surface,
             rotate_coil(
                 current=current,
-                num_tor_symmetry=3,
+                nfp=3,
                 num_surf_per_period=3,
                 continuous_current_in_period=False,
             ),

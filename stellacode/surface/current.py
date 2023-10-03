@@ -6,7 +6,6 @@ from jax.typing import ArrayLike
 from pydantic import BaseModel
 
 from stellacode import np
-import jax
 from .abstract_surface import IntegrationParams
 
 
@@ -15,6 +14,20 @@ def _stack(a, b):
 
 
 class AbstractCurrent(BaseModel):
+    """
+    Abstract class for currents on surfaces
+
+    Args:
+        * num_pol: number of points in the poloidal direction
+        * num_tor: number of points in the toroidal direction
+        * net_currents: net currents along each direction
+        * phi_mn: weights of the current basis functions
+        * sin_basis: use the sine basis functions
+        * cos_basis: use the cosine basis functions
+        * trainable_params: list of trainable parameters
+        * scale_phi_mn: scales the weights of the current basis functions
+    """
+
     num_pol: int
     num_tor: int
     net_currents: ArrayLike
@@ -91,11 +104,13 @@ class AbstractCurrent(BaseModel):
         raise NotImplementedError
 
     @classmethod
-    def _get_matrix_from_grid(cls, grids):
+    def __call__(cls, grids, max_val_v: float = 1):
         raise NotImplementedError
 
 
 class Current(AbstractCurrent):
+    """Current with periodic boundary conditions"""
+
     def _get_coeffs(self):
         grid = onp.mgrid[1 : (self.num_pol + 1), -self.num_tor : (self.num_tor + 1)].reshape((2, -1))
         xm = onp.concatenate((onp.zeros(self.num_tor), grid[0]))
@@ -103,7 +118,7 @@ class Current(AbstractCurrent):
 
         return xm, xn
 
-    def _get_matrix_from_grid(self, grids, max_val_v: float = 1):
+    def __call__(self, grids, max_val_v: float = 1):
         ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
         vgrid /= max_val_v
         lu, lv = ugrid.shape
@@ -159,6 +174,11 @@ class Current(AbstractCurrent):
 
 
 class CurrentZeroTorBC(AbstractCurrent):
+    """
+    Current with periodic boundary condition along the poloidal axis and zero boundary
+    conditions along the toroidal axis
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         num_dims = 0
@@ -172,7 +192,7 @@ class CurrentZeroTorBC(AbstractCurrent):
         grid = onp.mgrid[1 : (self.num_pol + 2), 1 : (self.num_tor + 2)].reshape((2, -1))
         return grid[0], grid[1], onp.arange(1, (self.num_tor + 2))
 
-    def _get_matrix_from_grid(self, grids, max_val_v: float = 1):
+    def __call__(self, grids, max_val_v: float = 1):
         ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
         vgrid = vgrid / max_val_v
         vgrid = vgrid + 0.5 / vgrid.shape[1]

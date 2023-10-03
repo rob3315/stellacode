@@ -45,7 +45,7 @@ def regcoil_vs_lambda(config, lambdas):
         vmec.read_wout("test/data/li383/wout_li383_1.4m.nc")
         vmec.fields(nradius=49, ntheta=64, nzeta=64)
 
-        b_average = np.mean(em_cost.Sp.num_tor_symmetry * vmec.B[1] ** 2 * em_cost.Sp.ds)
+        b_average = np.mean(em_cost.Sp.nfp * vmec.B[1] ** 2 * em_cost.Sp.ds)
 
         results[lamb]["B/dB"] = results[lamb]["cost_B"] / b_average
 

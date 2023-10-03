@@ -6,6 +6,14 @@ import typing as tp
 
 class RotateNTimes:
     def __init__(self, angle: float, max_num: int = 1, min_num: int = 0):
+        """
+        Rotate and duplicate a surface along the toroidal angle.
+
+        Args:
+            * angle: angle of each rotation.
+            * max_num: maximum number of rotations.
+            * min_num: minimum number of rotations.
+        """
         self.min_num = min_num
         self.max_num = max_num
         self.angle = angle

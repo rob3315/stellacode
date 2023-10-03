@@ -4,6 +4,9 @@ from pydantic import BaseModel
 
 
 class ConcatDictArray:
+    """
+    Concatenate and deconcatenate a dict of arrays in and from a vector 
+    """
     def apply(self, darr):
         self.shapes = {k: np.array(np.array(v).shape, dtype=int) for k, v in darr.items()}
         return np.concatenate([np.reshape(v, -1) for v in darr.values()])
@@ -25,6 +28,14 @@ ScaleDict = tp.Dict[str, tp.Union[float, tp.Tuple[float, float], None]]
 
 
 class ScaleDictArray(BaseModel):
+    """
+    Scale a dict of arrays to have a 0 average and a unit std.
+
+    Args:
+        * scales: stored list of scales, scales which are preset will not be computed from the arrays
+        * min_std: minimum possible std (to avoid division by zero errors)
+        * additional_scale: scale all arrays by this value
+    """
     scales: ScaleDict = {}
     min_std: float = 1e-8
     additional_scale: float = 1
@@ -70,6 +81,9 @@ class ScaleDictArray(BaseModel):
 
 
 class ConcatScaleDictArray(BaseModel):
+    """
+    Concat and scale a dict of arrays
+    """
     concater: ConcatDictArray = ConcatDictArray()
     scaler: tp.Optional[ScaleDictArray] = None
 

@@ -34,14 +34,14 @@ def get_cws_from_plasma_config(
     mult_coil_points: int = 6,
 ):
     assert plasma_config.path_cws is not None
-    num_tor_symmetry = VMECIO.from_grid(plasma_config.path_plasma).nfp
+    nfp = VMECIO.from_grid(plasma_config.path_plasma).nfp
     cws = FourierSurface.from_file(
         plasma_config.path_cws,
         integration_par=IntegrationParams(
             num_points_u=n_harmonics_current * mult_coil_points,
             num_points_v=n_harmonics_current * mult_coil_points,
         ),
-        n_fp=num_tor_symmetry,
+        n_fp=nfp,
     )
 
     current = Current(
@@ -54,7 +54,7 @@ def get_cws_from_plasma_config(
             cws,
             rotate_coil(
                 current=current,
-                num_tor_symmetry=cws.num_tor_symmetry,
+                nfp=cws.nfp,
             ),
         ]
     )
@@ -70,17 +70,17 @@ def get_cws_grid(config):
 
 def get_net_current(plasma_path):
     vmec = VMECIO.from_grid(plasma_path)
-    num_tor_symmetry = vmec.nfp
-    return -np.array([vmec.net_poloidal_current / num_tor_symmetry, 0.0])
+    nfp = vmec.nfp
+    return -np.array([vmec.net_poloidal_current / nfp, 0.0])
 
 
 def get_current_potential(config):
     mpol_coil = int(config["geometry"]["mpol_coil"])
     ntor_coil = int(config["geometry"]["ntor_coil"])
-    num_tor_symmetry = int(config["geometry"]["Np"])
+    nfp = int(config["geometry"]["Np"])
     net_currents = -np.array(
         [
-            float(config["other"]["net_poloidal_current_Amperes"]) / num_tor_symmetry,
+            float(config["other"]["net_poloidal_current_Amperes"]) / nfp,
             float(config["other"]["net_toroidal_current_Amperes"]),
         ]
     )

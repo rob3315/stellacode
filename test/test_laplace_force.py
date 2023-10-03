@@ -44,7 +44,7 @@ def test_laplace_force():
             fourier_factory,
             rotate_coil(
                 current=Current(num_pol=2, num_tor=2, cos_basis=True, net_currents=np.array([I, G])),
-                num_tor_symmetry=fourier_factory.num_tor_symmetry,
+                nfp=fourier_factory.nfp,
             ),
         ]
     )
@@ -81,7 +81,7 @@ def test_laplace_force():
         normal_unit=coil_surf.normal_unit,
         ds=coil_surf.ds,
         g_up_map=coil_surf.get_g_upper_basis(),
-        num_tor_symmetry=fourier_factory.num_tor_symmetry,
+        nfp=fourier_factory.nfp,
         du=1 / 11,
         dv=1 / 14,
         end_u=-1,
@@ -95,7 +95,7 @@ def test_laplace_force():
     force3 = f_laplace(coil_surf, 5, 10, Np=1, lu=12, lv=14)
     assert np.allclose(force2[5, 10], force3)
 
-    force2 = coil_surf.laplace_force(num_tor_symmetry=fourier_factory.num_tor_symmetry)
+    force2 = coil_surf.laplace_force(nfp=fourier_factory.nfp)
 
     # Approximate and rigorous Laplace forces are close:
     assert np.max(np.linalg.norm(force[:, :14] - force2, axis=-1)) / np.mean(np.linalg.norm(force2)) < 0.1
@@ -155,7 +155,7 @@ def f_laplace(surf, i, j, Np, lu, lv):
     res5 = np.zeros(3)
     res6 = np.zeros(3)
     res = np.zeros(3)
-    # Np = surf.num_tor_symmetry
+    # Np = surf.nfp
 
     lv = lv + 1  # because the code expects the points at the edges
     # of the surface are duplicated to ensure precise gradient calculation at the edges.

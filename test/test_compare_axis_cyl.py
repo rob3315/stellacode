@@ -24,20 +24,20 @@ def test_compare_axisymmetric_vs_cylindrical():
     rotate_diff_current = 32
     major_radius = 5.5
     minor_radius = 1.036458468437195
-    num_tor_symmetry = int(config["geometry"]["Np"])
+    nfp = int(config["geometry"]["Np"])
     net_currents = np.array(
         [
-            float(config["other"]["net_poloidal_current_Amperes"]) / num_tor_symmetry,
+            float(config["other"]["net_poloidal_current_Amperes"]) / nfp,
             float(config["other"]["net_toroidal_current_Amperes"]),
         ]
     )
     current = Current(num_pol=8, num_tor=8, net_currents=net_currents)
     n_pol_coil = 32
     n_tor_coil = 32
-    total_num_rot = num_tor_symmetry * rotate_diff_current
+    total_num_rot = nfp * rotate_diff_current
     surface = CylindricalSurface(
         integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil // rotate_diff_current),
-        num_tor_symmetry=total_num_rot,
+        nfp=total_num_rot,
         make_joints=False,
         distance=major_radius,
         radius=minor_radius,
@@ -48,7 +48,7 @@ def test_compare_axisymmetric_vs_cylindrical():
     surf_pwc = Sequential(
         surface_factories=[
             ToroidalSurface(
-                num_tor_symmetry=total_num_rot,
+                nfp=total_num_rot,
                 major_radius=major_radius,
                 minor_radius=minor_radius,
                 integration_par=IntegrationParams(
@@ -57,7 +57,7 @@ def test_compare_axisymmetric_vs_cylindrical():
             ),
             rotate_coil(
                 current=current,
-                num_tor_symmetry=num_tor_symmetry,
+                nfp=nfp,
                 num_surf_per_period=rotate_diff_current,
                 continuous_current_in_period=True,
             ),
@@ -67,14 +67,14 @@ def test_compare_axisymmetric_vs_cylindrical():
     surf_axi = Sequential(
         surface_factories=[
             ToroidalSurface(
-                num_tor_symmetry=num_tor_symmetry,
+                nfp=nfp,
                 major_radius=major_radius,
                 minor_radius=minor_radius,
                 integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
             ),
             rotate_coil(
                 current=current,
-                num_tor_symmetry=num_tor_symmetry,
+                nfp=nfp,
                 num_surf_per_period=1,
                 continuous_current_in_period=False,
             ),

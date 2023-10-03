@@ -52,9 +52,9 @@ def test_non_axisymmetric_cylinders():
     neg_curv = NegTorCurvatureCost(constraint=Constraint(limit=-0.05, distance=0.1, minimum=True, method=method))
     agg_cost = AggregateCost(costs=[em_cost, distance, neg_curv, current_ctr])
 
-    num_tor_symmetry = VMECIO.from_grid(w7x_plasma.path_plasma).nfp
+    nfp = VMECIO.from_grid(w7x_plasma.path_plasma).nfp
     num_cyl = 3
-    num_sym_by_cyl = num_tor_symmetry * num_cyl
+    num_sym_by_cyl = nfp * num_cyl
     angle = 2 * np.pi / num_sym_by_cyl
 
     surfaces = []
@@ -72,7 +72,7 @@ def test_non_axisymmetric_cylinders():
         surface = CylindricalSurface(
             fourier_coeffs=fourier_coeffs,
             integration_par=IntegrationParams(num_points_u=num_points, num_points_v=num_points),
-            num_tor_symmetry=num_sym_by_cyl,
+            nfp=num_sym_by_cyl,
             radius=minor_radius * 1.5,
             distance=major_radius,
         )
@@ -93,7 +93,7 @@ def test_non_axisymmetric_cylinders():
     coil_surf = Sequential(
         surface_factories=[
             ConcatSurfaces(surface_factories=surfaces),
-            RotatedSurface(rotate_n=RotateNTimes(angle=2 * np.pi / num_tor_symmetry, max_num=num_tor_symmetry)),
+            RotatedSurface(rotate_n=RotateNTimes(angle=2 * np.pi / nfp, max_num=nfp)),
         ]
     )
     opt = Optimizer.from_cost(

@@ -4,6 +4,16 @@ from stellacode import np
 
 
 class Constraint(BaseModel):
+    """
+    Represent a constraint
+
+    Args:
+        * limit: constraint limit
+        * distance: characteristic length of the constraint
+        * weight: additional weight multiplied by the cost
+        * minimum: the constraint is a minimum
+        * method: one of quadratic, inverse, quadratic_log
+    """
     limit: float = 0.0
     distance: float = 1.0
     weight: float = 1.0

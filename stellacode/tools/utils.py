@@ -25,15 +25,12 @@ def get_min_dist(S1, S2):
     # return np.linalg.norm(S1.P[...,None,None,:]-S2.P[None,None,...], axis=-1).min()
 
 
-def cross(v1, v2):
-    return np.einsum("ija,ijb, dab->ijd", v1, v2, eijk)
-
-
-def fourier_coefficients(li, lf, n, f):
+def fourier_coefficients(li, lf, n, fun):
+    """Compute the n first fourier coefficients of the function fun from li to lf"""
     # from: https://www.bragitoff.com/2021/05/fourier-series-coefficients-and-visualization-python-program/
     l = (lf - li) / 2
     # Constant term
-    a0 = 1 / l * quad(lambda x: f(x), li, lf)[0]
+    a0 = 1 / l * quad(lambda x: fun(x), li, lf)[0]
     # Cosine coefficents
     A = np.zeros((n))
     # Sine coefficents
