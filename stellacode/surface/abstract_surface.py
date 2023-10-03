@@ -285,19 +285,19 @@ class Surface(BaseModel):
         """Returns X, Y, Z arrays of one field period, adding redundancy of first column."""
         import numpy as np
 
-        P = np.array(self.xyz[:,:num_tor_pts])
+        P = np.array(self.xyz[:, :num_tor_pts])
         return [np.concatenate((P, P[:1]), axis=0)]
 
-    def expand_for_plot_whole(self, detach_parts: bool = False, num_tor_pts=100000000000):
+    def expand_for_plot_whole(self, num_tor_symmetry: int, detach_parts: bool = False):
         """Returns X, Y, Z arrays of the whole Stellarator."""
         import numpy as np
 
         points = self.expand_for_plot_part()[0]
 
-        points_rot = RotateNTimes.from_nfp(self.num_tor_symmetry)(points)
+        points_rot = RotateNTimes.from_nfp(num_tor_symmetry)(points)
         pol, torrot, _ = points_rot.shape
-        points_rot = np.reshape(points_rot, (pol, self.num_tor_symmetry, torrot // self.num_tor_symmetry, 3))
-        points_ = [points_rot[:, i] for i in range(self.num_tor_symmetry)]
+        points_rot = np.reshape(points_rot, (pol, num_tor_symmetry, torrot // num_tor_symmetry, 3))
+        points_ = [points_rot[:, i] for i in range(num_tor_symmetry)]
 
         if detach_parts:
             return points_
@@ -309,7 +309,7 @@ class Surface(BaseModel):
         self,
         scalar: tp.Optional[onp.ndarray] = None,
         vector_field: tp.Optional[onp.ndarray] = None,
-        only_one_period: bool = False,
+        num_tor_symmetry: tp.Optional[int] = None,
         representation: str = "surface",
         color: tp.Optional[str] = None,
         colormap: str = "Wistia",
@@ -319,53 +319,53 @@ class Surface(BaseModel):
             scale_factor=0.1,
         ),
         mesh_kwargs: dict = dict(),
-        num_tor_pts: int=1000000000000,
-        reduce_res: int=1
+        num_tor_pts: int = 1000000000000,
+        reduce_res: int = 1,
+        cut_tor: tp.Optional[int]=None,
     ):
         """Plot the surface"""
         import numpy as np
         from mayavi import mlab
 
-        if only_one_period:
+        if num_tor_symmetry is None:
             xyz = self.expand_for_plot_part(num_tor_pts=num_tor_pts)
         else:
-            xyz = self.expand_for_plot_whole(detach_parts, num_tor_pts=num_tor_pts)
+            xyz = self.expand_for_plot_whole(detach_parts, num_tor_symmetry=num_tor_symmetry)
 
         kwargs = mesh_kwargs
         if scalar is not None:
             scalar_ = np.concatenate((scalar, scalar[0:1]), axis=0)
-            kwargs["scalars"] = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[::reduce_res,::reduce_res]
+            kwargs["scalars"] = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[::reduce_res, ::reduce_res]
 
-        index = 0
         for xyz_ in xyz:
-            surf = mlab.mesh(
-                xyz_[..., 0],
-                xyz_[..., 1],
-                xyz_[..., 2],
-                representation=representation,
-                colormap=colormap,
-                color=color,
-                **kwargs,
-            )
-            if vector_field is not None:
-                vector_field = vector_field / np.max(vector_field)
-                max_tor = xyz_.shape[1]
-                if detach_parts or only_one_period:
-                    xyz_c = xyz_[:-1]
-                else:
-                    xyz_c = xyz_[:-1, :-1]
-
-                mlab.quiver3d(
-                    xyz_c[::reduce_res, ::reduce_res, 0],
-                    xyz_c[::reduce_res, ::reduce_res, 1],
-                    xyz_c[::reduce_res, ::reduce_res, 2],
-                    vector_field[::reduce_res, index : (index + max_tor):reduce_res, 0],
-                    vector_field[::reduce_res, index : (index + max_tor):reduce_res, 1],
-                    vector_field[::reduce_res, index : (index + max_tor):reduce_res, 2],
-                    **quiver_kwargs,
+            if cut_tor is not None:
+                cuts = np.arange(xyz_.shape[1] + 1, step=cut_tor)
+            else:
+                cuts = [0, 100000000]
+            for first, last in zip(cuts[:-1], cuts[1:]):
+                xyz_c = xyz_[:, first:last]
+                surf = mlab.mesh(
+                    xyz_c[..., 0],
+                    xyz_c[..., 1],
+                    xyz_c[..., 2],
+                    representation=representation,
+                    colormap=colormap,
+                    color=color,
+                    **kwargs,
                 )
+                if vector_field is not None:
+                    vector_field_ = vector_field[:, first:last] / np.max(vector_field)
 
-                index += max_tor
+                    xyz_c = xyz_c[:-1]
+                    mlab.quiver3d(
+                        xyz_c[::reduce_res, ::reduce_res, 0],
+                        xyz_c[::reduce_res, ::reduce_res, 1],
+                        xyz_c[::reduce_res, ::reduce_res, 2],
+                        vector_field_[::reduce_res, ::reduce_res, 0],
+                        vector_field_[::reduce_res, ::reduce_res, 1],
+                        vector_field_[::reduce_res, ::reduce_res, 2],
+                        **quiver_kwargs,
+                    )
 
         mlab.plot3d(np.linspace(0, 10, 100), np.zeros(100), np.zeros(100), color=(1, 0, 0))
         mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100), np.zeros(100), color=(0, 1, 0))

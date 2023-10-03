@@ -226,8 +226,8 @@ def test_pwc_fit():
 
     # phi_mn = em_cost.get_current_weights(new_surface)
     # j_3d = new_surface().get_j_3D()
-    # S.plot(only_one_period=True, vector_field=j_3d)
-    # new_surface.surface_factories[0]().plot(only_one_period=True,)
+    # S.plot(vector_field=j_3d)
+    # new_surface.surface_factories[0]().plot()
     # em_cost.Sp.plot()
 
     assert new_surface().get_min_distance(em_cost.Sp.xyz) < 3e-2
@@ -360,8 +360,8 @@ def test_regcoil_with_pwc_no_current_at_bc():
     assert np.max(np.abs(j_s[:, 0, 1]) / np.max(np.abs(j_s))) < 0.1
 
     j_3d = new_surface.get_j_3D(phi_mn)
-    # new_surface.plot(only_one_period=True, vector_field=j_3d)
-    # new_surface.surface.plot(only_one_period=False, vector_field=j_3d, detach_parts=True)
+    # new_surface.plot(vector_field=j_3d)
+    # new_surface.surface.plot(vector_field=j_3d, detach_parts=True)
 
 
 def test_plot_plasma_cross_sections():

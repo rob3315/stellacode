@@ -105,7 +105,7 @@ def test_non_axisymmetric_cylinders():
 
     cost, metrics, results, optimized_params = opt.optimize()
     # j_3d = coil_surf.get_j_3D()
-    # coil_surf.surface.plot(only_one_period=True, vector_field=j_3d)
+    # coil_surf.surface.plot(vector_field=j_3d)
 
     metrics["deltaB_B"] = np.sqrt(metrics["cost_B"] / 1056)
 

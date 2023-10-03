@@ -212,11 +212,11 @@ class FourierSurfaceF(Surface):
             # fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
             # ax.plot(rphiz[:,0, 1], rphiz[:,0, 0])
             # plt.show()
-            # surf().plot(only_one_period=True)
+            # surf().plot()
             rphiz_l.append(rphiz)
 
         rphiz_l = onp.concatenate(rphiz_l, axis=1)
-        # self.plot(only_one_period=True)
+        # self.plot()
         # import pdb;pdb.set_trace()
         # rphiz_l = np.reshape(rphiz_l, (-1, 3))
         # fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
