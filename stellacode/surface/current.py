@@ -3,10 +3,10 @@ import typing as tp
 import numpy as onp
 import pandas as pd
 from jax.typing import ArrayLike
+from jax import Array
 from pydantic import BaseModel
 
 from stellacode import np
-import jax
 from .abstract_surface import IntegrationParams
 
 
@@ -15,6 +15,20 @@ def _stack(a, b):
 
 
 class AbstractCurrent(BaseModel):
+    """
+    Abstract class for currents on surfaces
+
+    Args:
+        * num_pol: number of points in the poloidal direction
+        * num_tor: number of points in the toroidal direction
+        * net_currents: net currents along each direction
+        * phi_mn: weights of the current basis functions
+        * sin_basis: use the sine basis functions
+        * cos_basis: use the cosine basis functions
+        * trainable_params: list of trainable parameters
+        * scale_phi_mn: scales the weights of the current basis functions
+    """
+
     num_pol: int
     num_tor: int
     net_currents: ArrayLike
@@ -81,7 +95,7 @@ class AbstractCurrent(BaseModel):
             phi_mn = np.concatenate((self.net_currents, phi_mn))
         return phi_mn
 
-    def set_phi_mn(self, phi_mn: float):
+    def set_phi_mn(self, phi_mn: Array):
         self.phi_mn = phi_mn / self.scale_phi_mn
 
     def get_trainable_params(self):
@@ -91,11 +105,13 @@ class AbstractCurrent(BaseModel):
         raise NotImplementedError
 
     @classmethod
-    def _get_matrix_from_grid(cls, grids, sin_basis, cos_basis, num_pol, num_tor):
+    def __call__(cls, grids, max_val_v: float = 1):
         raise NotImplementedError
 
 
 class Current(AbstractCurrent):
+    """Current with periodic boundary conditions"""
+
     def _get_coeffs(self):
         grid = onp.mgrid[1 : (self.num_pol + 1), -self.num_tor : (self.num_tor + 1)].reshape((2, -1))
         xm = onp.concatenate((onp.zeros(self.num_tor), grid[0]))
@@ -103,8 +119,9 @@ class Current(AbstractCurrent):
 
         return xm, xn
 
-    def _get_matrix_from_grid(self, grids):
+    def __call__(self, grids, max_val_v: float = 1):
         ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
+        vgrid /= max_val_v
         lu, lv = ugrid.shape
         xm, xn = self._get_coeffs()
         xm = xm[:, None, None]
@@ -118,16 +135,16 @@ class Current(AbstractCurrent):
         if self.sin_basis:
             # Phi = sin(xm*u+xn*v)
             # dPhi/dv, -dPhi/du
-            dphi.append(_stack(xn * onp.cos(angle), -xm * onp.cos(angle)))
+            dphi.append(_stack(xn * onp.cos(angle) / max_val_v, -xm * onp.cos(angle)))
 
         if self.cos_basis:
             # Phi = cos(xm*u+xn*v)
-            dphi.append(-_stack(xn * onp.sin(angle), xm * onp.sin(angle)))
+            dphi.append(-_stack(xn * onp.sin(angle) / max_val_v, xm * onp.sin(angle)))
 
         dphi = onp.concatenate(dphi, axis=0)
         dphi = onp.concatenate((onp.zeros((2, lu, lv, 2)), dphi), axis=0)
 
-        dphi[0, :, :, 0] = onp.ones((lu, lv))
+        dphi[0, :, :, 0] = onp.ones((lu, lv)) / max_val_v
         dphi[1, :, :, 1] = onp.ones((lu, lv))
 
         return dphi
@@ -158,6 +175,11 @@ class Current(AbstractCurrent):
 
 
 class CurrentZeroTorBC(AbstractCurrent):
+    """
+    Current with periodic boundary condition along the poloidal axis and zero boundary
+    conditions along the toroidal axis
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         num_dims = 0
@@ -171,9 +193,13 @@ class CurrentZeroTorBC(AbstractCurrent):
         grid = onp.mgrid[1 : (self.num_pol + 2), 1 : (self.num_tor + 2)].reshape((2, -1))
         return grid[0], grid[1], onp.arange(1, (self.num_tor + 2))
 
-    def _get_matrix_from_grid(self, grids):
+    def __call__(self, grids, max_val_v: float = 1):
         ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
+        vgrid = vgrid / max_val_v
         vgrid = vgrid + 0.5 / vgrid.shape[1]
+        assert np.all(vgrid > 0)
+        assert np.all(vgrid < 1)
+
         lu, lv = ugrid.shape
         xm, xn, xn0 = self._get_coeffs()
         xm = xm[:, None, None]
@@ -193,18 +219,18 @@ class CurrentZeroTorBC(AbstractCurrent):
         if self.sin_basis:
             # current for Phi=sin(2*onp.pi*xn*v)
             cosv0 = onp.cos(onp.pi * xn0 * vgrid)
-            dphi.append(_stack(xn0 * cosv0, onp.zeros_like(xn0 * cosv0)))
+            dphi.append(_stack(xn0 * cosv0 / max_val_v, onp.zeros_like(xn0 * cosv0)))
             # current for Phi=sin(2*onp.pi*xm*u)*sin(onp.pi*xn*v)
-            dphi.append(_stack(xn * sinu * cosv / 2, -xm * cosu * sinv))
+            dphi.append(_stack(xn * sinu * cosv / 2 / max_val_v, -xm * cosu * sinv))
 
         if self.cos_basis:
             # current for Phi=cos(2*onp.pi*xm*u)*sin(2*onp.pi*xn*v)
-            dphi.append(_stack(xn * cosu * cosv / 2, xm * sinu * sinv))
+            dphi.append(_stack(xn * cosu * cosv / 2 / max_val_v, xm * sinu * sinv))
 
         dphi = onp.concatenate(dphi, axis=0)
         dphi = onp.concatenate((onp.zeros((2, lu, lv, 2)), dphi), axis=0)
 
-        dphi[0, :, :, 0] = onp.ones((lu, lv))
+        dphi[0, :, :, 0] = onp.ones((lu, lv)) / max_val_v
         dphi[1, :, :, 1] = onp.ones((lu, lv))
 
         return dphi

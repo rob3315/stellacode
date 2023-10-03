@@ -75,14 +75,14 @@ def fit_to_surface(fitted_surface, surface, distance: float = 0.0):
     major_radius = surface.get_major_radius()
     minor_radius = surface.get_minor_radius()
     new_surf = fitted_surface.copy()
-    new_surf.update_params(
+    new_surf.surface_factories[0].update_params(
         radius=minor_radius + major_radius / 3,
         distance=major_radius,
     )
 
-    min_dist = new_surf.get_min_distance(surface.xyz)
+    min_dist = new_surf().get_min_distance(surface.xyz)
 
-    new_surf.update_params(
+    new_surf.surface_factories[0].update_params(
         radius=minor_radius + major_radius / 3 - min_dist + distance,
         distance=major_radius,
     )
@@ -127,7 +127,7 @@ def get_principles(hess_xyz, jac_xyz, normal_unit):
 
 
 def get_net_current(coil_surf, toroidal: bool = True):
-    j_3d = coil_surf.get_j_3D()
+    j_3d = coil_surf.j_3d
     vec_u = coil_surf.jac_xyz[..., 0]
     vec_v = coil_surf.jac_xyz[..., 1]
     if toroidal:

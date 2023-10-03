@@ -16,9 +16,10 @@ from stellacode.surface import (
     ToroidalSurface,
 )
 from stellacode.surface.imports import get_net_current
-from stellacode.surface import CylindricalSurface, RotatedCoil, FourierSurface
+from stellacode.surface import CylindricalSurface, rotate_coil, FourierSurface
 from stellacode.surface.factories import get_original_cws
 from stellacode.tools.laplace_force import laplace_force
+from stellacode.surface.factory_tools import Sequential
 
 
 def test_laplace_force():
@@ -29,7 +30,7 @@ def test_laplace_force():
     # coil_surf = get_original_cws(path_cws=ncsx_plasma.path_cws,
     #                              path_plasma=ncsx_plasma.path_plasma, n_harmonics = 2, factor = 4)
 
-    coil_surf = FourierSurface.from_file(
+    fourier_factory = FourierSurface.from_file(
         ncsx_plasma.path_cws,
         integration_par=IntegrationParams(num_points_u=lu, num_points_v=lv),
         n_fp=5,
@@ -38,10 +39,15 @@ def test_laplace_force():
     import numpy as onp
 
     onp.random.seed(987)
-    coil_surf = RotatedCoil(
-        surface=coil_surf,
-        current=Current(num_pol=2, num_tor=2, cos_basis=True, net_currents=np.array([I, G])),
-        num_tor_symmetry=coil_surf.num_tor_symmetry,
+    factory = Sequential(
+        surface_factories=[
+            fourier_factory,
+            rotate_coil(
+                current=Current(num_pol=2, num_tor=2, cos_basis=True, net_currents=np.array([I, G])),
+                nfp=fourier_factory.nfp,
+                build_coils=True
+            ),
+        ]
     )
 
     # current_n_coeff = 8
@@ -62,7 +68,8 @@ def test_laplace_force():
     l = 2 * (m * (2 * n + 1) + n)
     lst_coeff = 1e3 * (2 * onp.random.random(l) - 1) / (onp.arange(1, l + 1) ** 2)
 
-    coil_surf.current.phi_mn = lst_coeff / 1e8  # because of the scaling, a setter would be better.
+    factory.surface_factories[1].surface_factories[0].current.phi_mn = lst_coeff / 1e8  # because of the scaling, a setter would be better.
+    coil_surf = factory()
     force = coil_surf.naive_laplace_force(
         epsilon=np.min(np.linalg.norm(coil_surf.xyz[1:] - coil_surf.xyz[:-1], axis=-1)) * 2
     )
@@ -70,12 +77,12 @@ def test_laplace_force():
     np.max(np.linalg.norm(force, axis=-1))
 
     force2 = laplace_force(
-        j_3d=coil_surf.get_j_3D(),
+        j_3d=coil_surf.j_3d,
         xyz=coil_surf.xyz,
         normal_unit=coil_surf.normal_unit,
         ds=coil_surf.ds,
         g_up_map=coil_surf.get_g_upper_basis(),
-        num_tor_symmetry=coil_surf.num_tor_symmetry,
+        nfp=fourier_factory.nfp,
         du=1 / 11,
         dv=1 / 14,
         end_u=-1,
@@ -83,13 +90,13 @@ def test_laplace_force():
     )
 
     # Check that the code for new and old versions of Laplace force are the same
-    force3 = f_laplace(coil_surf, 0, 1, Np=1)
+    force3 = f_laplace(coil_surf, 0, 1, Np=1, lu=12, lv=14)
     assert np.allclose(force2[0, 1], force3)
 
-    force3 = f_laplace(coil_surf, 5, 10, Np=1)
+    force3 = f_laplace(coil_surf, 5, 10, Np=1, lu=12, lv=14)
     assert np.allclose(force2[5, 10], force3)
 
-    force2 = coil_surf.laplace_force()
+    force2 = coil_surf.laplace_force(nfp=fourier_factory.nfp)
 
     # Approximate and rigorous Laplace forces are close:
     assert np.max(np.linalg.norm(force[:, :14] - force2, axis=-1)) / np.mean(np.linalg.norm(force2)) < 0.1
@@ -139,7 +146,7 @@ def pi_x(f, norm):
     return f - np.repeat(np.sum(f * norm, axis=2)[:, :, np.newaxis], 3, axis=2) * norm
 
 
-def f_laplace(surf, i, j, Np):
+def f_laplace(surf, i, j, Np, lu, lv):
     import numpy as np
 
     res1 = np.zeros(3)
@@ -149,8 +156,8 @@ def f_laplace(surf, i, j, Np):
     res5 = np.zeros(3)
     res6 = np.zeros(3)
     res = np.zeros(3)
-    # Np = surf.num_tor_symmetry
-    lu, lv = surf.nbpts
+    # Np = surf.nfp
+
     lv = lv + 1  # because the code expects the points at the edges
     # of the surface are duplicated to ensure precise gradient calculation at the edges.
     du, dv = (1 / (lu - 1), 1 / (lv - 1))
@@ -162,7 +169,7 @@ def f_laplace(surf, i, j, Np):
     ds = surf.ds[:, :lv]
     g_upper = surf.get_g_upper_contravariant()[:, :lv]
 
-    j2 = np.array(surf.get_j_3D())[:, :lv, :]
+    j2 = np.array(surf.j_3d)[:, :lv, :]
 
     j1 = j2[i, j, :]
     rot = np.array(
@@ -203,7 +210,7 @@ def f_laplace(surf, i, j, Np):
         lu, lv = pi_xjy_uv.shape[:2]
 
         P1 = -1 * (iymx * div(pi_xjy_uv, ds=ds))[:, :, np.newaxis] * j2
-        print("P1")
+        # print("P1")
         # -1/(y-x) *(pi_x j_1(y) \dot \nabla) j_2(x)
         #### Not good keep get_gradj
         # dj2=surf.get_gradj(coeff2)
@@ -216,7 +223,7 @@ def f_laplace(surf, i, j, Np):
             P2[:, :, 1] += pi_xjy_uv[:, :, k] * dj2y[k]
             P2[:, :, 2] += pi_xjy_uv[:, :, k] * dj2z[k]
         P2 *= -1 * iymx[:, :, np.newaxis]
-        print("P2")
+        # print("P2")
         # 1/(y-x) \nabla <j1(y) j2(x) >
         f = np.sum(j1ya * j2, axis=2)
         # error is here !!!!!
@@ -238,7 +245,7 @@ def f_laplace(surf, i, j, Np):
             # P3[:,:,k]+=iymx*(gradf[0,:,:]*surf.surf.dpsidu[k]+gradf[1,:,:]*surf.surf.dpsidv[k])# lu x lv x 3
         # 1/(y-x) <j1(y) j2(x) > div \pi_x
 
-        print("P3")
+        # print("P3")
         # highly not optimal
         e1 = np.tile(np.array([1, 0, 0]), (lu, lv, 1))
         e2 = np.tile(np.array([0, 1, 0]), (lu, lv, 1))
@@ -253,17 +260,17 @@ def f_laplace(surf, i, j, Np):
         P6[:, :, 0] = iymx * f * div(pi_xe1_uv, ds=ds)
         P6[:, :, 1] = iymx * f * div(pi_xe2_uv, ds=ds)
         P6[:, :, 2] = iymx * f * div(pi_xe3_uv, ds=ds)
-        print("P6")
+        # print("P6")
         # <j1(y) n(x) > <y-x,n(x)> /|y-x|^3 j2(x)
         ymx = np.zeros((3, lu, lv))
         ymx = np.array([newY[0] - X_, newY[1] - Y_, newY[2] - Z_])  # y-x
         K = iymx**3 * np.sum(ymx * np.transpose(norm, (2, 0, 1)), axis=0)  # K=<y-x,n(x)> /|y-x|^3
         c = K * np.sum(j1ya * norm, axis=2)
         P4 = np.einsum("...,...k->...k", c, j2)
-        print("P4")
+        # print("P4")
         # -<j1(y) j2(x)> <y−x,n(x)>/|y-x|^3 n(x)dx
         P5 = -1 * np.einsum("...,...k->...k", f * K, norm)
-        print("P5")
+        # print("P5")
         # Integration
         # S=self.surf.dS[:-1,:-1,np.newaxis]*(P1+P2+P3+P4+P5)[:-1,:-1,:]
         S1 = ds[:-1, :-1, np.newaxis] * P1[:-1, :-1, :]

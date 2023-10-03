@@ -42,7 +42,7 @@ S = CylindricalSurface(
     radius=minor_radius + 0.1294 + 1.0,
     distance=major_radius,
     nbpts=(64, 64),
-    num_tor_symmetry=6,
+    nfp=6,
 )
 get_min_dist(S.get_rotated_xyz(), em_cost.Sp.xyz)
 

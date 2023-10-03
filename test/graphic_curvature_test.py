@@ -68,7 +68,7 @@ def test_graphic_curvature():
         "data/li383/cws.txt",
         integration_par=IntegrationParams(num_points_u=lu, num_points_v=lv),
         n_fp=3,
-    )
+    )()
 
     tmp = surface_curvature_num(S.xyz[:, :, 0], S.xyz[:, :, 1], S.xyz[:, :, 2])
     # Plot numerical vs analytical curvature

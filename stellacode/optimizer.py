@@ -2,17 +2,17 @@ import configparser
 import logging
 import os
 import pickle
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 
 import jax
 from pydantic import BaseModel, Extra
 
 from stellacode.costs.abstract_cost import Results
 from stellacode.costs.aggregate_cost import AggregateCost
-from stellacode.surface.coil_surface import CoilSurface
 from stellacode.surface.imports import get_cws
 from stellacode.tools.concat_dict import ScaleDictArray
 from autograd_minimize import minimize
+from stellacode.surface.abstract_surface import AbstractBaseFactory
 
 logger = logging.getLogger(__name__)
 
@@ -29,32 +29,41 @@ def tostr(res_dict):
 
 
 def tostr_jax(res_dict):
-    """transform a dict in a string"""
+    """transform a dict in a string adapted for printing with jax."""
     out_str = ""
     for k, val in res_dict.items():
-        # if isinstance(val, int):
         out_str += f"{k}: {{{k}}}, "
-        # else:
-        #     out_str += f"{k}: {{{k}:.4f}}, "
     return out_str
 
 
 class Optimizer(BaseModel):
+    """
+    Optimize a given surface with a list of costs.
+
+    Args: 
+        * cost: cost to be optimized
+        * coil_factory: coil factory with the optimized parameters
+        * loss: loss function to be optimized
+        * init_param: initial parameters for the optimization
+        * scaler: scale the parameter beofre running the optimization
+        * save_res: save the result
+        * output_folder_name: folder in which the result is saved
+        * method: method used for the optimization (see scipy minimize)
+        * kwargs: dict of arguments passed to the optimizer
+    """
     cost: AggregateCost
-    coil_surface: CoilSurface
-    loss: Any
-    init_param: Any
+    coil_factory: AbstractBaseFactory
+    loss: Callable
+    init_param: dict
     scaler: Optional[ScaleDictArray] = None
-    freq_save: int = 100
     save_res: bool = False
     output_folder_name: Optional[str] = None
-    info: dict = dict(Nfeval=0)
     method: Optional[str] = None
     kwargs: dict = {}
 
     class Config:
         arbitrary_types_allowed = True
-        extra = Extra.allow  # allow extra fields
+        # extra = Extra.allow  # allow extra fields
 
     @classmethod
     def from_config_file(cls, config_file):
@@ -79,18 +88,13 @@ class Optimizer(BaseModel):
         cost = AggregateCost.from_config(config)
         cws = get_cws(config)
 
-        info = {"Nfeval": 0}
-
         # optimizer options
-        freq_save = int(config["optimization_parameters"]["freq_save"])
         max_iter = int(config["optimization_parameters"]["max_iter"])
 
         return cls.from_cost(
             cost=cost,
-            coil_surface=cws,
-            info=info,
+            coil_factory=cws,
             save_res=save_res,
-            freq_save=freq_save,
             options={"maxiter": max_iter},
         )
 
@@ -98,13 +102,13 @@ class Optimizer(BaseModel):
     def from_cost(
         cls,
         cost,
-        coil_surface,
+        coil_factory,
         set_scales: bool = False,
         preset_scales: dict = {},
         freeze_params: list = [],
         **kwargs,
     ):
-        init_param = coil_surface.get_trainable_params()
+        init_param = coil_factory.get_trainable_params()
         init_param = {k: v for k, v in init_param.items() if k not in freeze_params}
         if set_scales:
             scaler = ScaleDictArray(scales=preset_scales)
@@ -115,26 +119,16 @@ class Optimizer(BaseModel):
         def loss(**kwargs):
             if scaler is not None:
                 kwargs = scaler.unapply(kwargs)
-            # tic = time()
-            coil_surface.update_params(**kwargs)
-            # print("Surface", time() - tic)
 
-            res, metrics, results = cost.cost(coil_surface, results=Results())
-
+            coil_factory.update_params(**kwargs)
+            res, metrics, results = cost.cost(coil_factory(), results=Results())
             jax.debug.print(tostr_jax(metrics), **metrics)
-            # print(metrics)
-            # log_info(
-            #     info,
-            #     res,
-            #     freq_save=freq_save,
-            #     save_res=save_res,
-            #     output_folder_name=output_folder_name,
-            # )
+
             return res
 
         return cls(
             cost=cost,
-            coil_surface=coil_surface,
+            coil_factory=coil_factory,
             scaler=scaler,
             loss=loss,
             init_param=init_param,
@@ -142,6 +136,7 @@ class Optimizer(BaseModel):
         )
 
     def optimize(self):
+        """Run the optimization"""
         # The optimization
         optim_res = minimize(self.loss, self.init_param, method=self.method, backend="jax", **self.kwargs)
 
@@ -153,8 +148,8 @@ class Optimizer(BaseModel):
         # assert optimize_shape.success
         optimized_params = optim_res.x
 
-        self.coil_surface.update_params(**optimized_params)
-        cost, metrics, results = self.cost.cost(self.coil_surface)
+        self.coil_factory.update_params(**optimized_params)
+        cost, metrics, results = self.cost.cost(self.coil_factory())
         return cost, metrics, results, optimized_params
 
 

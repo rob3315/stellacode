@@ -81,3 +81,5 @@ class HTSCriticalCurrent:
             return crit_curr
         elif self.unit == "A/m":
             return crit_curr * self.par.tSc  # tSc is the superconductor material width
+        else:
+            raise NotImplementedError

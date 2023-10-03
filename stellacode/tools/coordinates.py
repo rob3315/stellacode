@@ -2,6 +2,7 @@ import numpy as np
 
 
 def cylindrical_to_cartesian(vector_field: np.ndarray, phi: np.ndarray):
+    """Map an array from cylindrical to cartesian coordinates"""
     vr, vphi, vz = vector_field[..., 0], vector_field[..., 1], vector_field[..., 2]
     return np.stack(
         (
@@ -14,6 +15,7 @@ def cylindrical_to_cartesian(vector_field: np.ndarray, phi: np.ndarray):
 
 
 def vmec_to_cylindrical(vector_field: np.ndarray, rphiz: np.ndarray, grad_rphiz: np.ndarray):
+    """Map an array from vmec to cylindrical coordinates"""    
     r_grad = grad_rphiz[..., 0, :]
     z_grad = grad_rphiz[..., 2, :]
     radius = rphiz[..., 0]

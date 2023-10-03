@@ -12,7 +12,7 @@ from stellacode import np
 from stellacode.surface.utils import fourier_coefficients
 from stellacode.tools.vmec import VMECIO
 
-from .abstract_surface import AbstractSurface, IntegrationParams
+from .abstract_surface import AbstractSurfaceFactory, IntegrationParams, Surface
 from .cylindrical import CylindricalSurface
 from .tore import ToroidalSurface
 from .utils import (
@@ -23,9 +23,10 @@ from .utils import (
     to_polar,
 )
 from stellacode.tools.bnorm import get_bnorm
+import matplotlib.pyplot as plt
 
 
-class FourierSurface(AbstractSurface):
+class FourierSurface(AbstractSurfaceFactory):
     """A class used to represent a toroidal surface with Fourier coefficients
 
     :param params: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
@@ -35,7 +36,7 @@ class FourierSurface(AbstractSurface):
     :param Np: see `.abstract_surface.Abstract_surface`
     :type Np: int
     """
-
+    nfp: int
     mf: ArrayLike
     nf: ArrayLike
     Rmn: ArrayLike
@@ -104,7 +105,7 @@ class FourierSurface(AbstractSurface):
             mf=m,
             nf=n,
             integration_par=integration_par,
-            num_tor_symmetry=n_fp,
+            nfp=n_fp,
             file_path=path_surf,
         )
 
@@ -112,12 +113,68 @@ class FourierSurface(AbstractSurface):
         angle = 2 * np.pi * (uv[0] * self.mf + uv[1] * self.nf)
         R = np.tensordot(self.Rmn, np.cos(angle), 1)
         Z = np.tensordot(self.Zmn, np.sin(angle), 1)
-        phi = 2 * np.pi * uv[1] / self.num_tor_symmetry
+        phi = 2 * np.pi * uv[1] / self.nfp
         return np.array([R * np.cos(phi), R * np.sin(phi), Z])
 
     def get_major_radius(self):
         assert self.mf[0] == 0 and self.nf[0] == 0
         return self.Rmn[0]
+
+    def plot_cross_sections(
+        self,
+        num_cyl: tp.Optional[int] = None,
+        num: int = 5,
+        convex_envelope: bool = True,
+        concave_envelope: bool = False,
+        scale_envelope: float = 1.0,
+        ax=None,
+    ):
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+
+        u = np.linspace(0, 1, 100, endpoint=True)
+        v = np.linspace(0, 1, num, endpoint=True)
+        ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
+        surf = self()
+        xyz = self.get_xyz_on_grid(np.stack((ugrid, vgrid)))
+
+        rtheta = surf._get_rtheta(xyz=xyz, num_cyl=num_cyl)
+
+        for i in range(num):
+            rphi = np.concatenate((rtheta[:, i, :], rtheta[:, i, :]), axis=0)
+            ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] + [float((i + 1) / (num + 1))])
+
+        if convex_envelope:
+            env, rtheta = surf.get_envelope(num_cyl=num_cyl, convex=True)
+            # ax.scatter(rtheta[:, 1], rtheta[:, 0], c="k")
+            ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="r", linewidth=3)
+
+        if concave_envelope:
+            env, rtheta = surf.get_envelope(num_cyl=num_cyl, convex=False)
+            # ax.scatter(rtheta[:, 1], rtheta[:, 0], c="k")            
+            ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
+        return ax
+
+    def __call__(self, **kwargs):
+        surface = super().__call__(**kwargs)
+        surface = FourierSurfaceF(
+            major_radius=self.get_major_radius(),
+            file_path=self.file_path,
+            **dict(surface),
+            nfp=self.nfp,
+        )
+        return surface
+
+
+class FourierSurfaceF(Surface):
+    major_radius: ArrayLike
+    nfp: int
+    file_path: str
+
+    def get_major_radius(self):
+        return self.major_radius
 
     def get_minor_radius(self):
         return np.max(self.cartesian_to_toroidal()[:, :, 0])
@@ -131,23 +188,42 @@ class FourierSurface(AbstractSurface):
         return cartesian_to_toroidal(
             xyz=xyz,
             tore_radius=self.get_major_radius(),
-            height=self.Zmn[0],
         )
 
     def cartesian_to_shifted_cylindrical(self, xyz=None, num_cyl: int = 1, angle: float = 0.0):
         if xyz is None:
             xyz = self.xyz
         num_tor = xyz.shape[1]
-        num_pt_cyl = num_tor // num_cyl
+        num_pol = xyz.shape[0]
+        points = np.linspace(0, num_tor, num_cyl + 1, dtype=int)
         rphiz_l = []
-        for ind in range(num_cyl):
-            xyz = xyz[:, (ind * num_pt_cyl) : ((ind + 1) * num_pt_cyl)]
-            cyl_angle = -np.pi * (2 * ind + 1) / (self.num_tor_symmetry * num_cyl) + angle
-            rphiz = cartesian_to_shifted_cylindrical(xyz=xyz, angle=cyl_angle, distance=self.get_major_radius())
-
+        for ind, first, last in zip(range(num_cyl), points[:-1], points[1:]):
+            xyz_ = xyz[:, first:last]
+            cyl_angle = np.pi / 2 - (np.pi / 2 + np.pi * (-2 * ind + 1) / (self.nfp * num_cyl))+np.pi /(self.nfp * num_cyl)
+            surf = CylindricalSurface(
+                integration_par=IntegrationParams(num_points_u=num_pol, num_points_v=last - first),
+                make_joints=False,
+                axis_angle=cyl_angle,
+                nfp=num_cyl * self.nfp,
+                distance=self.get_major_radius(),
+            )
+            rphiz2 = surf.to_cylindrical(xyz_)
+            rphiz = rphiz2.at[..., 1].set(rphiz2[..., 1] - np.pi / 2)
+            # fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+            # ax.plot(rphiz[:,0, 1], rphiz[:,0, 0])
+            # plt.show()
+            # surf().plot()
             rphiz_l.append(rphiz)
 
-        return onp.concatenate(rphiz_l, axis=1)
+        rphiz_l = onp.concatenate(rphiz_l, axis=1)
+        # self.plot()
+        # import pdb;pdb.set_trace()
+        # rphiz_l = np.reshape(rphiz_l, (-1, 3))
+        # fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+        # ax.scatter(rphiz_l[:, 1], rphiz_l[:, 0])
+        # plt.show()
+
+        return rphiz_l
 
     def _get_rtheta(self, xyz=None, num_cyl: tp.Optional[int] = None, angle: float = 0.0):
         if xyz is None:
@@ -178,12 +254,12 @@ class FourierSurface(AbstractSurface):
             sel_xy_points = np.stack(sel_xy_points)
 
         if not polar_coords:
-            return sel_xy_points
+            return sel_xy_points, points
         else:
             r, th = to_polar(sel_xy_points[:, 0], sel_xy_points[:, 1])
             rth = np.stack((r, th), axis=1)
             rth = rth[rth[:, 1].argsort()]
-            return np.concatenate((rth, rth[:1]))
+            return np.concatenate((rth, rth[:1])), points
 
     def get_envelope_fourier_coeff(
         self,
@@ -192,7 +268,7 @@ class FourierSurface(AbstractSurface):
         convex: bool = False,
         angle: float = 0.0,
     ):
-        xy = self.get_envelope(num_cyl=num_cyl, polar_coords=False, convex=convex, angle=angle)
+        xy = self.get_envelope(num_cyl=num_cyl, polar_coords=False, convex=convex, angle=angle)[0]
         # import matplotlib.pyplot as plt;import seaborn as sns;import matplotlib;matplotlib.use('TkAgg')
         # plt.scatter(xy[:, 0], xy[:, 1]);plt.show()
         # import pdb;pdb.set_trace()
@@ -231,7 +307,7 @@ class FourierSurface(AbstractSurface):
         if num_cyl is None:
             return ToroidalSurface(
                 integration_par=self.integration_par,
-                num_tor_symmetry=self.num_tor_symmetry,
+                nfp=self.nfp,
                 major_radius=self.get_major_radius(),
                 minor_radius=minor_radius,
                 fourier_coeffs=coefs / minor_radius,
@@ -239,49 +315,17 @@ class FourierSurface(AbstractSurface):
         else:
             return CylindricalSurface(
                 integration_par=self.integration_par,
-                num_tor_symmetry=self.num_tor_symmetry * num_cyl,
+                nfp=self.nfp * num_cyl,
                 distance=self.get_major_radius(),
                 radius=minor_radius,
                 fourier_coeffs=coefs / minor_radius,
             )
 
-    def plot_cross_sections(
-        self,
-        num_cyl: tp.Optional[int] = None,
-        num: int = 5,
-        convex_envelope: bool = True,
-        concave_envelope: bool = False,
-        scale_envelope: float = 1.0,
-        ax=None,
-    ):
-        import matplotlib.pyplot as plt
-
-        if ax is None:
-            fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
-
-        u = np.linspace(0, 1, 100, endpoint=True)
-        v = np.linspace(0, 1, num, endpoint=True)
-        ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
-        xyz = self.get_xyz_on_grid(np.stack((ugrid, vgrid)))
-        rtheta = self._get_rtheta(xyz=xyz)
-
-        for i in range(num):
-            rphi = np.concatenate((rtheta[:, i, :], rtheta[:, i, :]), axis=0)
-            ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] + [float((i + 1) / (num + 1))])
-
-        if convex_envelope:
-            env = self.get_envelope(num_cyl=num_cyl, convex=True)
-            ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="r", linewidth=3)
-        if concave_envelope:
-            env = self.get_envelope(num_cyl=num_cyl, convex=False)
-            ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
-        return ax
-
     def get_gt_b_field(self, surface_labels: int = -1, b_norm_file: tp.Optional[str] = None):
         vmec = VMECIO.from_grid(
             self.file_path,
             ntheta=self.integration_par.num_points_u,
-            nzeta=self.integration_par.num_points_v * self.num_tor_symmetry,
+            nzeta=self.integration_par.num_points_v * self.nfp,
             surface_label=surface_labels,
         )
         if isinstance(surface_labels, int):

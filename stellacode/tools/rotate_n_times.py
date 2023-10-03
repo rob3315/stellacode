@@ -6,6 +6,14 @@ import typing as tp
 
 class RotateNTimes:
     def __init__(self, angle: float, max_num: int = 1, min_num: int = 0):
+        """
+        Rotate and duplicate a surface along the toroidal angle.
+
+        Args:
+            * angle: angle of each rotation.
+            * max_num: maximum number of rotations.
+            * min_num: minimum number of rotations.
+        """
         self.min_num = min_num
         self.max_num = max_num
         self.angle = angle
@@ -27,9 +35,9 @@ class RotateNTimes:
         tensor dimensions are always: poloidal x toroidal x 3 x others
         """
         if stack_dim is not None:
-            return np.concatenate([ten] * (self.max_num - self.min_num), axis=stack_dim)
+            return np.concatenate([ten] * self.n_rot, axis=stack_dim)
         elif len(ten.shape) == 2:
-            return np.concatenate([ten] * (self.max_num - self.min_num), axis=1)
+            return np.concatenate([ten] * self.n_rot, axis=1)
         elif len(ten.shape) == 3:
             assert ten.shape[2] == 3
             return np.reshape(
@@ -50,3 +58,7 @@ class RotateNTimes:
             )
         else:
             raise NotImplementedError
+
+    @property
+    def n_rot(self):
+        return self.max_num - self.min_num

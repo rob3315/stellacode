@@ -6,17 +6,28 @@ from pydantic import BaseModel, Extra
 
 
 class Results(BaseModel):
+    """
+    Results that are transmitted from costs to costs
+
+    Args:
+        * j_3d: 3d current
+        * j_s: surfacic current
+        * phi_mn: current weights
+        * phi_mn_wnet_cur: current weights with net poloidal or toroidal currents
+        * bnorm_plasma_surface: normal magnetic field onto the plasma surface
+        * b_plasma_surface: magnetic field onto the plasma surface
+    """
+
     j_3d: tp.Optional[ArrayLike] = None
     j_s: tp.Optional[ArrayLike] = None
     phi_mn: tp.Optional[ArrayLike] = None
     phi_mn_wnet_cur: tp.Optional[ArrayLike] = None
     bnorm_plasma_surface: tp.Optional[ArrayLike] = None
     b_plasma_surface: tp.Optional[ArrayLike] = None
-    b_plasma: tp.Optional[ArrayLike] = None
-    b_coil: tp.Optional[ArrayLike] = None
 
     class Config:
         arbitrary_types_allowed = True
+        extra = Extra.forbid
 
 
 class AbstractCost(BaseModel):
@@ -24,7 +35,7 @@ class AbstractCost(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
-        extra = Extra.allow  # allow extra fields
+        extra = Extra.forbid
 
     def cost(self, S, results: Results = Results()):
         raise NotImplementedError

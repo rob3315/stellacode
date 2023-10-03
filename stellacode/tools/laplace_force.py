@@ -1,20 +1,19 @@
 from stellacode import np
-from jax.typing import ArrayLike
 from jax import Array
 
 
 def laplace_force(
-    j_3d: np.ndarray,
-    xyz: np.ndarray,
-    normal_unit: np.ndarray,
-    ds: np.ndarray,
-    g_up_map: np.ndarray,
-    num_tor_symmetry: int,
+    j_3d: Array,
+    xyz: Array,
+    normal_unit: Array,
+    ds: Array,
+    g_up_map: Array,
     du: float,
     dv: float,
+    nfp: int=1,    
     end_u: int = 1000000,
     end_v: int = 1000000,
-) -> np.ndarray:
+) -> Array:
     """
     Compute the Laplace force of a distribution of
     currents on itself.
@@ -37,7 +36,7 @@ def laplace_force(
     """
 
     norm = normal_unit
-    num_pts = j_3d.shape[1] // num_tor_symmetry
+    num_pts = j_3d.shape[1] // nfp
     j1 = j_3d[:, :num_pts]
     j2 = j_3d[:end_u, :end_v]
     norm2 = norm[:end_u, :end_v]
