@@ -24,8 +24,8 @@ from stellacode.surface.factory_tools import Sequential
 
 def test_laplace_force_naive():
 
-    n_harmonics = 4
-    factor = 4
+    n_harmonics = 2
+    factor = 8
     num_pt = n_harmonics * factor
 
     em_cost = EMCost.from_plasma_config(
@@ -46,10 +46,10 @@ def test_laplace_force_naive():
     force2 = coil_surf.laplace_force(nfp=em_cost.Sp.nfp)
 
     # Approximate and rigorous Laplace forces are close:
-    assert np.mean(np.linalg.norm(force[:, :num_pt] - force2, axis=-1)) / np.mean(np.linalg.norm(force2, axis=-1)) < 0.3
+    assert np.mean(np.linalg.norm(force[:, :num_pt] - force2, axis=-1)) / np.mean(np.linalg.norm(force2, axis=-1)) < 0.09
 
     # The Laplace Force is pointing outside of the surface
-    assert np.mean(np.einsum("ija,ija->ij", force2, coil_surf.normal_unit[:, :num_pt])) < -1e4
+    assert np.einsum("ija,ija->ij", force2, coil_surf.normal_unit[:, :num_pt]).max() < -1e3
 
 
 
