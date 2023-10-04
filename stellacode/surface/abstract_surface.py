@@ -347,7 +347,7 @@ class Surface(BaseModel):
         if nfp is None:
             xyz = self.expand_for_plot_part(num_tor_pts=num_tor_pts)
         else:
-            xyz = self.expand_for_plot_whole(detach_parts, nfp=nfp)
+            xyz = self.expand_for_plot_whole(detach_parts=detach_parts, nfp=nfp)
 
         kwargs = mesh_kwargs
         if scalar is not None:
