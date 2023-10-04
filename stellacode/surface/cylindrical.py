@@ -90,3 +90,25 @@ class CylindricalSurface(AbstractSurfaceFactory):
         _radius = [(fourier_transform(self.fourier_coeffs, u_val) + 1) * self.radius for u_val in u_]
         ax.plot(u_, _radius, **kwargs)
         return ax
+
+class VerticalCylinder(AbstractSurfaceFactory):
+    """
+    Vertical cylindrical surface
+
+    Args:
+        * radius: radius of the cylinder
+        * height: height of the cylinder
+
+    """
+    radius: float = 1.0  # radius of the cylinder
+    height: float = 1.0  # height of the cylinder
+    trainable_params: tp.List[str] = [
+        "radius",
+        "height",
+    ]
+
+    def get_xyz(self, uv):
+        u_ = 2 * np.pi * uv[0]  # poloidal variable
+        v_ = uv[1] # length variable
+
+        return np.array([np.cos(u_) * self.radius, np.sin(u_)* self.radius, v_*self.height])
