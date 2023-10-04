@@ -17,9 +17,40 @@ from stellacode.surface import (
 )
 from stellacode.surface.imports import get_net_current
 from stellacode.surface import CylindricalSurface, rotate_coil, FourierSurface
-from stellacode.surface.factories import get_original_cws
+from stellacode.surface.factories import get_original_cws, WrappedCoil
 from stellacode.tools.laplace_force import laplace_force
 from stellacode.surface.factory_tools import Sequential
+
+
+def test_laplace_force_naive():
+
+    n_harmonics = 4
+    factor = 4
+    num_pt = n_harmonics * factor
+
+    em_cost = EMCost.from_plasma_config(
+        plasma_config=w7x_plasma,
+        integration_par=IntegrationParams(num_points_u=num_pt, num_points_v=num_pt),
+        lamb=1e-16,
+    )
+    factory= WrappedCoil.from_plasma(em_cost.Sp, n_harmonics=n_harmonics, factor=factor, surf_type="toroidal")
+
+    cost, metrics, results = em_cost.cost(factory())
+    factory.set_phi_mn(results.phi_mn_wnet_cur[2:])
+
+    # factory.surface_factories[1].surface_factories[0].current.phi_mn = lst_coeff / 1e8  # because of the scaling, a setter would be better.
+    coil_surf = factory().get_coil(results.phi_mn_wnet_cur)
+    force = coil_surf.naive_laplace_force(epsilon=np.min(np.linalg.norm(coil_surf.xyz[1:] - coil_surf.xyz[:-1], axis=-1)) * 2)
+
+
+    force2 = coil_surf.laplace_force(nfp=em_cost.Sp.nfp)
+
+    # Approximate and rigorous Laplace forces are close:
+    assert np.mean(np.linalg.norm(force[:, :num_pt] - force2, axis=-1)) / np.mean(np.linalg.norm(force2, axis=-1)) < 0.3
+
+    # The Laplace Force is pointing outside of the surface
+    assert np.mean(np.einsum("ija,ija->ij", force2, coil_surf.normal_unit[:, :num_pt])) < -1e4
+
 
 
 def test_laplace_force():
@@ -99,10 +130,10 @@ def test_laplace_force():
     force2 = coil_surf.laplace_force(nfp=fourier_factory.nfp)
 
     # Approximate and rigorous Laplace forces are close:
-    assert np.max(np.linalg.norm(force[:, :14] - force2, axis=-1)) / np.mean(np.linalg.norm(force2)) < 0.1
+    assert np.mean(np.linalg.norm(force[:, :14] - force2, axis=-1)) / np.mean(np.linalg.norm(force2, axis=-1)) < 0.3
 
     # The Laplace Force is pointing outside of the surface
-    assert np.mean(np.einsum("ija,ija->ij", force2, coil_surf.normal_unit[:, :14])) < -1e4
+    assert np.einsum("ija,ija->ij", force2, coil_surf.normal_unit[:, :14]).max() < -1e4
 
 
 def div(f, ds):
