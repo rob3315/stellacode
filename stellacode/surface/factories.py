@@ -130,7 +130,7 @@ class WrappedCoil(AbstractToroidalCoils):
         return current.get_phi_mn()
 
     def _get_current(self):
-        if isinstance(self.coil_factory.surface_factories[1].surface_factories[0], AbstractCurrent):
+        if isinstance(self.coil_factory.surface_factories[1].surface_factories[0], CoilFactory):
             return self.coil_factory.surface_factories[1].surface_factories[0].current
         else:
             return self.coil_factory.surface_factories[1].surface_factories[1].current
