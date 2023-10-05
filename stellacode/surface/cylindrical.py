@@ -18,15 +18,16 @@ class CylindricalSurface(AbstractSurfaceFactory):
         * nfp: number of field periods
         * fourier_coeffs: fourier coefficents of the cross section
         * axis_angle: rotates the surface by the given angle along the toroidal axis
-        * radius: radius of the cylinders 
+        * radius: radius of the cylinders
         * scale_length: The cylinder is scaled by the scale_length factor along the cylinder height
-        * distance: distance between the center of the cylinder and the coordinate center 
+        * distance: distance between the center of the cylinder and the coordinate center
         * make_joints: The cylinder is cut at an angle such that all rotated cylinders are joined
         * trainable_params: list of trainable parameters
     """
-    nfp: int    
+
+    nfp: int
     fourier_coeffs: tp.Optional[ArrayLike] = np.zeros((1, 2))
-    points: tp.Optional[ArrayLike] = None#np.ones(10)
+    points: tp.Optional[ArrayLike] = None  # np.ones(10)
     axis_angle: float = 0.0  # rotates the surface by the given angle
     radius: float = 1.0  # radius of the cylinders
     scale_length: float = 1.0  # The cylinder is scaled by the scale_length factor
@@ -48,7 +49,12 @@ class CylindricalSurface(AbstractSurfaceFactory):
         z_dir = np.array([0.0, 0.0, 1.0])
         assert self.fourier_coeffs is not None or self.points is not None
         if self.points is not None:
-            _radius = np.interp(u_, np.linspace(0,1, len(self.points), endpoint=False), nn.softmax(self.points)*len(self.points)) * self.radius
+            _radius = (
+                np.interp(
+                    u_, np.linspace(0, 1, len(self.points), endpoint=False), nn.softmax(self.points) * len(self.points)
+                )
+                * self.radius
+            )
         else:
             _radius = (fourier_transform(self.fourier_coeffs, u_) + 1) * self.radius
         circle = _radius * (axis_orth * np.cos(u_) + z_dir * np.sin(u_))
@@ -91,6 +97,7 @@ class CylindricalSurface(AbstractSurfaceFactory):
         ax.plot(u_, _radius, **kwargs)
         return ax
 
+
 class VerticalCylinder(AbstractSurfaceFactory):
     """
     Vertical cylindrical surface
@@ -100,6 +107,7 @@ class VerticalCylinder(AbstractSurfaceFactory):
         * height: height of the cylinder
 
     """
+
     radius: float = 1.0  # radius of the cylinder
     height: float = 1.0  # height of the cylinder
     trainable_params: tp.List[str] = [
@@ -109,6 +117,6 @@ class VerticalCylinder(AbstractSurfaceFactory):
 
     def get_xyz(self, uv):
         u_ = 2 * np.pi * uv[0]  # poloidal variable
-        v_ = uv[1] # length variable
+        v_ = uv[1] + 0.5 / self.integration_par.num_points_v  # length variable
 
-        return np.array([np.cos(u_) * self.radius, np.sin(u_)* self.radius, v_*self.height])
+        return np.array([np.cos(u_) * self.radius, np.sin(u_) * self.radius, v_ * self.height])
