@@ -289,9 +289,7 @@ def test_current_conservation():
     # check that current basis has no net currents except in the first two functions
     factory = get_cws_from_plasma_config(plasma_config, n_harmonics_current=4)
     current = factory.surface_factories[1].surface_factories[0].current
-    current.set_phi_mn(
-        onp.random.random(current.phi_mn.shape) * 1e5
-    )
+    current.set_phi_mn(onp.random.random(current.phi_mn.shape) * 1e5)
     cws = factory()
     # cws.compute_surface_attributes()
     curr_op = cws.current_op
@@ -306,6 +304,7 @@ def test_current_conservation():
 
     # Check the computation of the net currents
     from stellacode.surface.utils import get_net_current
+
     coil = cws.get_coil(current.get_phi_mn())
     net_pol_curr = get_net_current(coil, toroidal=False)
     assert np.max(np.abs(-net_pol_curr - vmec.net_poloidal_current)) < 1e-7
@@ -374,3 +373,14 @@ def test_plot_plasma_cross_sections():
     surf.plot_cross_sections(num_cyl=3, num=5, concave_envelope=True)
     # import matplotlib.pyplot as plt
     # plt.show()
+
+
+def test_jac_hessian():
+    cws = get_cws_from_plasma_config(w7x_plasma, n_harmonics_current=4)
+
+    surf = cws()
+    jac_approx = np.stack(np.gradient(surf.xyz, surf.du, surf.dv, axis=(0, 1)), axis=-1)
+    assert np.mean(np.abs(jac_approx - surf.jac_xyz)) / np.mean(np.abs(surf.jac_xyz)) < 0.04
+
+    hess_approx = np.stack(np.gradient(surf.jac_xyz, surf.du, surf.dv, axis=(0, 1)), axis=-1)
+    assert np.mean(np.abs(hess_approx - surf.hess_xyz)) / np.mean(np.abs(surf.hess_xyz)) < 0.08
