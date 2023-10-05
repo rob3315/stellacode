@@ -142,7 +142,7 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
         """Return the surface hessian on the grid"""          
         _, lu, lv = grid.shape
         grid_ = np.reshape(grid, (2, -1))
-        hess_surf = jax.hessian(self.get_xyz, argnums=0, holomorphic=False)
+        hess_surf = jax.hessian(self.get_xyz, argnums=0)
         hess_surf_vmap = jax.vmap(hess_surf, in_axes=1, out_axes=0)
         hess_surf_res = hess_surf_vmap(grid_)
 
