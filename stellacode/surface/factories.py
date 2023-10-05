@@ -407,7 +407,6 @@ class StackedToroidalCoils(AbstractBaseFactory):
     ):
         surf_factory = get_toroidal_surface(
             surf_plasma=surf_plasma,
-            plasma_path=surf_plasma.path_plasma,
             n_harmonics=n_harmonics,
             factor=factor,
             distance=distance_to_plasma,
