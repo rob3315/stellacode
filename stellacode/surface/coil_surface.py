@@ -262,7 +262,6 @@ class CoilSurface(Surface):
                         j_3d_f=self.j_3d[:, :num_tor_pts],
                         xyz_f=self.xyz[:, :num_tor_pts],
                         normal_unit_f=self.normal_unit[:, :num_tor_pts],
-                        g_up_map_f=g_up[:, :num_tor_pts],
                         j_3d_b=self.j_3d[:, begin:end],
                         xyz_b=self.xyz[:, begin:end],
                         normal_unit_b=self.normal_unit[:, begin:end],
