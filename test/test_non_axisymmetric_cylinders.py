@@ -71,7 +71,7 @@ def test_non_axisymmetric_cylinders():
         major_radius = em_cost.Sp.get_major_radius()
         surface = CylindricalSurface(
             fourier_coeffs=fourier_coeffs,
-            integration_par=IntegrationParams(num_points_u=num_points, num_points_v=num_points),
+            integration_par=IntegrationParams(num_points_u=num_points, num_points_v=num_points, center_vgrid=True),
             nfp=num_sym_by_cyl,
             radius=minor_radius * 1.5,
             distance=major_radius,

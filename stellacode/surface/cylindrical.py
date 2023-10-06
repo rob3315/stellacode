@@ -33,6 +33,7 @@ class CylindricalSurface(AbstractSurfaceFactory):
     scale_length: float = 1.0  # The cylinder is scaled by the scale_length factor
     distance: float = 3  # distance between the center of the cylinder and the coordinate center
     make_joints: bool = True
+    shear_strength: float = 0.0
     trainable_params: tp.List[str] = [
         "fourier_coeffs",
         "axis_angle",
@@ -68,11 +69,24 @@ class CylindricalSurface(AbstractSurfaceFactory):
             p_dist = self.distance + np.cos(u_) * _radius
             _length = _length * p_dist / (self.distance - self.radius)
 
+        if self.shear_strength != 0.0:
+            axis_a = self._get_axis_angle()
+            shear = (
+                self.shear_strength
+                * v_
+                * np.array([np.sin(axis_a + 2 * np.pi * v_), -np.cos(axis_a + 2 * np.pi * v_), 0.0])
+            )
+        else:
+            shear = 0.0
+
         # shift along the cylinder
-        return cyl_axis * v_ * _length + circle + self.distance * axis_orth
+        return cyl_axis * v_ * _length + circle + self.distance * axis_orth + shear
+
+    def _get_axis_angle(self):
+        return np.pi / 2 + np.pi / self.nfp + self.axis_angle
 
     def _get_axes(self):
-        axis_a = np.pi / 2 + np.pi / self.nfp + self.axis_angle
+        axis_a = self._get_axis_angle()
         axis_orth = np.array([np.sin(axis_a), -np.cos(axis_a), 0.0])
         cyl_axis = np.array([np.cos(axis_a), np.sin(axis_a), 0.0])
         return axis_orth, cyl_axis

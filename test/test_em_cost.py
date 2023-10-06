@@ -318,7 +318,7 @@ def test_regcoil_with_pwc_no_current_at_bc():
     n_points = current_n_coeff * 4
     em_cost = EMCost.from_plasma_config(
         plasma_config=w7x_plasma,
-        integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points),
+        integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points, center_vgrid=True),
         lamb=1e-14,
     )
 
@@ -333,7 +333,7 @@ def test_regcoil_with_pwc_no_current_at_bc():
     fourier_coeffs = np.zeros((0, 2))
     surface = CylindricalSurface(
         fourier_coeffs=fourier_coeffs,
-        integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points),
+        integration_par=IntegrationParams(num_points_u=n_points, num_points_v=n_points, center_vgrid=True),
         nfp=9,
     )
     factory = Sequential(
