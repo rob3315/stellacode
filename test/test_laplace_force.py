@@ -22,7 +22,7 @@ from stellacode.tools.laplace_force import laplace_force
 from stellacode.surface.factory_tools import Sequential
 
 
-def test_laplace_force_naive():
+def test_laplace_force_naive(surf_type="toroidal"):
 
     n_harmonics = 2
     factor = 8
@@ -33,27 +33,27 @@ def test_laplace_force_naive():
         integration_par=IntegrationParams(num_points_u=num_pt, num_points_v=num_pt),
         lamb=1e-16,
     )
-    factory= WrappedCoil.from_plasma(em_cost.Sp, n_harmonics=n_harmonics, factor=factor, surf_type="toroidal")
+    factory= WrappedCoil.from_plasma(em_cost.Sp, n_harmonics=n_harmonics, factor=factor, surf_type=surf_type)
 
     cost, metrics, results = em_cost.cost(factory())
     factory.set_phi_mn(results.phi_mn_wnet_cur[2:])
 
     # factory.surface_factories[1].surface_factories[0].current.phi_mn = lst_coeff / 1e8  # because of the scaling, a setter would be better.
     coil_surf = factory().get_coil(results.phi_mn_wnet_cur)
-    force = coil_surf.naive_laplace_force(epsilon=np.min(np.linalg.norm(coil_surf.xyz[1:] - coil_surf.xyz[:-1], axis=-1)) * 2)
+    force = coil_surf.naive_laplace_force(epsilon=np.min(np.linalg.norm(coil_surf.xyz[1:] - coil_surf.xyz[:-1], axis=-1)) * 1)
 
 
-    force2 = coil_surf.laplace_force(nfp=em_cost.Sp.nfp)
+    force2 = coil_surf.laplace_force(num_tor_pts=16)
 
     # Approximate and rigorous Laplace forces are close:
-    assert np.mean(np.linalg.norm(force[:, :num_pt] - force2, axis=-1)) / np.mean(np.linalg.norm(force2, axis=-1)) < 0.09
+    assert np.mean(np.linalg.norm(force[:, :num_pt] - force2, axis=-1)) / np.mean(np.linalg.norm(force2, axis=-1)) < 0.05
 
     # The Laplace Force is pointing outside of the surface
     assert np.einsum("ija,ija->ij", force2, coil_surf.normal_unit[:, :num_pt]).max() < -1e3
 
 
 
-def test_laplace_force():
+def test_laplace_force_vs_old_implementation():
     # major_radius = 5.5
     # minor_radius = 1.404687741189692  # 0.9364584941264614*(1+0.5)
     lu, lv = 11 + 1, 13 + 1
@@ -108,11 +108,15 @@ def test_laplace_force():
     np.max(np.linalg.norm(force, axis=-1))
 
     force2 = laplace_force(
-        j_3d=coil_surf.j_3d,
-        xyz=coil_surf.xyz,
-        normal_unit=coil_surf.normal_unit,
-        ds=coil_surf.ds,
-        g_up_map=coil_surf.get_g_upper_basis(),
+        j_3d_f=coil_surf.j_3d,
+        xyz_f=coil_surf.xyz,
+        normal_unit_f=coil_surf.normal_unit,
+        g_up_map_f=coil_surf.get_g_upper_basis(),
+        j_3d_b=coil_surf.j_3d,
+        xyz_b=coil_surf.xyz,
+        normal_unit_b=coil_surf.normal_unit,
+        ds_b=coil_surf.ds,
+        g_up_map_b=coil_surf.get_g_upper_basis(),        
         nfp=fourier_factory.nfp,
         du=1 / 11,
         dv=1 / 14,
@@ -127,7 +131,7 @@ def test_laplace_force():
     force3 = f_laplace(coil_surf, 5, 10, Np=1, lu=12, lv=14)
     assert np.allclose(force2[5, 10], force3)
 
-    force2 = coil_surf.laplace_force(nfp=fourier_factory.nfp)
+    force2 = coil_surf.laplace_force(num_tor_pts=coil_surf.xyz.shape[1]//fourier_factory.nfp)
 
     # Approximate and rigorous Laplace forces are close:
     assert np.mean(np.linalg.norm(force[:, :14] - force2, axis=-1)) / np.mean(np.linalg.norm(force2, axis=-1)) < 0.3
