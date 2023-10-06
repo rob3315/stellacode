@@ -49,12 +49,12 @@ def test_green_functions_elasticity():
     xy = np.transpose(np.mgrid[0:11, 0:11] / 10 - 0.5, (1, 2, 0))
     xyz_req = np.concatenate([xy, 0.5 * np.ones_like(xy[:, :, :1])], axis=-1)
 
-    laplace_force = coil.laplace_force(1)
+    laplace_force = coil.laplace_force()
     stress, laplace_force = get_stress_from_force(
-        coil, xyz_req=xyz_req, laplace_force=laplace_force, lin_coeff=coeff, nfp=1
+        coil, xyz_req=xyz_req, force=laplace_force, lin_coeff=coeff, nfp=1
     )
     displacement = get_displacement_from_force(
-        coil, xyz_req=xyz_req, laplace_force=laplace_force, lin_coeff=coeff, nfp=1
+        coil, xyz_req=xyz_req, force=laplace_force, lin_coeff=coeff, nfp=1
     )
 
     # Check symmetries
