@@ -28,6 +28,7 @@ def test_laplace_force_naive(surf_type):
     n_harmonics = 2
     factor = 16
     num_pt = n_harmonics * factor
+    rotate_diff_current = 3
 
     em_cost = EMCost.from_plasma_config(
         plasma_config=w7x_plasma,
@@ -40,8 +41,8 @@ def test_laplace_force_naive(surf_type):
         factor=factor,
         surf_type=surf_type,
         common_current_on_each_rot=True,
-        rotate_diff_current=3,
-        distance=0.2
+        rotate_diff_current=rotate_diff_current,
+        distance=0.2,
     )
 
     cost, metrics, results = em_cost.cost(factory())
@@ -57,8 +58,10 @@ def test_laplace_force_naive(surf_type):
         lim = 0.06
     else:
         lim = 0.14
-        cut_coils = None#np.arange(num_pt, coil_surf.xyz.shape[1], num_pt).tolist()
+        npt = coil_surf.xyz.shape[1] // (em_cost.Sp.nfp * rotate_diff_current)
+        cut_coils = None  # np.arange(npt, coil_surf.xyz.shape[1], npt).tolist()
     force2 = coil_surf.laplace_force(num_tor_pts=num_pt, cut_coils=cut_coils)
+    # coil_surf.plot(cut_tor=npt)
 
     # Approximate and rigorous Laplace forces are close:
     assert np.mean(np.linalg.norm(force[:, :num_pt] - force2, axis=-1)) / np.mean(np.linalg.norm(force2, axis=-1)) < lim
@@ -113,7 +116,6 @@ def test_laplace_force_vs_old_implementation():
     force2 = laplace_force(
         j_3d_f=coil_surf.j_3d,
         xyz_f=coil_surf.xyz,
-        normal_unit_f=coil_surf.normal_unit,
         j_3d_b=coil_surf.j_3d,
         xyz_b=coil_surf.xyz,
         normal_unit_b=coil_surf.normal_unit,
