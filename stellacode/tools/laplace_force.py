@@ -1,15 +1,10 @@
 from stellacode import np
 from jax import Array
-import typing as tp
-
-
-
 
 
 def laplace_force(
     j_3d_f: Array,
     xyz_f: Array,
-    normal_unit_f: Array,
     j_3d_b: Array,
     xyz_b: Array,
     normal_unit_b: Array,
@@ -17,7 +12,6 @@ def laplace_force(
     g_up_map_b: Array,
     du: float,
     dv: float,
-    nfp: int = 1,
     end_u: int = 1000000,
     end_v: int = 1000000,
 ) -> Array:
@@ -40,26 +34,25 @@ def laplace_force(
     x is in the next two dimensions: kl
     a,b,c are dimensions of 3d vectors (always equal to 3)
     t,u are dimensions in the 2d surface contravariant or covariant space (always equal to 2)
+
+    _b indicate a variable belonging to the surface generating the magnetic field
+    _b indicate a variable belonging to the surface where the force is computed
     """
 
     # norm = normal_unit
-    num_pts = j_3d_f.shape[1] // nfp
-    j1 = j_3d_f[:, :num_pts]
+    j1 = j_3d_f
     j2 = j_3d_b[:end_u, :end_v]
-    # g_up_map_b = g_up_map_b[:end_u, :end_v]
-    norm2_b = normal_unit_b #[:end_u, :end_v]
+    norm2_b = normal_unit_b[:end_u, :end_v]
     ds_int = ds_b[:end_u, :end_v]
-    # ds_b = ds_int 
-    
+
     # Kernels
-    T = (xyz_f[:, :num_pts, None, None] - xyz_b[None, None, ...])[:, :, :end_u, :end_v]
+    T = (xyz_f[:, :, None, None] - xyz_b[None, None, ...])[:, :, :end_u, :end_v]
     inv_l1 = 1 / np.linalg.norm(T, axis=-1)
     inv_l1 = np.where(np.abs(inv_l1) > 1e10, 0.0, inv_l1)
     K = T * inv_l1[..., None] ** 3
 
     # Projects j_3d on the surface
-    pi_x_f = np.eye(3)[None, None] - normal_unit_f[..., None] * normal_unit_f[..., None, :]
-    pi_x_b = np.eye(3)[None, None] - norm2_b[..., None] * norm2_b[..., None, :]
+    pi_x_b = np.eye(3)[None, None] - normal_unit_b[..., None] * normal_unit_b[..., None, :]
     pi_x_j1 = np.einsum("klab,ijb->ijkla", pi_x_b, j1)
 
     # Maps j_3d to the contravariant surface 2d space
@@ -76,7 +69,7 @@ def laplace_force(
     grad_j_contr_map = np.einsum("klat,klbt->klab", grad_j_3d_b, g_up_map_b)
 
     # Gets the divergence of pi_x
-    pi_x_uv = np.einsum("ijat,ijab,bc->ijct", g_up_map_b, pi_x_b, np.eye(3))
+    pi_x_uv = np.einsum("klat,klab,bc->klct", g_up_map_b, pi_x_b, np.eye(3))
     div_pi_x_b = surf_div(pi_x_uv, du=du, dv=dv, ds=ds_b[..., None])
 
     # -1/(y-x) *(div pi_x j_1(y))*j_2(x)
@@ -91,10 +84,14 @@ def laplace_force(
     fac3 = np.einsum("ijkl,ija,klab,kl->ijb", inv_l1, j1, grad_j_contr_map[:end_u, :end_v], ds_int)
 
     # <j1(y) n(x) > <y-x,n(x)> /|y-x|^3 j2(x)
-    fac4 = np.einsum("ija,kla,ijklc,klc,klb,kl->ijb", j1, norm2_b[:end_u, :end_v], K, norm2_b[:end_u, :end_v], j2, ds_int)
+    fac4 = np.einsum(
+        "ija,kla,ijklc,klc,klb,kl->ijb", j1, norm2_b[:end_u, :end_v], K, norm2_b[:end_u, :end_v], j2, ds_int
+    )
 
     # -<j1(y) j2(x)> <y−x,n(x)>/|y-x|^3 n(x)
-    fac5 = -np.einsum("ijklb,ija,kla,klb,klc,kl->ijc", K, j1, j2, norm2_b[:end_u, :end_v], norm2_b[:end_u, :end_v], ds_int)
+    fac5 = -np.einsum(
+        "ijklb,ija,kla,klb,klc,kl->ijc", K, j1, j2, norm2_b[:end_u, :end_v], norm2_b[:end_u, :end_v], ds_int
+    )
 
     # 1/(y-x) <j1(y) j2(x) > div \pi_x
     fac6 = np.einsum("ijkl,ija,kla,klb,kl->ijb", inv_l1, j1, j2, div_pi_x_b[:end_u, :end_v], ds_int)
