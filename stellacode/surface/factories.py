@@ -138,6 +138,13 @@ class WrappedCoil(AbstractToroidalCoils):
     def _get_base_surface(self):
         return self.coil_factory.surface_factories[0]
 
+    def _get_radius(self):
+        surf = self._get_base_surface()
+        if isinstance(surf, ToroidalSurface):
+            return surf.minor_radius
+        else:
+            return surf.radius
+
 
 def get_toroidal_surface(
     surf_plasma: FourierSurface,
