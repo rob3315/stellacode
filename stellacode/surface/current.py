@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from stellacode import np
 from .abstract_surface import IntegrationParams
+import jax
 
 
 def _stack(a, b):
@@ -48,38 +49,63 @@ class AbstractCurrent(BaseModel):
             num_dims *= 2
         self.phi_mn = onp.zeros(num_dims)
 
-    # def phi(self, uv):
-    #     raise NotImplementedError
+    def get_phi(self, uv, phi_mn, max_val_v: float = 1):
+        raise NotImplementedError
 
-    # def get_phi_on_grid(self, grid):
-    #     grid_ = np.reshape(grid, (2, -1))
-    #     _, lu, lv = grid.shape
-    #     surf = jax.vmap(self.get_phi, in_axes=1, out_axes=0)
-    #     surf_res = surf(grid_)
-    #     phi = np.reshape(surf_res, (lu, lv))
+    def phi_op(self, uv, max_val_v: float = 1):
+        return jax.grad(self.get_phi, 1)(uv, np.zeros(len(self.get_phi_mn())), max_val_v)
 
-    #     return phi
+    def get_phi_on_grid(self, grid, phi_mn, max_val_v: float = 1):
+        grid_ = np.reshape(grid, (2, -1))
+        _, lu, lv = grid.shape
+        phi = jax.vmap(self.get_phi, in_axes=(1, None, None), out_axes=0)
+        phi_res = phi(grid_, phi_mn, max_val_v)
+        phi = np.reshape(phi_res, (lu, lv))
 
-    # def get_jac_phi_on_grid(self, grid):
-    #     grid_ = np.reshape(grid, (2, -1))
-    #     _, lu, lv = grid.shape
+        return phi
 
-    #     jac_surf = jax.jacobian(self.get_phi, argnums=0)
-    #     jac_surf_vmap = jax.vmap(jac_surf, in_axes=1, out_axes=0)
-    #     jac_surf_res = jac_surf_vmap(grid_)
-    #     jac_phi = np.reshape(jac_surf_res, (lu, lv, 2))
+    def get_jac_phi_on_grid(self, grid, phi_mn, max_val_v: float = 1):
+        grid_ = np.reshape(grid, (2, -1))
+        _, lu, lv = grid.shape
 
-    #     return jac_phi
+        jac_phi = jax.jacobian(self.get_phi, argnums=0)
+        jac_phi_vmap = jax.vmap(jac_phi, in_axes=(1, None, None), out_axes=0)
+        jac_phi_res = jac_phi_vmap(grid_, phi_mn, max_val_v)
+        jac_phi = np.reshape(jac_phi_res, (lu, lv, 2))
 
-    # def get_hess_phi_on_grid(self, grid):
-    #     grid_ = np.reshape(grid, (2, -1))
-    #     _, lu, lv = grid.shape
+        return jac_phi
 
-    #     hess_surf = jax.hessian(self.get_phi, argnums=0, holomorphic=False)
-    #     hess_surf_vmap = jax.vmap(hess_surf, in_axes=1, out_axes=0)
-    #     hess_surf_res = hess_surf_vmap(grid_)
+    def get_jac_phi_op_on_grid(self, grid, max_val_v: float = 1):
+        grid_ = np.reshape(grid, (2, -1))
+        _, lu, lv = grid.shape
 
-    #     return np.reshape(hess_surf_res, (lu, lv, 2, 2))
+        jac_phi = jax.jacobian(self.phi_op, argnums=0)
+        jac_phi_vmap = jax.vmap(jac_phi, in_axes=(1, None), out_axes=0)
+        jac_phi_res = jac_phi_vmap(grid_, max_val_v)
+        jac_phi = np.reshape(jac_phi_res, (lu, lv, len(self.get_phi_mn()), 2))
+
+        return jac_phi
+
+    def get_hess_phi_op_on_grid(self, grid, max_val_v: float = 1):
+        grid_ = np.reshape(grid, (2, -1))
+        _, lu, lv = grid.shape
+
+        hess_phi = jax.hessian(self.phi_op, argnums=0)
+        hess_phi_vmap = jax.vmap(hess_phi, in_axes=(1, None), out_axes=0)
+        hess_phi_res = hess_phi_vmap(grid_, max_val_v)
+        hess_phi = np.reshape(hess_phi_res, (lu, lv, len(self.get_phi_mn()), 2, 2))
+
+        return hess_phi
+
+    def get_hess_phi_on_grid(self, grid, phi_mn, max_val_v: float = 1):
+        grid_ = np.reshape(grid, (2, -1))
+        _, lu, lv = grid.shape
+
+        hess_phi = jax.hessian(self.get_phi, argnums=0)
+        hess_phi_vmap = jax.vmap(hess_phi, in_axes=(1, None, None), out_axes=0)
+        hess_phi_res = hess_phi_vmap(grid_, phi_mn, max_val_v)
+
+        return np.reshape(hess_phi_res, (lu, lv, 2, 2))
 
     def get_integration_params(self, factor: float = 4):
         return IntegrationParams(num_points_u=self.num_pol * factor, num_points_v=self.num_tor * factor)
@@ -104,9 +130,19 @@ class AbstractCurrent(BaseModel):
     def _get_coeffs(self):
         raise NotImplementedError
 
-    @classmethod
-    def __call__(cls, grids, max_val_v: float = 1):
-        raise NotImplementedError
+    def __call__(self, grids, max_val_v: float = 1, grad: tp.Optional[str] = None):
+        # Computing the jacobian to get the matrix of a linear function is very inefficient (slower by ~ an order of
+        # magnitude), but it is automatic and in some settings it could be called only once.
+
+        assert grad is None
+        grids = np.stack(grids, axis=0)
+        grad_phi = self.get_jac_phi_op_on_grid(grids, max_val_v=max_val_v)
+        return np.stack((grad_phi[..., 1], -grad_phi[..., 0]), axis=-1)
+
+    def get_grad_current_op(self, grids, max_val_v: float = 1):
+        grids = np.stack(grids, axis=0)
+        hess_phi = self.get_hess_phi_op_on_grid(grids, max_val_v=max_val_v)
+        return np.stack((hess_phi[..., 1, :], -hess_phi[..., 0, :]), axis=-2)
 
 
 class Current(AbstractCurrent):
@@ -119,7 +155,19 @@ class Current(AbstractCurrent):
 
         return xm, xn
 
-    def __call__(self, grids, max_val_v: float = 1):
+    def get_phi(self, uv, phi_mn, max_val_v: float = 1.0):
+        xm, xn = self._get_coeffs()
+        v_ = uv[1] / max_val_v
+        angle = 2 * onp.pi * (xm * uv[0] + xn *v_ )
+        phi = phi_mn[0] * v_ - phi_mn[1] * uv[0]
+        if self.sin_basis:
+            phi += np.sum(phi_mn[2 : 2 + len(xm)] * np.sin(angle))
+        if self.cos_basis:
+            phi += np.sum(phi_mn[2 + len(xm) :] * np.cos(angle))
+
+        return phi
+
+    def __call__(self, grids, max_val_v: float = 1, grad: tp.Optional[str] = None):
         ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
         vgrid /= max_val_v
         lu, lv = ugrid.shape
@@ -135,19 +183,54 @@ class Current(AbstractCurrent):
         if self.sin_basis:
             # Phi = sin(xm*u+xn*v)
             # dPhi/dv, -dPhi/du
-            dphi.append(_stack(xn * onp.cos(angle) / max_val_v, -xm * onp.cos(angle)))
+            if grad == "u":
+                dphi.append(2 * onp.pi * xm[..., None] * _stack(-xn * onp.sin(angle) / max_val_v, xm * onp.sin(angle)))
+            elif grad == "v":
+                dphi.append(
+                    2
+                    * onp.pi
+                    * xn[..., None]
+                    / max_val_v
+                    * _stack(-xn * onp.sin(angle) / max_val_v, xm * onp.sin(angle))
+                )
+            elif grad is None:
+                dphi.append(_stack(xn * onp.cos(angle) / max_val_v, -xm * onp.cos(angle)))
+            else:
+                raise NotImplementedError
 
         if self.cos_basis:
             # Phi = cos(xm*u+xn*v)
-            dphi.append(-_stack(xn * onp.sin(angle) / max_val_v, xm * onp.sin(angle)))
+            if grad == "u":
+                dphi.append(2 * onp.pi * xm[..., None] * _stack(-xn * onp.cos(angle) / max_val_v, xm * onp.cos(angle)))
+            elif grad == "v":
+                dphi.append(
+                    2
+                    * onp.pi
+                    * xn[..., None]
+                    / max_val_v
+                    * _stack(-xn * onp.cos(angle) / max_val_v, xm * onp.cos(angle))
+                )
+            elif grad is None:
+                dphi.append(_stack(-xn * onp.sin(angle) / max_val_v, xm * onp.sin(angle)))
+            else:
+                raise NotImplementedError
 
         dphi = onp.concatenate(dphi, axis=0)
         dphi = onp.concatenate((onp.zeros((2, lu, lv, 2)), dphi), axis=0)
-
-        dphi[0, :, :, 0] = onp.ones((lu, lv)) / max_val_v
-        dphi[1, :, :, 1] = onp.ones((lu, lv))
+        if grad is None:
+            dphi[0, :, :, 0] = onp.ones((lu, lv)) / max_val_v
+            dphi[1, :, :, 1] = onp.ones((lu, lv))
 
         return dphi
+
+    def get_grad_current_op(self, grids, max_val_v: float = 1):
+        """
+        Dimensions of returned op are: dimensions: Ncurrent_op x Nu x Nv x N_j_surf x N_grad
+        """
+        return np.stack(
+            (self(grids, max_val_v=max_val_v, grad="u"), self(grids, max_val_v=max_val_v, grad="v")),
+            axis=-1,
+        )
 
     def plot_phi_mn(self, phi_mn):
         shape = (self.num_pol, self.num_tor * 2 + 1)
@@ -189,14 +272,32 @@ class CurrentZeroTorBC(AbstractCurrent):
             num_dims += (self.num_pol + 1) * (self.num_tor + 1)
         self.phi_mn = onp.zeros(num_dims)
 
+    def get_phi(self, uv, phi_mn, max_val_v: float = 1.0):
+        xm, xn, xn0 = self._get_coeffs()
+        v_ = uv[1] / max_val_v
+        phi = phi_mn[0] * v_ - phi_mn[1] * uv[0]
+
+        if self.sin_basis:
+            phi += np.sum(phi_mn[2 : 2 + len(xn0)] * np.sin(onp.pi * xn0 * v_))
+            phi += np.sum(
+                phi_mn[2 + len(xn0) : 2 + len(xn0) + len(xm)]
+                * np.sin(2 * onp.pi * xm * uv[0])
+                * np.sin(onp.pi * xn * v_)
+            )
+
+        if self.cos_basis:
+            phi += np.sum(phi_mn[2 + len(xn0) + len(xm) :] * np.cos(2 * onp.pi * xm * uv[0]) * np.sin(onp.pi * xn * v_))
+
+        return phi
+
     def _get_coeffs(self):
         grid = onp.mgrid[1 : (self.num_pol + 2), 1 : (self.num_tor + 2)].reshape((2, -1))
         return grid[0], grid[1], onp.arange(1, (self.num_tor + 2))
 
-    def __call__(self, grids, max_val_v: float = 1):
+    def __call__(self, grids, max_val_v: float = 1, grad: tp.Optional[str] = None):
         ugrid, vgrid = grids  # u -> poloidal, v -> toroidal
         vgrid = vgrid / max_val_v
-        vgrid = vgrid + 0.5 / vgrid.shape[1]
+        # vgrid = vgrid + 0.5 / vgrid.shape[1]
         assert np.all(vgrid > 0)
         assert np.all(vgrid < 1)
 
@@ -214,23 +315,64 @@ class CurrentZeroTorBC(AbstractCurrent):
         sinu = onp.sin(2 * onp.pi * xm * ugrid)
         sinv = onp.sin(onp.pi * xn * vgrid)
         # the current potential is written as:
-        # sin(2*onp.pi*u)*sin(2*onp.pi*v) and cos(2*onp.pi*u)*sin(2*onp.pi*v)
+        # sin(2*onp.pi*u)*sin(onp.pi*v) and cos(2*onp.pi*u)*sin(onp.pi*v)
         # to ensure proper BC
         if self.sin_basis:
-            # current for Phi=sin(2*onp.pi*xn*v)
-            cosv0 = onp.cos(onp.pi * xn0 * vgrid)
-            dphi.append(_stack(xn0 * cosv0 / max_val_v, onp.zeros_like(xn0 * cosv0)))
-            # current for Phi=sin(2*onp.pi*xm*u)*sin(onp.pi*xn*v)
-            dphi.append(_stack(xn * sinu * cosv / 2 / max_val_v, -xm * cosu * sinv))
+            zero_v0 = np.zeros_like(xn0 * vgrid)
+
+            if grad == "u":
+                # current for Phi=sin(2*onp.pi*xn*v)
+                dphi.append(_stack(zero_v0, zero_v0))
+                # current for Phi=sin(2*onp.pi*xm*u)*sin(onp.pi*xn*v)
+                dphi.append(
+                    _stack(2 * onp.pi * xm * xn * cosu * cosv / 2 / max_val_v, 2 * onp.pi * xm**2 * sinu * sinv)
+                )
+            elif grad == "v":
+                # current for Phi=sin(2*onp.pi*xn*v)
+                sinv0 = onp.sin(onp.pi * xn0 * vgrid)
+                dphi.append(_stack(-onp.pi * xn0**2 * sinv0 / max_val_v/2, zero_v0))
+                # current for Phi=sin(2*onp.pi*xm*u)*sin(onp.pi*xn*v)
+                dphi.append(
+                    _stack(- onp.pi * xn**2 * sinu * sinv / 2 / max_val_v, -onp.pi * xn * xm * cosu * cosv)
+                )
+            elif grad is None:
+                # current for Phi=sin(onp.pi*xn*v)
+                cosv0 = onp.cos(onp.pi * xn0 * vgrid)
+                dphi.append(_stack(xn0 * cosv0 / max_val_v/2, onp.zeros_like(xn0 * cosv0)))
+                # current for Phi=sin(2*onp.pi*xm*u)*sin(onp.pi*xn*v)
+                dphi.append(_stack(xn * sinu * cosv / 2 / max_val_v, -xm * cosu * sinv))
+
+            else:
+                raise NotImplementedError
 
         if self.cos_basis:
-            # current for Phi=cos(2*onp.pi*xm*u)*sin(2*onp.pi*xn*v)
-            dphi.append(_stack(xn * cosu * cosv / 2 / max_val_v, xm * sinu * sinv))
+            if grad == "u":
+                dphi.append(
+                    _stack(-2 * onp.pi * xm * xn * sinu * cosv / 2 / max_val_v, 2 * onp.pi * xm**2 * cosu * sinv)
+                )
+            elif grad == "v":
+                dphi.append(
+                    _stack(-onp.pi * xn **2 * cosu * sinv / 2 / max_val_v, onp.pi * xn * xm * sinu * cosv)
+                )
+            elif grad is None:
+                # current for Phi=cos(2*onp.pi*xm*u)*sin(onp.pi*xn*v)
+                dphi.append(_stack(xn * cosu * cosv / 2 / max_val_v, xm * sinu * sinv))
+            else:
+                raise NotImplementedError
 
         dphi = onp.concatenate(dphi, axis=0)
         dphi = onp.concatenate((onp.zeros((2, lu, lv, 2)), dphi), axis=0)
-
-        dphi[0, :, :, 0] = onp.ones((lu, lv)) / max_val_v
-        dphi[1, :, :, 1] = onp.ones((lu, lv))
+        if grad is None:
+            dphi[0, :, :, 0] = onp.ones((lu, lv)) / max_val_v
+            dphi[1, :, :, 1] = onp.ones((lu, lv))
 
         return dphi
+
+    def get_grad_current_op(self, grids, max_val_v: float = 1):
+        """
+        Dimensions of returned op are: dimensions: Ncurrent_op x Nu x Nv x N_j_surf x N_grad
+        """
+        return np.stack(
+            (self(grids, max_val_v=max_val_v, grad="u"), self(grids, max_val_v=max_val_v, grad="v")),
+            axis=-1,
+        )

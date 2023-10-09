@@ -28,6 +28,7 @@ class IntegrationParams(BaseModel):
     num_points_v: int
     max_val_u: float = 1.0
     max_val_v: float = 1.0
+    center_vgrid: bool = False
 
     @classmethod
     def from_current_potential(cls, current_pot):
@@ -52,7 +53,8 @@ class IntegrationParams(BaseModel):
     def get_uvgrid(self):
         u = np.linspace(0, self.max_val_u, self.num_points_u, endpoint=False)
         v = np.linspace(0, self.max_val_v, self.num_points_v, endpoint=False)
-
+        if self.center_vgrid:
+            v += self.du / 2
         ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
         return ugrid, vgrid
 
@@ -102,6 +104,7 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
     Args:
         * integration_par: surface integration parameters
     """
+
     integration_par: IntegrationParams
 
     def get_xyz(self, uv):
@@ -128,7 +131,7 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
         return xyz
 
     def get_jac_xyz_on_grid(self, grid):
-        """Return the surface jacobian on the grid"""        
+        """Return the surface jacobian on the grid"""
         _, lu, lv = grid.shape
         grid_ = np.reshape(grid, (2, -1))
         jac_surf = jax.jacobian(self.get_xyz, argnums=0)
@@ -139,10 +142,10 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
         return jac_xyz
 
     def get_hess_xyz_on_grid(self, grid):
-        """Return the surface hessian on the grid"""          
+        """Return the surface hessian on the grid"""
         _, lu, lv = grid.shape
         grid_ = np.reshape(grid, (2, -1))
-        hess_surf = jax.hessian(self.get_xyz, argnums=0, holomorphic=False)
+        hess_surf = jax.hessian(self.get_xyz, argnums=0)
         hess_surf_vmap = jax.vmap(hess_surf, in_axes=1, out_axes=0)
         hess_surf_res = hess_surf_vmap(grid_)
 
@@ -151,7 +154,7 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
     def __call__(self, deg: int = 2):
         """Compute a surface
 
-        Args:   
+        Args:
             * deg: degree of elements computed
         """
         grids = self.integration_par.get_uvgrid()
@@ -180,6 +183,7 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
                 jac_xyz=surface.jac_xyz,
                 normal_unit=surface.normal_unit,
             )
+            # surface.grad_ds = get_ds_grad(surface.jac_xyz, surface.hess_xyz)
         return surface
 
 
@@ -195,8 +199,8 @@ class Surface(BaseModel):
         * normal: surface normal vector pointing inside the surface
         * normal_unit: normalized surface normal vector pointing inside the surface
         * ds: surface covered by each grid point
-        * pinciple max: 
-        * principle_min: 
+        * pinciple max:
+        * principle_min:
     """
 
     integration_par: IntegrationParams
@@ -240,7 +244,7 @@ class Surface(BaseModel):
     @property
     def field_keys(self):
         """
-        Keys that represent fields on the surface: the first two dimensions are respectively the 
+        Keys that represent fields on the surface: the first two dimensions are respectively the
         poloidal and toroidal dimensions.
         """
         return ["xyz", "jac_xyz", "hess_xyz", "normal", "normal_unit", "ds", "principle_max", "principle_min"]
@@ -338,7 +342,7 @@ class Surface(BaseModel):
         mesh_kwargs: dict = dict(),
         num_tor_pts: int = 1000000000000,
         reduce_res: int = 1,
-        cut_tor: tp.Optional[int]=None,
+        cut_tor: tp.Optional[int] = None,
     ):
         """Plot the surface"""
         import numpy as np
@@ -413,3 +417,13 @@ class Surface(BaseModel):
         plt.ylabel("Poloidal angle")
         plt.xlabel("Toroidal angle")
         return ax
+
+
+def get_ds_grad(surf):
+    norm_dx_uv = np.linalg.norm(surf.jac_xyz, axis=-2)
+    di_inv_dj_x = np.einsum("ijl,ijdl,ijdkl->ijkl", 1 / norm_dx_uv, surf.jac_xyz, surf.hess_xyz)
+    return np.einsum("ijkl,ijl->ijk", di_inv_dj_x, norm_dx_uv[..., ::-1])
+
+
+def get_inv_ds_grad(surf):
+    return -get_ds_grad(surf) / surf.ds[:, :, None] ** 2

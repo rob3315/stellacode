@@ -6,7 +6,7 @@ from jax import Array
 from stellacode import mu_0_fac, np
 from stellacode.tools import biot_et_savart, biot_et_savart_op
 
-from .abstract_surface import Surface, AbstractBaseFactory
+from .abstract_surface import Surface, AbstractBaseFactory, get_inv_ds_grad
 from .current import AbstractCurrent
 from stellacode.tools.laplace_force import laplace_force
 import matplotlib.pyplot as plt
@@ -19,10 +19,12 @@ class CoilFactory(AbstractBaseFactory):
     Args:
         * current: current class computing a current operator on a given surface grid.
         * build_coils: if True, returns a coilOperator otherwise a CoilSurface
+        * compute_grad_current_op: compute also the gradient of the current operator
     """
 
     current: AbstractCurrent
     build_coils: bool = False
+    compute_grad_current_op: bool = False
 
     @classmethod
     def from_config(cls, config):
@@ -47,6 +49,8 @@ class CoilFactory(AbstractBaseFactory):
             current_op=self.current(surface.grids, surface.integration_par.max_val_v),
             net_currents=self.current.net_currents,
         )
+        if self.compute_grad_current_op:
+            coil_op.grad_current_op = self.current.get_grad_current_op(surface.grids, surface.integration_par.max_val_v)
 
         if self.build_coils:
             return coil_op.get_coil(phi_mn=self.current.get_phi_mn())
@@ -64,6 +68,9 @@ class CoilOperator(Surface):
     """
 
     current_op: ArrayLike
+    grad_current_op: tp.Optional[
+        ArrayLike
+    ] = None  # Dimensions of returned op are: dimensions: Ncurrent_op x Nu x Nv x N_j_surf x N_grad
     net_currents: tp.Optional[ArrayLike] = None
 
     @classmethod
@@ -74,9 +81,13 @@ class CoilOperator(Surface):
         return cls(**dict_)
 
     def get_coil(self, phi_mn):
-        dict_ = {k: v for k, v in dict(self).items() if k != "current_op"}
+        dict_ = {k: v for k, v in dict(self).items() if k not in ["current_op", "grad_current_op"]}
         dict_["j_surface"] = self.get_j_surface(phi_mn)
         dict_["j_3d"] = self.get_j_3d(phi_mn)
+
+        if self.grad_current_op is not None:
+            dict_["grad_j_surface"] = self.get_grad_j_surface(phi_mn)
+            dict_["grad_j_3d"] = self.get_grad_j_3d(phi_mn)
 
         return CoilSurface(**dict_)
 
@@ -86,12 +97,31 @@ class CoilOperator(Surface):
         """
         return np.einsum("oijk,o->ijk", self.current_op, phi_mn)
 
+    def get_grad_j_surface(self, phi_mn):
+        """
+        Contravariant components of the current: J^i
+        """
+        return np.einsum("oijkl,o->ijkl", self.grad_current_op, phi_mn)
+
     def get_j_3d(self, phi_mn, scale_by_ds: bool = True):
         """Compute the 3D current onto the surface"""
         if scale_by_ds:
             return np.einsum("oijk,ijdk,ij,o->ijd", self.current_op, self.jac_xyz, 1 / self.ds, phi_mn)
         else:
             return np.einsum("oijk,ijdk,o->ijd", self.current_op, self.jac_xyz, phi_mn)
+
+    def get_grad_j_3d(self, phi_mn):
+        """Compute the gradient of the 3D current versus u and v"""
+
+        grad_j_surface = self.get_grad_j_surface(phi_mn)
+
+        # Compute the gradient of 1/ds
+        invds_grad = get_inv_ds_grad(self)
+
+        fac1 = np.einsum("ijkl,ijdk,ij->ijdl", grad_j_surface, self.jac_xyz, 1 / self.ds)
+        fac2 = np.einsum("oijk,ijdkl,ij,o->ijdl", self.current_op, self.hess_xyz, 1 / self.ds, phi_mn)
+        fac3 = np.einsum("oijk,ijdk,ijl,o->ijdl", self.current_op, self.jac_xyz, invds_grad, phi_mn)
+        return fac1 + fac2 + fac3
 
     def get_b_field_op(
         self, xyz_plasma: ArrayLike, plasma_normal: tp.Optional[ArrayLike] = None, scale_by_mu0: bool = False
@@ -148,6 +178,8 @@ class CoilSurface(Surface):
     j_surface: Array
     j_3d: Array
     net_currents: tp.Optional[Array]
+    grad_j_surface: tp.Optional[Array] = None
+    grad_j_3d: tp.Optional[Array] = None
 
     @classmethod
     def from_surface(cls, surface: Surface):
@@ -197,20 +229,49 @@ class CoilSurface(Surface):
 
         return 0.5 * np.cross(j_3d, b_avg)
 
-    def laplace_force(self, nfp: int):
-        """
-        Return the Laplace force
-        """
-        return laplace_force(
-            j_3d=self.j_3d,
-            xyz=self.xyz,
-            normal_unit=self.normal_unit,
-            ds=self.ds,
-            g_up_map=self.get_g_upper_basis(),
-            nfp=nfp,
-            du=self.du,
-            dv=self.dv,
-        )
+    def laplace_force(
+        self,
+        cut_coils: tp.Optional[tp.List[int]] = None,
+        num_tor_pts: int = 100000,
+        end_u: int = 1000000,
+        end_v: int = 1000000,
+    ):
+        g_up = self.get_g_upper_basis()
+        if cut_coils is None:
+            return laplace_force(
+                j_3d_f=self.j_3d[:, :num_tor_pts],
+                xyz_f=self.xyz[:, :num_tor_pts],
+                normal_unit_f=self.normal_unit[:, :num_tor_pts],
+                j_3d_b=self.j_3d,
+                xyz_b=self.xyz,
+                normal_unit_b=self.normal_unit,
+                ds_b=self.ds,
+                g_up_map_b=g_up,
+                du=self.du,
+                dv=self.dv,
+                end_u=end_u,
+                end_v=end_v,
+            )
+        else:
+            lap_forces = []
+            begin = 0
+            _cut_coils = cut_coils + [1000000]
+            for end in _cut_coils:
+                lap_forces.append(
+                    laplace_force(
+                        j_3d_f=self.j_3d[:, :num_tor_pts],
+                        xyz_f=self.xyz[:, :num_tor_pts],
+                        normal_unit_f=self.normal_unit[:, :num_tor_pts],
+                        j_3d_b=self.j_3d[:, begin:end],
+                        xyz_b=self.xyz[:, begin:end],
+                        normal_unit_b=self.normal_unit[:, begin:end],
+                        ds_b=self.ds[:, begin:end],
+                        g_up_map_b=g_up[:, begin:end],
+                        du=self.du,
+                        dv=self.dv,
+                    )
+                )
+        return sum(lap_forces)
 
     def imshow_j(self):
         """Show the current surface density"""

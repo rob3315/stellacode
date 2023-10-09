@@ -216,6 +216,7 @@ def get_pwc_surface(
             cos_basis=cos_basis,
             net_currents=net_currents,
         )
+        center_vgrid = False
     else:
         current = CurrentZeroTorBC(
             num_pol=n_harmonics,
@@ -224,9 +225,11 @@ def get_pwc_surface(
             cos_basis=cos_basis,
             net_currents=net_currents / rotate_diff_current,
         )
+        center_vgrid = True
     integration_par = IntegrationParams(
         num_points_u=n_harmonics * factor,
         num_points_v=n_harmonics * factor // rotate_diff_current,
+        center_vgrid=center_vgrid,
     )
     if match_surface:
         surf_coil = surf_plasma.get_surface_envelope(num_cyl=rotate_diff_current, num_coeff=10, convex=convex)
@@ -317,7 +320,7 @@ class FreeCylinders(AbstractToroidalCoils):
             surface = CylindricalSurface(
                 fourier_coeffs=fourier_coeffs,
                 integration_par=IntegrationParams(
-                    num_points_u=n_harmonics_u * factor, num_points_v=n_harmonics_v * factor
+                    num_points_u=n_harmonics_u * factor, num_points_v=n_harmonics_v * factor, center_vgrid=True
                 ),
                 nfp=num_sym_by_cyl,
                 radius=minor_radius + distance,
@@ -414,7 +417,6 @@ class StackedToroidalCoils(AbstractBaseFactory):
     ):
         surf_factory = get_toroidal_surface(
             surf_plasma=surf_plasma,
-            plasma_path=surf_plasma.path_plasma,
             n_harmonics=n_harmonics,
             factor=factor,
             distance=distance_to_plasma,
