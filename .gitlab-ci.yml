@@ -18,6 +18,8 @@ test:
   script:
     - pip install -e .[test]
     - coverage run -m pytest -v test/*
+    - pip install pytest nbmake
+    - pytest --nbmake tutorials/*ipynb
 
 pages:      # This job runs in the deploy stage.
   stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.
