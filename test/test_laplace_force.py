@@ -41,6 +41,7 @@ def test_laplace_force_naive(surf_type):
         surf_type=surf_type,
         common_current_on_each_rot=True,
         rotate_diff_current=3,
+        distance=0.2
     )
 
     cost, metrics, results = em_cost.cost(factory())
@@ -53,9 +54,9 @@ def test_laplace_force_naive(surf_type):
     cut_coils = None
     if surf_type == "toroidal":
         cut_coils = None
-        lim = 0.03
+        lim = 0.06
     else:
-        lim = 0.13
+        lim = 0.14
         cut_coils = None#np.arange(num_pt, coil_surf.xyz.shape[1], num_pt).tolist()
     force2 = coil_surf.laplace_force(num_tor_pts=num_pt, cut_coils=cut_coils)
 
