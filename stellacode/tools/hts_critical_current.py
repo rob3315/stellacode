@@ -1,6 +1,8 @@
-import pandas as pd
 from os.path import dirname, join
 from typing import Optional
+
+import pandas as pd
+
 from stellacode import np
 
 

@@ -1,15 +1,15 @@
 import typing as tp
 
 import jax
+import matplotlib.pyplot as plt
 import numpy as onp
+import seaborn as sns
 from jax.typing import ArrayLike
 from pydantic import BaseModel, Extra
 
 from stellacode import np
 from stellacode.tools.rotate_n_times import RotateNTimes
 from stellacode.tools.utils import get_min_dist
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 from .utils import get_principles
 

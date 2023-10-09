@@ -1,21 +1,19 @@
 import jax
 
 jax.config.update("jax_enable_x64", True)
+import numpy as onp
 import pytest
-from stellacode.definitions import w7x_plasma, ncsx_plasma
+
+from stellacode.definitions import ncsx_plasma, w7x_plasma
 from stellacode.surface import (
     Current,
     CurrentZeroTorBC,
+    CylindricalSurface,
+    FourierSurfaceFactory,
     IntegrationParams,
     ToroidalSurface,
 )
-from stellacode.surface import CylindricalSurface, FourierSurfaceFactory
-from stellacode.surface.imports import (
-    get_cws_from_plasma_config,
-)
-
-import pytest
-import numpy as onp
+from stellacode.surface.imports import get_cws_from_plasma_config
 
 
 @pytest.mark.skip("plot")

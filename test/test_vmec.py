@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
+from stellacode.definitions import hsx_plasma, ncsx_plasma, w7x_plasma
 from stellacode.tools.vmec import VMECIO
-from stellacode.definitions import ncsx_plasma, w7x_plasma, hsx_plasma
 
 
 @pytest.mark.skip("Missing dependency")

@@ -1,5 +1,5 @@
 import typing as tp
-from os.path import dirname, realpath, join
+from os.path import dirname, join, realpath
 
 from pydantic import BaseModel
 

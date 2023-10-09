@@ -1,3 +1,11 @@
+import typing as tp
+
+import jax
+import jax.numpy as np
+import matplotlib.pyplot as plt
+from jax import Array
+from jax.typing import ArrayLike
+
 from stellacode.surface import (
     AbstractCurrent,
     Current,
@@ -8,21 +16,18 @@ from stellacode.surface import (
     ToroidalSurface,
 )
 from stellacode.surface.abstract_surface import AbstractBaseFactory
-from stellacode.surface.factory_tools import rotate_coil
 from stellacode.surface.cylindrical import CylindricalSurface
+from stellacode.surface.factory_tools import (
+    ConcatSurfaces,
+    RotatedSurface,
+    RotateNTimes,
+    Sequential,
+    rotate_coil,
+)
 from stellacode.surface.imports import get_net_current
 from stellacode.surface.tore import ToroidalSurface
 from stellacode.surface.utils import fit_to_surface
 from stellacode.tools.vmec import VMECIO
-from stellacode.surface.factory_tools import Sequential
-import jax.numpy as np
-from stellacode.surface.factory_tools import RotatedSurface, ConcatSurfaces, RotateNTimes
-from .coil_surface import CoilFactory
-from jax.typing import ArrayLike
-from jax import Array
-import jax
-import typing as tp
-import matplotlib.pyplot as plt
 
 from .abstract_surface import AbstractBaseFactory
 from .coil_surface import CoilFactory

@@ -14,6 +14,7 @@ class Constraint(BaseModel):
         * minimum: the constraint is a minimum
         * method: one of quadratic, inverse, quadratic_log
     """
+
     limit: float = 0.0
     distance: float = 1.0
     weight: float = 1.0

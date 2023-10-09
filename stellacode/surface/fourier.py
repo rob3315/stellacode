@@ -1,6 +1,7 @@
 import typing as tp
 from os import sep
 
+import matplotlib.pyplot as plt
 import numpy as onp
 from concave_hull import concave_hull
 from jax.typing import ArrayLike
@@ -10,6 +11,7 @@ from scipy.spatial import ConvexHull
 
 from stellacode import np
 from stellacode.surface.utils import fourier_coefficients
+from stellacode.tools.bnorm import get_bnorm
 from stellacode.tools.vmec import VMECIO
 
 from .abstract_surface import AbstractSurfaceFactory, IntegrationParams, Surface
@@ -22,8 +24,6 @@ from .utils import (
     from_polar,
     to_polar,
 )
-from stellacode.tools.bnorm import get_bnorm
-import matplotlib.pyplot as plt
 
 
 class FourierSurfaceFactory(AbstractSurfaceFactory):
@@ -37,6 +37,7 @@ class FourierSurfaceFactory(AbstractSurfaceFactory):
         * Zmn: fourier coefficients for the height in cylindrical coordinates
         * file_path: path to the file containing the Fourier coefficients
     """
+
     nfp: int
     mf: ArrayLike
     nf: ArrayLike
@@ -154,7 +155,7 @@ class FourierSurfaceFactory(AbstractSurfaceFactory):
 
         if concave_envelope:
             env, rtheta = surf.get_envelope(num_cyl=num_cyl, convex=False)
-            # ax.scatter(rtheta[:, 1], rtheta[:, 0], c="k")            
+            # ax.scatter(rtheta[:, 1], rtheta[:, 0], c="k")
             ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
         return ax
 
@@ -178,6 +179,7 @@ class FourierSurface(Surface):
         * nfp: number of field periods
         * file_path: path to the file containing the Fourier coefficients
     """
+
     major_radius: ArrayLike
     nfp: int
     file_path: str
@@ -211,7 +213,9 @@ class FourierSurface(Surface):
         rphiz_l = []
         for ind, first, last in zip(range(num_cyl), points[:-1], points[1:]):
             xyz_ = xyz[:, first:last]
-            cyl_angle = np.pi / 2 - (np.pi / 2 + np.pi * (-2 * ind + 1) / (self.nfp * num_cyl))+np.pi /(self.nfp * num_cyl)
+            cyl_angle = (
+                np.pi / 2 - (np.pi / 2 + np.pi * (-2 * ind + 1) / (self.nfp * num_cyl)) + np.pi / (self.nfp * num_cyl)
+            )
             surf = CylindricalSurface(
                 integration_par=IntegrationParams(num_points_u=num_pol, num_points_v=last - first),
                 make_joints=False,

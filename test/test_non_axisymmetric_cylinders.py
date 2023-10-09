@@ -3,22 +3,6 @@ import jax
 jax.config.update("jax_enable_x64", True)
 
 from stellacode import np
-from stellacode.definitions import w7x_plasma, ncsx_plasma
-from stellacode.surface import (
-    Current,
-    CurrentZeroTorBC,
-    IntegrationParams,
-    ToroidalSurface,
-)
-from stellacode.surface import CylindricalSurface, FourierSurfaceFactory
-from stellacode.surface.imports import (
-    get_net_current,
-)
-from stellacode.surface.coil_surface import CoilFactory
-from stellacode.surface.factory_tools import RotatedSurface, RotateNTimes, ConcatSurfaces, Sequential
-from stellacode.surface.utils import fit_to_surface
-from stellacode.tools.vmec import VMECIO
-from stellacode.surface.coil_surface import CoilSurface
 from stellacode.costs import (
     AggregateCost,
     CurrentCtrCost,
@@ -28,9 +12,26 @@ from stellacode.costs import (
 )
 from stellacode.costs.em_cost import MSEBField
 from stellacode.costs.utils import Constraint
-from stellacode.definitions import w7x_plasma
+from stellacode.definitions import ncsx_plasma, w7x_plasma
 from stellacode.optimizer import Optimizer
-from stellacode.surface import IntegrationParams
+from stellacode.surface import (
+    Current,
+    CurrentZeroTorBC,
+    CylindricalSurface,
+    FourierSurfaceFactory,
+    IntegrationParams,
+    ToroidalSurface,
+)
+from stellacode.surface.coil_surface import CoilFactory, CoilSurface
+from stellacode.surface.factory_tools import (
+    ConcatSurfaces,
+    RotatedSurface,
+    RotateNTimes,
+    Sequential,
+)
+from stellacode.surface.imports import get_net_current
+from stellacode.surface.utils import fit_to_surface
+from stellacode.tools.vmec import VMECIO
 
 
 def test_non_axisymmetric_cylinders():

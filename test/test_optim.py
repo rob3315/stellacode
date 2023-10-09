@@ -12,8 +12,8 @@ from stellacode.costs import (
     CurrentCtrCost,
     DistanceCost,
     EMCost,
+    MSEBField,
     NegTorCurvatureCost,
-    MSEBField
 )
 from stellacode.costs.utils import Constraint
 from stellacode.definitions import w7x_plasma
@@ -54,11 +54,7 @@ def test_current_optim(surface_name):
     agg_cost = AggregateCost(costs=[em_cost, distance, neg_curv, current_ctr])
     if surface_name == "axisym":
         coil_surf = get_toroidal_surface(
-            em_cost.Sp,
-            n_harmonics=n_harmonics,
-            factor=factor,
-            distance=0.5,
-            build_coils=True
+            em_cost.Sp, n_harmonics=n_harmonics, factor=factor, distance=0.5, build_coils=True
         )
     else:
         coil_surf = get_pwc_surface(
@@ -68,7 +64,7 @@ def test_current_optim(surface_name):
             distance=0.5,
             rotate_diff_current=3,
             common_current_on_each_rot=True,
-            build_coils=True
+            build_coils=True,
         )
     agg_cost.cost(coil_surf())
     opt = Optimizer.from_cost(

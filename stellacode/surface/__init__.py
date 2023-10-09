@@ -1,8 +1,8 @@
-from .abstract_surface import Surface, IntegrationParams
+from .abstract_surface import IntegrationParams, Surface
+from .coil_surface import CoilFactory, CoilSurface
 from .current import AbstractCurrent, Current, CurrentZeroTorBC
 from .cylindrical import CylindricalSurface
-from .fourier import FourierSurfaceFactory
+from .factories import FreeCylinders, WrappedCoil, get_original_cws
 from .factory_tools import rotate_coil
+from .fourier import FourierSurfaceFactory
 from .tore import ToroidalSurface
-from .coil_surface import CoilFactory, CoilSurface
-from .factories import WrappedCoil, FreeCylinders, get_original_cws

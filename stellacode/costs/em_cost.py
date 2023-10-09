@@ -1,15 +1,16 @@
-import pandas as pd
-from jax.typing import ArrayLike
-from jax import Array
-from pydantic import BaseModel
 import typing as tp
 
-from stellacode.tools.bnorm import get_bnorm
+import pandas as pd
+from jax import Array
+from jax.typing import ArrayLike
+from pydantic import BaseModel
+
 from stellacode import mu_0_fac, np
 from stellacode.costs.abstract_cost import AbstractCost, Results
 from stellacode.definitions import PlasmaConfig
-from stellacode.surface import Surface, FourierSurfaceFactory, IntegrationParams
+from stellacode.surface import FourierSurfaceFactory, IntegrationParams, Surface
 from stellacode.surface.imports import get_plasma_surface
+from stellacode.tools.bnorm import get_bnorm
 from stellacode.tools.vmec import VMECIO
 
 from .utils import merge_dataclasses
@@ -18,8 +19,8 @@ from .utils import merge_dataclasses
 class BiotSavartOperator(BaseModel):
     """
     Represent a biot et savart operator
-    
-    Args: 
+
+    Args:
         * bs: biot est savart operator tensor
         * use_mu_0_factor: scale the operator tensor by mu_0 factor.
     """
@@ -39,10 +40,10 @@ class BiotSavartOperator(BaseModel):
 
 
 class RegCoilSolver(BaseModel):
-    """Solve the regcoil problem: 
+    """Solve the regcoil problem:
 
     (M + \lambda * Mr)\Phi_mn=rhs+\lambda * rhs_reg
-    
+
     Args:
         * current_basis_dot_prod: scalar product matrix of the current basis functions
         * matrix: M
@@ -156,6 +157,7 @@ class MSEBField(AbstractCost):
         * train_currents: use current parameters to compute the currents
         * fit_b_3d: the 3D field is regressed instead of the normal magnetic field
     """
+
     Sp: Surface
     bnorm: ArrayLike = 0.0
     use_mu_0_factor: bool = False

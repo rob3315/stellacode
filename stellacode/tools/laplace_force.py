@@ -1,5 +1,6 @@
-from stellacode import np
 from jax import Array
+
+from stellacode import np
 
 
 def laplace_force(

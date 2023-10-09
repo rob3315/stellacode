@@ -1,4 +1,5 @@
 import typing as tp
+
 from stellacode import np
 from stellacode.costs.abstract_cost import AbstractCost, Results
 from stellacode.costs.utils import Constraint

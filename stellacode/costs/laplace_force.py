@@ -6,7 +6,7 @@ from stellacode.costs.utils import Constraint
 class LaplaceForceCost(AbstractCost):
     """
     Constraint on the Laplace Force.
-    
+
     Args:
         * nfp: number of field periods
         * constraint: compute the constraint cost on the laplace force

@@ -1,11 +1,11 @@
 import collections
+import typing as tp
 
 from stellacode import np
 from stellacode.tools.rotate_n_times import RotateNTimes
-from .abstract_surface import Surface, AbstractBaseFactory, IntegrationParams
-from .coil_surface import CoilFactory
 
-import typing as tp
+from .abstract_surface import AbstractBaseFactory, IntegrationParams, Surface
+from .coil_surface import CoilFactory
 from .current import AbstractCurrent
 
 
@@ -148,7 +148,7 @@ def rotate_coil(
     nfp: int,
     num_surf_per_period: int = 1,
     continuous_current_in_period: bool = False,
-    build_coils: bool=False
+    build_coils: bool = False,
 ):
     rot_common_current = RotatedSurface(
         rotate_n=RotateNTimes(angle=2 * np.pi / (num_surf_per_period * nfp), max_num=num_surf_per_period),

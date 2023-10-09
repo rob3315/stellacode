@@ -8,7 +8,6 @@ class CurvatureCost(AbstractCost):
 
     constraint: Constraint = Constraint(limit=1, distance=0.1, weight=1.0, minimum=False)
 
-
     @classmethod
     def from_config(cls, config, Sp=None):
         c0 = float(config["optimization_parameters"]["curvature_c0"])
@@ -31,7 +30,6 @@ class NegTorCurvatureCost(AbstractCost):
     """Non linear penalization on the negative toroidal curvatures"""
 
     constraint: Constraint = Constraint(limit=0.0, distance=0.1, weight=1.0, minimum=True)
-
 
     def cost(self, S, results: Results = Results()):
         # get normalized curvature along the poloidal dimension

@@ -1,9 +1,9 @@
 import jax.numpy as np
+import numpy as onp
 from scipy.integrate import quad
 from scipy.spatial.distance import cdist
 
 from stellacode import np
-import numpy as onp
 
 
 # the completely antisymetric tensor

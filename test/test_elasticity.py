@@ -1,15 +1,16 @@
-from stellacode.tools.linear_elasticity import (
-    displacement_green_function,
-    grad_displacement_green_function,
-    LinearElasticityCoeffs,
-    get_stress_from_force,
-    get_displacement_from_force,
-)
-from stellacode.surface.cylindrical import VerticalCylinder
-from stellacode.surface import IntegrationParams, CoilFactory, Current
-import numpy as onp
-from stellacode import np
 import jax
+import numpy as onp
+
+from stellacode import np
+from stellacode.surface import CoilFactory, Current, IntegrationParams
+from stellacode.surface.cylindrical import VerticalCylinder
+from stellacode.tools.linear_elasticity import (
+    LinearElasticityCoeffs,
+    displacement_green_function,
+    get_displacement_from_force,
+    get_stress_from_force,
+    grad_displacement_green_function,
+)
 
 
 def test_green_functions_elasticity():
@@ -50,12 +51,8 @@ def test_green_functions_elasticity():
     xyz_req = np.concatenate([xy, 0.5 * np.ones_like(xy[:, :, :1])], axis=-1)
 
     laplace_force = coil.laplace_force()
-    stress, laplace_force = get_stress_from_force(
-        coil, xyz_req=xyz_req, force=laplace_force, lin_coeff=coeff, nfp=1
-    )
-    displacement = get_displacement_from_force(
-        coil, xyz_req=xyz_req, force=laplace_force, lin_coeff=coeff, nfp=1
-    )
+    stress, laplace_force = get_stress_from_force(coil, xyz_req=xyz_req, force=laplace_force, lin_coeff=coeff, nfp=1)
+    displacement = get_displacement_from_force(coil, xyz_req=xyz_req, force=laplace_force, lin_coeff=coeff, nfp=1)
 
     # Check symmetries
     assert np.all(np.abs(displacement[:, :, -1]) < 1e-20)

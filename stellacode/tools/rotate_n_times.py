@@ -1,7 +1,8 @@
+import typing as tp
+
 import numpy as onp
 
 from stellacode import np
-import typing as tp
 
 
 class RotateNTimes:

@@ -8,22 +8,23 @@ from scipy.io import netcdf_file
 
 from stellacode import np
 from stellacode.costs.em_cost import EMCost, get_b_field_err
-from stellacode.definitions import w7x_plasma, ncsx_plasma
+from stellacode.definitions import ncsx_plasma, w7x_plasma
 from stellacode.surface import (
     Current,
     CurrentZeroTorBC,
+    CylindricalSurface,
+    FourierSurfaceFactory,
     IntegrationParams,
     ToroidalSurface,
 )
-from stellacode.surface import CylindricalSurface, FourierSurfaceFactory
+from stellacode.surface.factory_tools import Sequential, rotate_coil
 from stellacode.surface.imports import (
     get_current_potential,
     get_cws,
+    get_cws_from_plasma_config,
     get_net_current,
     get_plasma_surface,
-    get_cws_from_plasma_config,
 )
-from stellacode.surface.factory_tools import Sequential, rotate_coil
 from stellacode.surface.utils import fit_to_surface
 from stellacode.tools.vmec import VMECIO
 

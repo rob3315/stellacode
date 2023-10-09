@@ -1,7 +1,7 @@
 import typing as tp
 
-from jax.typing import ArrayLike
 from jax import Array
+from jax.typing import ArrayLike
 
 from stellacode import np
 
@@ -20,6 +20,7 @@ class ToroidalSurface(AbstractSurfaceFactory):
         * fourier_coeffs: Fourier representation of the surface cross section
         * axis_angle: rotate the surface along the toroidal angle by the given axis angle (just there for testing purposes)
     """
+
     nfp: int
     major_radius: float = 5.0
     minor_radius: float = 1.0

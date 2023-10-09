@@ -1,15 +1,15 @@
 import typing as tp
 
-from jax.typing import ArrayLike
+import matplotlib.pyplot as plt
 from jax import Array
+from jax.typing import ArrayLike
 
 from stellacode import mu_0_fac, np
 from stellacode.tools import biot_et_savart, biot_et_savart_op
-
-from .abstract_surface import Surface, AbstractBaseFactory, get_inv_ds_grad
-from .current import AbstractCurrent
 from stellacode.tools.laplace_force import laplace_force
-import matplotlib.pyplot as plt
+
+from .abstract_surface import AbstractBaseFactory, Surface, get_inv_ds_grad
+from .current import AbstractCurrent
 
 
 class CoilFactory(AbstractBaseFactory):

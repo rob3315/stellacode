@@ -2,17 +2,17 @@ import configparser
 import logging
 import os
 import pickle
-from typing import Any, Optional, Callable
+from typing import Any, Callable, Optional
 
 import jax
+from autograd_minimize import minimize
 from pydantic import BaseModel, Extra
 
 from stellacode.costs.abstract_cost import Results
 from stellacode.costs.aggregate_cost import AggregateCost
+from stellacode.surface.abstract_surface import AbstractBaseFactory
 from stellacode.surface.imports import get_cws
 from stellacode.tools.concat_dict import ScaleDictArray
-from autograd_minimize import minimize
-from stellacode.surface.abstract_surface import AbstractBaseFactory
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ class Optimizer(BaseModel):
     """
     Optimize a given surface with a list of costs.
 
-    Args: 
+    Args:
         * cost: cost to be optimized
         * coil_factory: coil factory with the optimized parameters
         * loss: loss function to be optimized
@@ -51,6 +51,7 @@ class Optimizer(BaseModel):
         * method: method used for the optimization (see scipy minimize)
         * kwargs: dict of arguments passed to the optimizer
     """
+
     cost: AggregateCost
     coil_factory: AbstractBaseFactory
     loss: Callable

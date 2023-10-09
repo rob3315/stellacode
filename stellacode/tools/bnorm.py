@@ -12,7 +12,7 @@ def get_bnorm(path_bnorm: str, plasma):
         * path_bnorm: path to bnorm file
         * plasma: the plasma surface
 
-    Returns: 
+    Returns:
         * normal B field on the plasma surface
 
     """

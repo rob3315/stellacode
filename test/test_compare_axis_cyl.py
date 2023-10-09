@@ -10,8 +10,8 @@ from stellacode.surface import (
     ToroidalSurface,
 )
 from stellacode.surface.cylindrical import CylindricalSurface
-from stellacode.surface.tore import ToroidalSurface
 from stellacode.surface.factory_tools import Sequential
+from stellacode.surface.tore import ToroidalSurface
 
 
 def test_compare_axisymmetric_vs_cylindrical():

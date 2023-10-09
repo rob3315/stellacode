@@ -1,5 +1,6 @@
-from stellacode.surface import CylindricalSurface, IntegrationParams
 import numpy as np
+
+from stellacode.surface import CylindricalSurface, IntegrationParams
 
 
 def test_CylindricalSurface():

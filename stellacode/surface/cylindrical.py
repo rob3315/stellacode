@@ -1,13 +1,13 @@
 import typing as tp
 
-from jax.typing import ArrayLike
+import matplotlib.pyplot as plt
 from jax import nn
+from jax.typing import ArrayLike
 
 from stellacode import np
 
 from .abstract_surface import AbstractSurfaceFactory
-from .utils import cartesian_to_toroidal, fourier_transform, cartesian_to_cylindrical
-import matplotlib.pyplot as plt
+from .utils import cartesian_to_cylindrical, cartesian_to_toroidal, fourier_transform
 
 
 class CylindricalSurface(AbstractSurfaceFactory):

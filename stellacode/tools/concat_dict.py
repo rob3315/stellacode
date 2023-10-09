@@ -1,12 +1,15 @@
-from stellacode import np
 import typing as tp
+
 from pydantic import BaseModel
+
+from stellacode import np
 
 
 class ConcatDictArray:
     """
-    Concatenate and deconcatenate a dict of arrays in and from a vector 
+    Concatenate and deconcatenate a dict of arrays in and from a vector
     """
+
     def apply(self, darr):
         self.shapes = {k: np.array(np.array(v).shape, dtype=int) for k, v in darr.items()}
         return np.concatenate([np.reshape(v, -1) for v in darr.values()])
@@ -36,6 +39,7 @@ class ScaleDictArray(BaseModel):
         * min_std: minimum possible std (to avoid division by zero errors)
         * additional_scale: scale all arrays by this value
     """
+
     scales: ScaleDict = {}
     min_std: float = 1e-8
     additional_scale: float = 1
@@ -84,6 +88,7 @@ class ConcatScaleDictArray(BaseModel):
     """
     Concat and scale a dict of arrays
     """
+
     concater: ConcatDictArray = ConcatDictArray()
     scaler: tp.Optional[ScaleDictArray] = None
 

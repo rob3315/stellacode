@@ -1,8 +1,10 @@
-from stellacode import np
+import typing as tp
+
 import jax
 from jax import Array
-import typing as tp
 from pydantic import BaseModel
+
+from stellacode import np
 
 
 class LinearElasticityCoeffs(BaseModel):

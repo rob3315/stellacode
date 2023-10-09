@@ -1,14 +1,15 @@
 import typing as tp
 
+import jax
 import numpy as onp
 import pandas as pd
-from jax.typing import ArrayLike
 from jax import Array
+from jax.typing import ArrayLike
 from pydantic import BaseModel
 
 from stellacode import np
+
 from .abstract_surface import IntegrationParams
-import jax
 
 
 def _stack(a, b):
@@ -158,7 +159,7 @@ class Current(AbstractCurrent):
     def get_phi(self, uv, phi_mn, max_val_v: float = 1.0):
         xm, xn = self._get_coeffs()
         v_ = uv[1] / max_val_v
-        angle = 2 * onp.pi * (xm * uv[0] + xn *v_ )
+        angle = 2 * onp.pi * (xm * uv[0] + xn * v_)
         phi = phi_mn[0] * v_ - phi_mn[1] * uv[0]
         if self.sin_basis:
             phi += np.sum(phi_mn[2 : 2 + len(xm)] * np.sin(angle))
@@ -330,15 +331,13 @@ class CurrentZeroTorBC(AbstractCurrent):
             elif grad == "v":
                 # current for Phi=sin(2*onp.pi*xn*v)
                 sinv0 = onp.sin(onp.pi * xn0 * vgrid)
-                dphi.append(_stack(-onp.pi * xn0**2 * sinv0 / max_val_v/2, zero_v0))
+                dphi.append(_stack(-onp.pi * xn0**2 * sinv0 / max_val_v / 2, zero_v0))
                 # current for Phi=sin(2*onp.pi*xm*u)*sin(onp.pi*xn*v)
-                dphi.append(
-                    _stack(- onp.pi * xn**2 * sinu * sinv / 2 / max_val_v, -onp.pi * xn * xm * cosu * cosv)
-                )
+                dphi.append(_stack(-onp.pi * xn**2 * sinu * sinv / 2 / max_val_v, -onp.pi * xn * xm * cosu * cosv))
             elif grad is None:
                 # current for Phi=sin(onp.pi*xn*v)
                 cosv0 = onp.cos(onp.pi * xn0 * vgrid)
-                dphi.append(_stack(xn0 * cosv0 / max_val_v/2, onp.zeros_like(xn0 * cosv0)))
+                dphi.append(_stack(xn0 * cosv0 / max_val_v / 2, onp.zeros_like(xn0 * cosv0)))
                 # current for Phi=sin(2*onp.pi*xm*u)*sin(onp.pi*xn*v)
                 dphi.append(_stack(xn * sinu * cosv / 2 / max_val_v, -xm * cosu * sinv))
 
@@ -351,9 +350,7 @@ class CurrentZeroTorBC(AbstractCurrent):
                     _stack(-2 * onp.pi * xm * xn * sinu * cosv / 2 / max_val_v, 2 * onp.pi * xm**2 * cosu * sinv)
                 )
             elif grad == "v":
-                dphi.append(
-                    _stack(-onp.pi * xn **2 * cosu * sinv / 2 / max_val_v, onp.pi * xn * xm * sinu * cosv)
-                )
+                dphi.append(_stack(-onp.pi * xn**2 * cosu * sinv / 2 / max_val_v, onp.pi * xn * xm * sinu * cosv))
             elif grad is None:
                 # current for Phi=cos(2*onp.pi*xm*u)*sin(onp.pi*xn*v)
                 dphi.append(_stack(xn * cosu * cosv / 2 / max_val_v, xm * sinu * sinv))

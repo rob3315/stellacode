@@ -1,5 +1,6 @@
-from stellacode.tools.concat_dict import ScaleDictArray
 import numpy as np
+
+from stellacode.tools.concat_dict import ScaleDictArray
 
 
 def test_scale_dict():

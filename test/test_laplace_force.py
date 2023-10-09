@@ -8,18 +8,20 @@ from scipy.io import netcdf_file
 
 from stellacode import np
 from stellacode.costs.em_cost import EMCost, get_b_field_err
-from stellacode.definitions import w7x_plasma, ncsx_plasma
+from stellacode.definitions import ncsx_plasma, w7x_plasma
 from stellacode.surface import (
     Current,
     CurrentZeroTorBC,
+    CylindricalSurface,
+    FourierSurfaceFactory,
     IntegrationParams,
     ToroidalSurface,
+    rotate_coil,
 )
-from stellacode.surface.imports import get_net_current
-from stellacode.surface import CylindricalSurface, rotate_coil, FourierSurfaceFactory
-from stellacode.surface.factories import get_original_cws, WrappedCoil
-from stellacode.tools.laplace_force import laplace_force
+from stellacode.surface.factories import WrappedCoil, get_original_cws
 from stellacode.surface.factory_tools import Sequential
+from stellacode.surface.imports import get_net_current
+from stellacode.tools.laplace_force import laplace_force
 
 
 @pytest.mark.parametrize("surf_type", ["cylindrical", "toroidal"])

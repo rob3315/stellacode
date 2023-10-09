@@ -1,12 +1,13 @@
 from typing import Optional
 
+import jax
 import numpy as onp
 from jax import Array
 from jax.typing import ArrayLike
 
 from stellacode import np
+
 from .utils import eijk
-import jax
 
 
 @jax.jit

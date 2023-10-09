@@ -1,6 +1,13 @@
-from stellacode.surface import ToroidalSurface, Current, CoilFactory, IntegrationParams, CurrentZeroTorBC
-from stellacode import np
 import numpy as onp
+
+from stellacode import np
+from stellacode.surface import (
+    CoilFactory,
+    Current,
+    CurrentZeroTorBC,
+    IntegrationParams,
+    ToroidalSurface,
+)
 from stellacode.surface.abstract_surface import get_inv_ds_grad
 
 
@@ -18,18 +25,17 @@ def test_current_grad():
     curr_op2 = super(CurrentZeroTorBC, current).__call__(grid)
 
     assert onp.allclose(curr_op, np.transpose(curr_op2, (2, 0, 1, 3)), atol=1e-6)
-    np.transpose(curr_op2, (2, 0, 1, 3))[2,0,0]
-
+    np.transpose(curr_op2, (2, 0, 1, 3))[2, 0, 0]
 
     curr_op = current.get_grad_current_op(grid)
     curr_op2 = super(CurrentZeroTorBC, current).get_grad_current_op(grid)
-    np.max(np.abs(curr_op- np.transpose(curr_op2, (2, 0, 1, 3,4))), (1,2,3))    
-    assert onp.allclose(curr_op, np.transpose(curr_op2, (2, 0, 1, 3,4)), atol=1e-6)
+    np.max(np.abs(curr_op - np.transpose(curr_op2, (2, 0, 1, 3, 4))), (1, 2, 3))
+    assert onp.allclose(curr_op, np.transpose(curr_op2, (2, 0, 1, 3, 4)), atol=1e-6)
 
     current = Current(num_pol=2, num_tor=2, net_currents=np.array([1, 2.0]), cos_basis=True)
 
     grid = np.stack(int_par.get_uvgrid(), axis=0)
-    phi_mn = onp.zeros(2+12*2)
+    phi_mn = onp.zeros(2 + 12 * 2)
     phi_mn[:2] = 1
     phi_mn[2:] = 1e-3
     curr_op = current(grid)

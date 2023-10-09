@@ -1,15 +1,17 @@
 """
 Imports for the surface module.
 """
-from stellacode import np
-from stellacode.tools.vmec import VMECIO
 import os
-from stellacode.surface.factory_tools import RotateNTimes, RotatedSurface, CoilFactory
-from .abstract_surface import Surface, IntegrationParams, AbstractBaseFactory
-from .current import Current
-from .fourier import FourierSurfaceFactory
-from .factory_tools import Sequential, rotate_coil
+
+from stellacode import np
 from stellacode.definitions import PlasmaConfig
+from stellacode.surface.factory_tools import CoilFactory, RotatedSurface, RotateNTimes
+from stellacode.tools.vmec import VMECIO
+
+from .abstract_surface import AbstractBaseFactory, IntegrationParams, Surface
+from .current import Current
+from .factory_tools import Sequential, rotate_coil
+from .fourier import FourierSurfaceFactory
 
 
 def get_cws(config, build_coils: bool = False):
