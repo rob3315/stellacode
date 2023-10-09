@@ -241,7 +241,6 @@ class CoilSurface(Surface):
             return laplace_force(
                 j_3d_f=self.j_3d[:, :num_tor_pts],
                 xyz_f=self.xyz[:, :num_tor_pts],
-                normal_unit_f=self.normal_unit[:, :num_tor_pts],
                 j_3d_b=self.j_3d,
                 xyz_b=self.xyz,
                 normal_unit_b=self.normal_unit,
@@ -261,7 +260,6 @@ class CoilSurface(Surface):
                     laplace_force(
                         j_3d_f=self.j_3d[:, :num_tor_pts],
                         xyz_f=self.xyz[:, :num_tor_pts],
-                        normal_unit_f=self.normal_unit[:, :num_tor_pts],
                         j_3d_b=self.j_3d[:, begin:end],
                         xyz_b=self.xyz[:, begin:end],
                         normal_unit_b=self.normal_unit[:, begin:end],
@@ -271,6 +269,7 @@ class CoilSurface(Surface):
                         dv=self.dv,
                     )
                 )
+                begin = end
         return sum(lap_forces)
 
     def imshow_j(self):
