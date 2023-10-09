@@ -10,7 +10,7 @@ from stellacode.surface import (
     IntegrationParams,
     ToroidalSurface,
 )
-from stellacode.surface import CylindricalSurface, FourierSurface
+from stellacode.surface import CylindricalSurface, FourierSurfaceFactory
 from stellacode.surface.imports import (
     get_net_current,
 )

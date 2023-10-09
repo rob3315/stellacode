@@ -64,7 +64,7 @@ def surface_curvature_num(X, Y, Z):
 
 def test_graphic_curvature():
     lu, lv = 128, 128
-    S = FourierSurface.from_file(
+    S = FourierSurfaceFactory.from_file(
         "data/li383/cws.txt",
         integration_par=IntegrationParams(num_points_u=lu, num_points_v=lv),
         n_fp=3,

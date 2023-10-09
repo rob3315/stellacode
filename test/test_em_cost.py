@@ -15,7 +15,7 @@ from stellacode.surface import (
     IntegrationParams,
     ToroidalSurface,
 )
-from stellacode.surface import CylindricalSurface, FourierSurface
+from stellacode.surface import CylindricalSurface, FourierSurfaceFactory
 from stellacode.surface.imports import (
     get_current_potential,
     get_cws,
@@ -364,7 +364,7 @@ def test_regcoil_with_pwc_no_current_at_bc():
 
 
 def test_plot_plasma_cross_sections():
-    surf = FourierSurface.from_file(
+    surf = FourierSurfaceFactory.from_file(
         ncsx_plasma.path_plasma,
         integration_par=IntegrationParams(num_points_u=32, num_points_v=32),
         n_fp=3,

@@ -7,7 +7,7 @@ import os
 from stellacode.surface.factory_tools import RotateNTimes, RotatedSurface, CoilFactory
 from .abstract_surface import Surface, IntegrationParams, AbstractBaseFactory
 from .current import Current
-from .fourier import FourierSurface
+from .fourier import FourierSurfaceFactory
 from .factory_tools import Sequential, rotate_coil
 from stellacode.definitions import PlasmaConfig
 
@@ -17,7 +17,7 @@ def get_cws(config, build_coils: bool = False):
     n_pol_coil = int(config["geometry"]["ntheta_coil"])
     n_tor_coil = int(config["geometry"]["nzeta_coil"])
     path_cws = str(config["geometry"]["path_cws"]).replace("/", os.sep)
-    cws = FourierSurface.from_file(
+    cws = FourierSurfaceFactory.from_file(
         path_cws, integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil), n_fp=n_fp
     )
 
@@ -35,7 +35,7 @@ def get_cws_from_plasma_config(
 ):
     assert plasma_config.path_cws is not None
     nfp = VMECIO.from_grid(plasma_config.path_plasma).nfp
-    cws = FourierSurface.from_file(
+    cws = FourierSurfaceFactory.from_file(
         plasma_config.path_cws,
         integration_par=IntegrationParams(
             num_points_u=n_harmonics_current * mult_coil_points,
@@ -92,7 +92,7 @@ def get_plasma_surface(config):
     n_tor_plasma = int(config["geometry"]["nzeta_plasma"])
     path_plasma = str(config["geometry"]["path_plasma"]).replace("/", os.sep)
 
-    plasma = FourierSurface.from_file(
+    plasma = FourierSurfaceFactory.from_file(
         path_plasma,
         integration_par=IntegrationParams(num_points_u=n_pol_plasma, num_points_v=n_tor_plasma),
         n_fp=int(config["geometry"]["Np"]),

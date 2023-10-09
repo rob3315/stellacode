@@ -26,15 +26,16 @@ from stellacode.tools.bnorm import get_bnorm
 import matplotlib.pyplot as plt
 
 
-class FourierSurface(AbstractSurfaceFactory):
-    """A class used to represent a toroidal surface with Fourier coefficients
+class FourierSurfaceFactory(AbstractSurfaceFactory):
+    """Generate a toroidal surface with Fourier coefficients
 
-    :param params: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
-    :type params: (int[],int[],float[],float[])
-    :param nbpts: see :func:`.abstract_surface.Abstract_surface`
-    :type nbpts: (int,int)
-    :param Np: see `.abstract_surface.Abstract_surface`
-    :type Np: int
+    Args:
+        * nfp: number of field periods
+        * mf: Fourier harmonic numbers in the poloidal direction
+        * nf: Fourier harmonic numbers in the toroidal direction
+        * Rmn: fourier coefficients for the radius in cylindrical coordinates
+        * Zmn: fourier coefficients for the height in cylindrical coordinates
+        * file_path: path to the file containing the Fourier coefficients
     """
     nfp: int
     mf: ArrayLike
@@ -159,7 +160,7 @@ class FourierSurface(AbstractSurfaceFactory):
 
     def __call__(self, **kwargs):
         surface = super().__call__(**kwargs)
-        surface = FourierSurfaceF(
+        surface = FourierSurface(
             major_radius=self.get_major_radius(),
             file_path=self.file_path,
             **dict(surface),
@@ -168,10 +169,21 @@ class FourierSurface(AbstractSurfaceFactory):
         return surface
 
 
-class FourierSurfaceF(Surface):
+class FourierSurface(Surface):
+    """
+    Represent a toroidal surface with Fourier coefficients.
+
+    Args:
+        * major_radius: major radius of the surface
+        * nfp: number of field periods
+        * file_path: path to the file containing the Fourier coefficients
+    """
     major_radius: ArrayLike
     nfp: int
     file_path: str
+
+    def integrate(self, field):
+        return super().integrate(field) * self.nfp
 
     def get_major_radius(self):
         return self.major_radius

@@ -16,7 +16,7 @@ from stellacode.surface import (
     ToroidalSurface,
 )
 from stellacode.surface.imports import get_net_current
-from stellacode.surface import CylindricalSurface, rotate_coil, FourierSurface
+from stellacode.surface import CylindricalSurface, rotate_coil, FourierSurfaceFactory
 from stellacode.surface.factories import get_original_cws, WrappedCoil
 from stellacode.tools.laplace_force import laplace_force
 from stellacode.surface.factory_tools import Sequential
@@ -75,7 +75,7 @@ def test_laplace_force_vs_old_implementation():
     # coil_surf = get_original_cws(path_cws=ncsx_plasma.path_cws,
     #                              path_plasma=ncsx_plasma.path_plasma, n_harmonics = 2, factor = 4)
 
-    fourier_factory = FourierSurface.from_file(
+    fourier_factory = FourierSurfaceFactory.from_file(
         ncsx_plasma.path_cws,
         integration_par=IntegrationParams(num_points_u=lu, num_points_v=lv),
         n_fp=5,
@@ -113,7 +113,6 @@ def test_laplace_force_vs_old_implementation():
         j_3d_f=coil_surf.j_3d,
         xyz_f=coil_surf.xyz,
         normal_unit_f=coil_surf.normal_unit,
-        g_up_map_f=coil_surf.get_g_upper_basis(),
         j_3d_b=coil_surf.j_3d,
         xyz_b=coil_surf.xyz,
         normal_unit_b=coil_surf.normal_unit,

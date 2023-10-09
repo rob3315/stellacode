@@ -3,7 +3,7 @@ from stellacode.surface import (
     Current,
     CurrentZeroTorBC,
     CylindricalSurface,
-    FourierSurface,
+    FourierSurfaceFactory,
     IntegrationParams,
     ToroidalSurface,
 )
@@ -45,7 +45,7 @@ class WrappedCoil(AbstractToroidalCoils):
     @classmethod
     def from_plasma(
         cls,
-        surf_plasma: FourierSurface,
+        surf_plasma: FourierSurfaceFactory,
         surf_type: str = "cylindrical",
         n_harmonics: int = 16,
         factor: int = 6,
@@ -147,7 +147,7 @@ class WrappedCoil(AbstractToroidalCoils):
 
 
 def get_toroidal_surface(
-    surf_plasma: FourierSurface,
+    surf_plasma: FourierSurfaceFactory,
     n_harmonics: int = 16,
     factor: int = 6,
     match_surface: bool = False,
@@ -193,7 +193,7 @@ def get_toroidal_surface(
 
 
 def get_pwc_surface(
-    surf_plasma: FourierSurface,
+    surf_plasma: FourierSurfaceFactory,
     n_harmonics: int = 16,
     factor: int = 6,
     rotate_diff_current: int = 3,
@@ -266,7 +266,7 @@ def get_pwc_surface(
 
 def get_original_cws(path_cws: str, path_plasma: str, n_harmonics: int = 16, factor: int = 6):
     nfp = VMECIO.from_grid(path_plasma).nfp
-    cws = FourierSurface.from_file(
+    cws = FourierSurfaceFactory.from_file(
         path_cws,
         integration_par=IntegrationParams(
             num_points_u=n_harmonics * factor,

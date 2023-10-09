@@ -277,7 +277,7 @@ class Surface(BaseModel):
 
     def integrate(self, field):
         add_dims = "abcd"[: len(field.shape) - 2]
-        return np.einsum(f"ij,ij{add_dims}->{add_dims}", self.ds, field) * self.dudv * self.nfp
+        return np.einsum(f"ij,ij{add_dims}->{add_dims}", self.ds, field) * self.dudv
 
     @property
     def area(self):

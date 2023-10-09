@@ -8,7 +8,7 @@ from stellacode.tools.bnorm import get_bnorm
 from stellacode import mu_0_fac, np
 from stellacode.costs.abstract_cost import AbstractCost, Results
 from stellacode.definitions import PlasmaConfig
-from stellacode.surface import Surface, FourierSurface, IntegrationParams
+from stellacode.surface import Surface, FourierSurfaceFactory, IntegrationParams
 from stellacode.surface.imports import get_plasma_surface
 from stellacode.tools.vmec import VMECIO
 
@@ -174,7 +174,7 @@ class MSEBField(AbstractCost):
         surface_label=-1,
     ):
         if Sp is None:
-            Sp = FourierSurface.from_file(
+            Sp = FourierSurfaceFactory.from_file(
                 plasma_config.path_plasma,
                 integration_par=integration_par,
             )()
@@ -290,7 +290,7 @@ class EMCost(AbstractCost):
         surface_label=-1,
     ):
         if Sp is None:
-            Sp = FourierSurface.from_file(plasma_config.path_plasma, integration_par=integration_par)()
+            Sp = FourierSurfaceFactory.from_file(plasma_config.path_plasma, integration_par=integration_par)()
 
         vmec = VMECIO.from_grid(
             plasma_config.path_plasma,

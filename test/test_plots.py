@@ -9,7 +9,7 @@ from stellacode.surface import (
     IntegrationParams,
     ToroidalSurface,
 )
-from stellacode.surface import CylindricalSurface, FourierSurface
+from stellacode.surface import CylindricalSurface, FourierSurfaceFactory
 from stellacode.surface.imports import (
     get_cws_from_plasma_config,
 )
@@ -30,7 +30,7 @@ def test_plot_current():
 
 @pytest.mark.skip("plot")
 def test_plot_b_field():
-    surf = FourierSurface.from_file(
+    surf = FourierSurfaceFactory.from_file(
         ncsx_plasma.path_plasma,
         integration_par=IntegrationParams(num_points_u=32, num_points_v=31),
         n_fp=3,

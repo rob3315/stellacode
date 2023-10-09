@@ -21,7 +21,7 @@ em_cost = EMCost.from_config(config=config)
 
 # tor_pos = em_cost.Sp.cartesian_to_toroidal()
 
-from stellacode.surface.fourier import FourierSurface
+from stellacode.surface.fourier import FourierSurfaceFactory
 from stellacode.surface.tore import ToroidalSurface
 from stellacode.tools.utils import get_min_dist
 
