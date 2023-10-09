@@ -25,8 +25,8 @@ from stellacode.surface.factory_tools import Sequential
 @pytest.mark.parametrize("surf_type", ["cylindrical", "toroidal"])
 def test_laplace_force_naive(surf_type):
     # TODO: make it work for surf_type='cylindrical'
-    n_harmonics = 4
-    factor = 8
+    n_harmonics = 2
+    factor = 16
     num_pt = n_harmonics * factor
 
     em_cost = EMCost.from_plasma_config(
@@ -40,7 +40,7 @@ def test_laplace_force_naive(surf_type):
         factor=factor,
         surf_type=surf_type,
         common_current_on_each_rot=True,
-        rotate_diff_current=1,
+        rotate_diff_current=3,
     )
 
     cost, metrics, results = em_cost.cost(factory())
@@ -53,10 +53,10 @@ def test_laplace_force_naive(surf_type):
     cut_coils = None
     if surf_type == "toroidal":
         cut_coils = None
-        lim = 0.06
+        lim = 0.03
     else:
         lim = 0.13
-        cut_coils = None  # np.arange(num_pt, coil_surf.xyz.shape[1], num_pt).tolist()
+        cut_coils = None#np.arange(num_pt, coil_surf.xyz.shape[1], num_pt).tolist()
     force2 = coil_surf.laplace_force(num_tor_pts=num_pt, cut_coils=cut_coils)
 
     # Approximate and rigorous Laplace forces are close:
