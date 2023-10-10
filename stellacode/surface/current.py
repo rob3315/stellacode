@@ -138,12 +138,12 @@ class AbstractCurrent(BaseModel):
         assert grad is None
         grids = np.stack(grids, axis=0)
         grad_phi = self.get_jac_phi_op_on_grid(grids, max_val_v=max_val_v)
-        return np.stack((grad_phi[..., 1], -grad_phi[..., 0]), axis=-1)
+        return np.transpose(np.stack((grad_phi[..., 1], -grad_phi[..., 0]), axis=-1), (2, 0, 1, 3))
 
     def get_grad_current_op(self, grids, max_val_v: float = 1):
         grids = np.stack(grids, axis=0)
         hess_phi = self.get_hess_phi_op_on_grid(grids, max_val_v=max_val_v)
-        return np.stack((hess_phi[..., 1, :], -hess_phi[..., 0, :]), axis=-2)
+        return np.transpose(np.stack((hess_phi[..., 1, :], -hess_phi[..., 0, :]), axis=-2), (2, 0, 1, 3, 4))
 
 
 class Current(AbstractCurrent):

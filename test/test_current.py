@@ -23,14 +23,12 @@ def test_current_grad():
     phi_mn[2:5] = 1e-3
     curr_op = current(grid)
     curr_op2 = super(CurrentZeroTorBC, current).__call__(grid)
-
-    assert onp.allclose(curr_op, np.transpose(curr_op2, (2, 0, 1, 3)), atol=1e-6)
-    np.transpose(curr_op2, (2, 0, 1, 3))[2, 0, 0]
+    assert onp.allclose(curr_op, curr_op2, atol=1e-6)
 
     curr_op = current.get_grad_current_op(grid)
     curr_op2 = super(CurrentZeroTorBC, current).get_grad_current_op(grid)
-    np.max(np.abs(curr_op - np.transpose(curr_op2, (2, 0, 1, 3, 4))), (1, 2, 3))
-    assert onp.allclose(curr_op, np.transpose(curr_op2, (2, 0, 1, 3, 4)), atol=1e-6)
+
+    assert onp.allclose(curr_op, curr_op2, atol=1e-6)
 
     current = Current(num_pol=2, num_tor=2, net_currents=np.array([1, 2.0]), cos_basis=True)
 
@@ -40,11 +38,11 @@ def test_current_grad():
     phi_mn[2:] = 1e-3
     curr_op = current(grid)
     curr_op2 = super(Current, current).__call__(grid)
-    assert onp.allclose(curr_op, np.transpose(curr_op2, (2, 0, 1, 3)), atol=1e-6)
+    assert onp.allclose(curr_op, curr_op2, atol=1e-6)
 
     curr_op = current.get_grad_current_op(grid)
     curr_op2 = super(Current, current).get_grad_current_op(grid)
-    assert onp.allclose(curr_op, np.transpose(curr_op2, (2, 0, 1, 3, 4)), atol=1e-6)
+    assert onp.allclose(curr_op, curr_op2, atol=1e-6)
 
     coil_fac = CoilFactory(current=current, compute_grad_current_op=True)
     surf = tore()
