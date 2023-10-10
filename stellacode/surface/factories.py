@@ -6,27 +6,26 @@ import matplotlib.pyplot as plt
 from jax import Array
 from jax.typing import ArrayLike
 
-from stellacode.surface import (
-    AbstractCurrent,
-    Current,
-    CurrentZeroTorBC,
-    CylindricalSurface,
-    FourierSurfaceFactory,
-    IntegrationParams,
-    ToroidalSurface,
-)
-from stellacode.surface.abstract_surface import AbstractBaseFactory
-from stellacode.surface.cylindrical import CylindricalSurface
-from stellacode.surface.factory_tools import (
+from .abstract_surface import IntegrationParams
+from .coil_surface import CoilFactory
+from .current import AbstractCurrent, Current, CurrentZeroTorBC
+from .cylindrical import CylindricalSurface
+from .factory_tools import rotate_coil
+from .fourier import FourierSurfaceFactory
+from .tore import ToroidalSurface
+
+from .abstract_surface import AbstractBaseFactory
+from .cylindrical import CylindricalSurface
+from .factory_tools import (
     ConcatSurfaces,
     RotatedSurface,
     RotateNTimes,
     Sequential,
     rotate_coil,
 )
-from stellacode.surface.imports import get_net_current
-from stellacode.surface.tore import ToroidalSurface
-from stellacode.surface.utils import fit_to_surface
+from .imports import get_net_current
+from .tore import ToroidalSurface
+from .utils import fit_to_surface
 from stellacode.tools.vmec import VMECIO
 
 from .abstract_surface import AbstractBaseFactory
@@ -134,11 +133,14 @@ class WrappedCoil(AbstractToroidalCoils):
         current = self._get_current()
         return current.get_phi_mn()
 
-    def _get_current(self):
+    def _get_coil_factory(self):
         if isinstance(self.coil_factory.surface_factories[1].surface_factories[0], CoilFactory):
-            return self.coil_factory.surface_factories[1].surface_factories[0].current
+            return self.coil_factory.surface_factories[1].surface_factories[0]
         else:
-            return self.coil_factory.surface_factories[1].surface_factories[1].current
+            return self.coil_factory.surface_factories[1].surface_factories[1]
+
+    def _get_current(self):
+        return self._get_coil_factory().current
 
     def _get_base_surface(self):
         return self.coil_factory.surface_factories[0]
@@ -336,7 +338,9 @@ class FreeCylinders(AbstractToroidalCoils):
             coil_fac_ = Sequential(
                 surface_factories=[
                     surface,
-                    CoilFactory(current=current),
+                    CoilFactory(
+                        current=current, build_coils=True
+                    ),  # only build_coils=True is allopwed because concat surface has no current_op implemented
                 ]
             )
             surfaces.append(coil_fac_)
