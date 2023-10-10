@@ -19,6 +19,28 @@ class CurrentCtrCost(AbstractCost):
         return loss, {"cost_j_ctr": loss}, results
 
 
+class PoloidalCurrentCost(AbstractCost):
+    """
+    Penalization on the maximal or minimal poloidal current.
+    
+    It is a naive solution to avoid whirlpools of currents. 
+    However, it may be overconstraining.
+    """
+
+    constraint: Constraint = Constraint(limit=0.0, distance=1.0, weight=1.0, minimum=False)
+    normalization: float = 1e6
+
+    def cost(self, S, results: Results = Results()):
+        ju = S.j_surface[:, :, 0]
+
+        loss = self.constraint.barrier(ju).mean()
+        if self.constraint.minimum:
+            ctr_ju = np.min(ju)
+        else:
+            ctr_ju = np.max(ju)
+        return loss, {"cost_j_ctr": loss, "ctr_ju": ctr_ju}, results
+
+
 class CriticalCurrentCtr(AbstractCost):
     """
     Penalization on the critical current
