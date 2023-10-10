@@ -82,12 +82,13 @@ class CoilOperator(Surface):
 
     def get_coil(self, phi_mn):
         dict_ = {k: v for k, v in dict(self).items() if k not in ["current_op", "grad_current_op"]}
-        dict_["j_surface"] = self.get_j_surface(phi_mn)
-        dict_["j_3d"] = self.get_j_3d(phi_mn)
+        if self.jac_xyz is not None:
+            dict_["j_surface"] = self.get_j_surface(phi_mn)
+            dict_["j_3d"] = self.get_j_3d(phi_mn)
 
-        if self.grad_current_op is not None:
-            dict_["grad_j_surface"] = self.get_grad_j_surface(phi_mn)
-            dict_["grad_j_3d"] = self.get_grad_j_3d(phi_mn)
+            if self.grad_current_op is not None:
+                dict_["grad_j_surface"] = self.get_grad_j_surface(phi_mn)
+                dict_["grad_j_3d"] = self.get_grad_j_3d(phi_mn)
 
         return CoilSurface(**dict_)
 
@@ -175,8 +176,8 @@ class CoilSurface(Surface):
         * phi_mn: current weights
     """
 
-    j_surface: Array
-    j_3d: Array
+    j_surface: tp.Optional[Array] = None
+    j_3d: tp.Optional[Array] = None
     net_currents: tp.Optional[Array]
     grad_j_surface: tp.Optional[Array] = None
     grad_j_3d: tp.Optional[Array] = None
