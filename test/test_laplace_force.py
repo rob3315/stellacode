@@ -1,26 +1,19 @@
-import configparser
-
 import jax
 
 jax.config.update("jax_enable_x64", True)
 import pytest
-from scipy.io import netcdf_file
 
 from stellacode import np
-from stellacode.costs.em_cost import EMCost, get_b_field_err
+from stellacode.costs.em_cost import EMCost
 from stellacode.definitions import ncsx_plasma, w7x_plasma
 from stellacode.surface import (
     Current,
-    CurrentZeroTorBC,
-    CylindricalSurface,
     FourierSurfaceFactory,
     IntegrationParams,
-    ToroidalSurface,
     rotate_coil,
 )
-from stellacode.surface.factories import WrappedCoil, get_original_cws
+from stellacode.surface.factories import WrappedCoil
 from stellacode.surface.factory_tools import Sequential
-from stellacode.surface.imports import get_net_current
 from stellacode.tools.laplace_force import laplace_force
 
 
@@ -116,14 +109,13 @@ def test_laplace_force_vs_old_implementation():
     np.max(np.linalg.norm(force, axis=-1))
 
     force2 = laplace_force(
-        j_3d_f=coil_surf.j_3d,
-        xyz_f=coil_surf.xyz,
+        j_3d_f=coil_surf.j_3d[:,:14],
+        xyz_f=coil_surf.xyz[:,:14],
         j_3d_b=coil_surf.j_3d,
         xyz_b=coil_surf.xyz,
         normal_unit_b=coil_surf.normal_unit,
         ds_b=coil_surf.ds,
         g_up_map_b=coil_surf.get_g_upper_basis(),
-        nfp=fourier_factory.nfp,
         du=1 / 11,
         dv=1 / 14,
         end_u=-1,

@@ -28,7 +28,7 @@ def laplace_force(
         * g_up_map: map from cartisian to contravariant coordinate Nu x Nv x 3 x 2
         * du: length between two naighbor points on the surface along the poloidal dimension
         * dv: length between two naighbor points on the surface along the toroidal dimension
-        * end_u: cut the points along u at end_u
+        * end_u: cut the points along u at end_u (this parameter is there for checking the coherence with older implementations)
         * end_v: cut the points along v at end_v
 
     y is in the first two dimensions: ij
@@ -86,12 +86,12 @@ def laplace_force(
 
     # <j1(y) n(x) > <y-x,n(x)> /|y-x|^3 j2(x)
     fac4 = np.einsum(
-        "ija,kla,ijklc,klc,klb,kl->ijb", j1, norm2_b[:end_u, :end_v], K, norm2_b[:end_u, :end_v], j2, ds_int
+        "ija,kla,ijklc,klc,klb,kl->ijb", j1, norm2_b, K, norm2_b, j2, ds_int
     )
 
     # -<j1(y) j2(x)> <y−x,n(x)>/|y-x|^3 n(x)
     fac5 = -np.einsum(
-        "ijklb,ija,kla,klb,klc,kl->ijc", K, j1, j2, norm2_b[:end_u, :end_v], norm2_b[:end_u, :end_v], ds_int
+        "ijklb,ija,kla,klb,klc,kl->ijc", K, j1, j2, norm2_b, norm2_b, ds_int
     )
 
     # 1/(y-x) <j1(y) j2(x) > div \pi_x
