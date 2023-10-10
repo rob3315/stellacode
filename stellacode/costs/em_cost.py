@@ -12,6 +12,7 @@ from stellacode.surface import FourierSurfaceFactory, IntegrationParams, Surface
 from stellacode.surface.imports import get_plasma_surface
 from stellacode.tools.bnorm import get_bnorm
 from stellacode.tools.vmec import VMECIO
+from stellacode.surface.coil_surface import CoilOperator, CoilSurface
 
 from .utils import merge_dataclasses
 
@@ -322,10 +323,12 @@ class EMCost(AbstractCost):
 
     def cost(self, S, results: Results = Results()):
         if not self.train_currents:
+            assert isinstance(S, CoilOperator)
             solver = self.get_regcoil_solver(S=S)
             phi_mn = solver.solve_lambda(lamb=self.lamb)
             bnorm_pred = solver.biot_et_savart_op.get_b_field(phi_mn)
         else:
+            assert isinstance(S, CoilSurface)            
             phi_mn = None
 
             # old way, much more memory intensive
@@ -385,7 +388,10 @@ class EMCost(AbstractCost):
             metrics["em_cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
         if self.slow_metrics:
-            j_3D = S.get_j_3d(phi_mn)
+            if isinstance(S, CoilOperator):
+                j_3D = S.get_j_3d(phi_mn)
+            else:
+                j_3D = S.j_3d
             metrics["max_j"] = np.max(np.linalg.norm(j_3D, axis=2))
             results.j_3d = j_3D
 
