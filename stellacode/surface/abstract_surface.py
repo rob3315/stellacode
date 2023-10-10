@@ -378,6 +378,8 @@ class Surface(BaseModel):
                     vector_field_ = vector_field[:, first:last] / np.max(vector_field)
 
                     xyz_c = xyz_c[:-1]
+                    if nfp is not None:
+                        xyz_c = xyz_c[:,:-1]
                     mlab.quiver3d(
                         xyz_c[::reduce_res, ::reduce_res, 0],
                         xyz_c[::reduce_res, ::reduce_res, 1],
