@@ -11,6 +11,7 @@ from stellacode.surface.utils import (
     fourier_coefficients,
     fourier_transform,
 )
+import os
 
 
 def test_fourier_series():
@@ -24,7 +25,7 @@ def test_fourier_series():
 @pytest.mark.parametrize("convex", [True, False])
 @pytest.mark.parametrize("num_cyl", [None, 3])
 def test_surface_envelope_fourier_series(num_cyl, convex):
-    path_config_file = "test/data/li383/config.ini"
+    path_config_file = os.path.join("test","data","li383","config.ini")
     config = configparser.ConfigParser()
     config.read(path_config_file)
     factory = get_plasma_surface(config)
