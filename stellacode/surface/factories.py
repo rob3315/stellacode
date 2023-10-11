@@ -404,3 +404,9 @@ class FreeCylinders(AbstractToroidalCoils):
             for k, v in kwargs.items():
                 current = coils[i].surface_factories[1].current
                 setattr(current, k, v)
+
+    def _get_base_surfaces(self):
+        return [surf.surface_factories[0] for surf in self.coil_factory.surface_factories[0].surface_factories]
+    
+    def _get_base_coils(self):
+        return [surf.surface_factories[0] for surf in self.coil_factory.surface_factories[0].surface_factories]    
