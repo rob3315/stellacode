@@ -7,7 +7,7 @@ from scipy.io import netcdf_file
 
 from .coordinates import cylindrical_to_cartesian, vmec_to_cylindrical
 
-# from functools import cache
+from functools import cache, cached_property
 
 
 def _dot(coeff, cossin):
@@ -19,7 +19,7 @@ class Grid(BaseModel):
     zeta: np.ndarray
     surf_labels: tp.Optional[np.ndarray] = None
 
-    model_config = dict(arbitrary_types_allowed=True, allow_mutation=False, frozen=True)  # required for caching
+    model_config = dict(arbitrary_types_allowed=True, frozen=True)  # required for caching
 
 
 class VMECIO:
@@ -30,7 +30,7 @@ class VMECIO:
     def get_var(self, key: str, cast_type=float):
         return self.file.variables[key][()].astype(cast_type)
 
-    # @cache
+    @cache
     def get_val(
         self,
         key: str,
@@ -71,6 +71,7 @@ class VMECIO:
 
         return val
 
+    @cache
     def get_val_grad(
         self,
         key: str,
@@ -85,6 +86,7 @@ class VMECIO:
             axis=-1,
         )
 
+    @cache
     def get_b_vmec(
         self,
         covariant: bool = True,
@@ -101,26 +103,26 @@ class VMECIO:
             axis=-1,
         )
 
-    @property
+    @cached_property
     def rphiz(self):
         radius = self.get_val("r", nyq=False)
         z_ = self.get_val("z", nyq=False)
         phi = np.tile(self.grid.zeta, (radius.shape[0], 1, 1))
         return np.stack((radius, phi, z_), axis=-1)
 
-    @property
+    @cached_property
     def xyz(self):
         rphiz = self.rphiz
         return cylindrical_to_cartesian(rphiz, self.grid.zeta)
 
-    @property
+    @cached_property
     def grad_rphiz(self):
         r_grad = self.get_val_grad("r", nyq=False)
         z_grad = self.get_val_grad("z", nyq=False)
         grad_rpz = np.stack((r_grad, np.zeros_like(r_grad), z_grad), axis=-1)
         return np.transpose(grad_rpz, (0, 1, 2, 4, 3))
 
-    @property
+    @cached_property
     def grad_xyz(self):
         grad_rphiz = self.grad_rphiz
         rphiz = self.rphiz[..., None]
@@ -141,19 +143,19 @@ class VMECIO:
         rphiz = self.rphiz
         return vmec_to_cylindrical(vector_field, rphiz, grad_rphiz)
 
-    @property
+    @cached_property
     def b_cylindrical(
         self,
     ):
         return self.vmec_to_cylindrical(self.get_b_vmec(covariant=False))
 
-    @property
+    @cached_property
     def b_cartesian(
         self,
     ):
         return cylindrical_to_cartesian(self.b_cylindrical, self.grid.zeta)
 
-    @property
+    @cached_property
     def j_vmec(
         self,
     ):
@@ -161,23 +163,23 @@ class VMECIO:
         jv = self.get_val(f"currv")
         return np.stack((ju, jv, np.zeros_like(ju)), axis=-1)
 
-    @property
+    @cached_property
     def j_cylindrical(
         self,
     ):
         return self.vmec_to_cylindrical(self.j_vmec)
 
-    @property
+    @cached_property
     def j_cartesian(
         self,
     ):
         return cylindrical_to_cartesian(self.j_cylindrical, self.grid.zeta)
 
-    @property
+    @cached_property
     def nfp(self):
         return self.get_var("nfp", int)
 
-    @property
+    @cached_property
     def curpol(self):
         bsubvmnc = self.get_var("bsubvmnc", float).T
 
@@ -194,7 +196,7 @@ class VMECIO:
         """
         return b_norm * self.curpol
 
-    @property
+    @cached_property
     def net_poloidal_current(self):
         """
         From regcoil:
@@ -206,7 +208,7 @@ class VMECIO:
         bvco = self.get_var("bvco", float)
         return 2 * np.pi / mu_0 * (1.5 * bvco[-1] - 0.5 * bvco[-2])
 
-    @property
+    @cached_property
     def net_poloidal_current2(self):
         xyz_dv = self.grad_xyz[-1, :, :, :, 1] * (2 * np.pi)
         return np.mean(np.sum((self.b_cartesian[-1] * xyz_dv)[:, 0], axis=-1), 0) / mu_0
