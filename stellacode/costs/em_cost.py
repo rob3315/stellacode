@@ -27,8 +27,7 @@ class BiotSavartOperator(BaseModel):
         * use_mu_0_factor: scale the operator tensor by mu_0 factor.
     """
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = dict(arbitrary_types_allowed=True)
 
     bs: Array
     use_mu_0_factor: bool = False
@@ -269,7 +268,9 @@ class EMCost(AbstractCost):
         if Sp is None:
             Sp = get_plasma_surface(config)()
 
-        bnorm_ = -curpol * get_bnorm(join(f"{dirname(dirname(dirname(realpath(__file__))))}",str(config["other"]["path_bnorm"])), Sp)
+        bnorm_ = -curpol * get_bnorm(
+            join(f"{dirname(dirname(dirname(realpath(__file__))))}", str(config["other"]["path_bnorm"])), Sp
+        )
 
         if not use_mu_0_factor:
             bnorm_ /= mu_0_fac
@@ -329,7 +330,7 @@ class EMCost(AbstractCost):
             phi_mn = solver.solve_lambda(lamb=self.lamb)
             bnorm_pred = solver.biot_et_savart_op.get_b_field(phi_mn)
         else:
-            assert isinstance(S, CoilSurface)            
+            assert isinstance(S, CoilSurface)
             phi_mn = None
 
             # old way, much more memory intensive

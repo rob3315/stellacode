@@ -44,8 +44,7 @@ class ScaleDictArray(BaseModel):
     min_std: float = 1e-8
     additional_scale: float = 1
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = dict(arbitrary_types_allowed=True)
 
     def apply(self, darr):
         for k, v in darr.items():
@@ -92,8 +91,7 @@ class ConcatScaleDictArray(BaseModel):
     concater: ConcatDictArray = ConcatDictArray()
     scaler: tp.Optional[ScaleDictArray] = None
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = dict(arbitrary_types_allowed=True)
 
     def apply(self, darr):
         if self.scaler is not None:

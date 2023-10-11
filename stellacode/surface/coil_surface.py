@@ -40,7 +40,7 @@ class CoilFactory(AbstractBaseFactory):
 
     def update_params(self, **kwargs):
         for k, v in kwargs.items():
-            if k in type(self.current).__fields__:
+            if k in type(self.current).model_fields:
                 setattr(self.current, k, v)
 
     def __call__(self, surface: Surface, **kwargs):
@@ -75,7 +75,7 @@ class CoilOperator(Surface):
 
     @classmethod
     def from_surface(cls, surface: Surface, current_op: ArrayLike, net_currents: tp.Optional[ArrayLike] = None):
-        dict_ = {k: v for k, v in dict(surface).items() if k in cls.__fields__.keys()}
+        dict_ = {k: v for k, v in dict(surface).items() if k in cls.model_fields.keys()}
         dict_["current_op"] = current_op
         dict_["net_currents"] = net_currents
         return cls(**dict_)
@@ -184,7 +184,7 @@ class CoilSurface(Surface):
 
     @classmethod
     def from_surface(cls, surface: Surface):
-        return cls(**{k: v for k, v in dict(surface).items() if k in cls.__fields__.keys()})
+        return cls(**{k: v for k, v in dict(surface).items() if k in cls.model_fields.keys()})
 
     @property
     def field_keys(self):

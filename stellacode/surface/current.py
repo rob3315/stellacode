@@ -40,8 +40,7 @@ class AbstractCurrent(BaseModel):
     trainable_params: tp.List[str] = ["phi_mn"]
     scale_phi_mn: float = 1e8
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = dict(arbitrary_types_allowed=True)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

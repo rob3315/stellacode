@@ -25,17 +25,13 @@ class Results(BaseModel):
     bnorm_plasma_surface: tp.Optional[ArrayLike] = None
     b_plasma_surface: tp.Optional[ArrayLike] = None
 
-    class Config:
-        arbitrary_types_allowed = True
-        extra = Extra.forbid
+    model_config = dict(arbitrary_types_allowed=True)
 
 
 class AbstractCost(BaseModel):
     """Interface for any cost"""
 
-    class Config:
-        arbitrary_types_allowed = True
-        extra = Extra.forbid
+    model_config = dict(arbitrary_types_allowed=True)
 
     def cost(self, S, results: Results = Results()):
         raise NotImplementedError

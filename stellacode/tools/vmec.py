@@ -19,10 +19,7 @@ class Grid(BaseModel):
     zeta: np.ndarray
     surf_labels: tp.Optional[np.ndarray] = None
 
-    class Config:
-        arbitrary_types_allowed = True
-        allow_mutation = False  # required for caching
-        frozen = True
+    model_config = dict(arbitrary_types_allowed=True, allow_mutation=False, frozen=True)  # required for caching
 
 
 class VMECIO:

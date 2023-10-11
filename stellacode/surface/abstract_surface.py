@@ -83,9 +83,7 @@ class IntegrationParams(BaseModel):
 
 
 class AbstractBaseFactory(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
-        extra = Extra.forbid
+    model_config = dict(arbitrary_types_allowed=True)
 
     def get_trainable_params(self):
         return {}
@@ -101,9 +99,9 @@ class AbstractBaseFactory(BaseModel):
         from .factory_tools import Sequential
 
         if isinstance(self, Sequential):
-            return self.copy(update=dict(surface_factories=self.surface_factories + [surface]))
+            return self.model_copy(update=dict(surface_factories=self.surface_factories + [surface]))
         elif isinstance(surface, Sequential):
-            return surface.copy(update=dict(surface_factories=[self] + surface.surface_factories))
+            return surface.model_copy(update=dict(surface_factories=[self] + surface.surface_factories))
         else:
             return Sequential(surface_factories=[self, surface])
 
@@ -225,9 +223,7 @@ class Surface(BaseModel):
     principle_max: tp.Optional[ArrayLike] = None
     principle_min: tp.Optional[ArrayLike] = None
 
-    class Config:
-        arbitrary_types_allowed = True
-        extra = Extra.forbid
+    model_config = dict(arbitrary_types_allowed=True)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
