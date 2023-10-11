@@ -222,7 +222,8 @@ class CoilSurface(Surface):
                 grid distance. Should be larger than 1 otherwise the computation may be very inaccurate.
         """
         j_3d = self.j_3d
-        dist = np.median(np.linalg.norm(self.xyz[1:]-self.xyz[:-1], axis=-1))
+        dist = np.min(np.linalg.norm(self.xyz[1:]-self.xyz[:-1], axis=-1))
+
         xyz_ext = self.xyz + epsilon*dist * self.normal_unit
         xyz_int = self.xyz - epsilon*dist * self.normal_unit
 
