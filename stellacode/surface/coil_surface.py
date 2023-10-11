@@ -178,7 +178,7 @@ class CoilSurface(Surface):
 
     j_surface: tp.Optional[Array] = None
     j_3d: tp.Optional[Array] = None
-    net_currents: tp.Optional[Array]
+    net_currents: tp.Optional[Array] = None
     grad_j_surface: tp.Optional[Array] = None
     grad_j_3d: tp.Optional[Array] = None
 
