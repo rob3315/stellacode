@@ -213,18 +213,18 @@ class CoilSurface(Surface):
 
         return bf
 
-    def naive_laplace_force(self, epsilon: float = 1e-3):
+    def naive_laplace_force(self, epsilon: float = 1.):
         """
         Naive computation of the Laplace force
 
         Args:
-            * epsilon: distance at which the magnetic field is computed. Should be larger than the resolution of
-                the grid on the surface otherwise the computation may be very inaccurate.
+            * epsilon: distance at which the magnetic field is computed in unit of inter points 
+                grid distance. Should be larger than 1 otherwise the computation may be very inaccurate.
         """
         j_3d = self.j_3d
-
-        xyz_ext = self.xyz + epsilon * self.normal_unit
-        xyz_int = self.xyz - epsilon * self.normal_unit
+        dist = np.median(np.linalg.norm(self.xyz[1:]-self.xyz[:-1], axis=-1))
+        xyz_ext = self.xyz + epsilon*dist * self.normal_unit
+        xyz_int = self.xyz - epsilon*dist * self.normal_unit
 
         b_avg = self.get_b_field(xyz_ext) + self.get_b_field(xyz_int)
 

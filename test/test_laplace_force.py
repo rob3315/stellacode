@@ -44,9 +44,7 @@ def test_laplace_force_naive(surf_type):
     factory.set_phi_mn(results.phi_mn_wnet_cur[2:])
 
     coil_surf = factory().get_coil(results.phi_mn_wnet_cur)
-    force = coil_surf.naive_laplace_force(
-        epsilon=np.min(np.linalg.norm(coil_surf.xyz[1:] - coil_surf.xyz[:-1], axis=-1)) * 1
-    )
+    force = coil_surf.naive_laplace_force(epsilon=1)
     cut_coils = None
     if surf_type == "toroidal":
         cut_coils = None
@@ -102,15 +100,13 @@ def test_laplace_force_vs_old_implementation():
         lst_coeff / 1e8
     )  # because of the scaling, a setter would be better.
     coil_surf = factory()
-    force = coil_surf.naive_laplace_force(
-        epsilon=np.min(np.linalg.norm(coil_surf.xyz[1:] - coil_surf.xyz[:-1], axis=-1)) * 2
-    )
+    force = coil_surf.naive_laplace_force(epsilon=2)
 
     np.max(np.linalg.norm(force, axis=-1))
 
     force2 = laplace_force(
-        j_3d_f=coil_surf.j_3d[:,:14],
-        xyz_f=coil_surf.xyz[:,:14],
+        j_3d_f=coil_surf.j_3d[:, :14],
+        xyz_f=coil_surf.xyz[:, :14],
         j_3d_b=coil_surf.j_3d,
         xyz_b=coil_surf.xyz,
         normal_unit_b=coil_surf.normal_unit,
