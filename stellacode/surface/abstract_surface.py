@@ -96,6 +96,17 @@ class AbstractBaseFactory(BaseModel):
     def __call__(self, surface=None, deg: int = 2):
         raise NotImplementedError
 
+    def __gt__(self, surface):
+        """Overload the > operator to build a pipe of surface factories."""
+        from .factory_tools import Sequential
+
+        if isinstance(self, Sequential):
+            return self.copy(update=dict(surface_factories=self.surface_factories + [surface]))
+        elif isinstance(surface, Sequential):
+            return surface.copy(update=dict(surface_factories=[self] + surface.surface_factories))
+        else:
+            return Sequential(surface_factories=[self, surface])
+
 
 class AbstractSurfaceFactory(AbstractBaseFactory):
     """
@@ -379,7 +390,7 @@ class Surface(BaseModel):
 
                     xyz_c = xyz_c[:-1]
                     if nfp is not None:
-                        xyz_c = xyz_c[:,:-1]
+                        xyz_c = xyz_c[:, :-1]
                     mlab.quiver3d(
                         xyz_c[::reduce_res, ::reduce_res, 0],
                         xyz_c[::reduce_res, ::reduce_res, 1],
