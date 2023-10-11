@@ -20,12 +20,11 @@ from stellacode.definitions import w7x_plasma
 from stellacode.optimizer import Optimizer
 from stellacode.surface import IntegrationParams
 from stellacode.surface.factories import get_pwc_surface, get_toroidal_surface
-import os
+from os.path import dirname, join, realpath
 
 
 def test_optimization():
-    path_config_file = os.path.join("test", "data", "li383", "config.ini")
-
+    path_config_file = join(f"{dirname(realpath(__file__))}","data","li383","config.ini")
     opt = Optimizer.from_config_file(path_config_file)
     opt.method = "L-BFGS-B"
     opt.kwargs = {"options": {"disp": False, "maxls": 1, "maxiter": 1}}
