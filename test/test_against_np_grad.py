@@ -1,3 +1,5 @@
+from os.path import dirname, join, realpath
+
 import configparser
 
 import jax
@@ -13,7 +15,8 @@ def test_full_grad_against_original_np_grad():
     jax.config.update("jax_enable_x64", True)
 
     config = configparser.ConfigParser()
-    config.read("config_file/config_small.ini")
+    config_file_folder = join(f"{dirname(dirname(realpath(__file__)))}", "config_file")
+    config.read(join(config_file_folder,"config_small.ini"))
 
     full_grad = AggregateCost.from_config(config)
     factory = get_cws(config)
@@ -29,6 +32,7 @@ def test_full_grad_against_original_np_grad():
 
     gradf = grad(fun)
     grad_res = gradf(factory.get_trainable_params())
-    grad_res_np = np.load("data/full_shape_grad.npy")
+    configs_folder = join(f"{dirname(dirname(realpath(__file__)))}", "data")
+    grad_res_np = np.load(join(configs_folder,"full_shape_grad.npy"))
     onp.testing.assert_array_almost_equal(grad_res["0.Rmn"], grad_res_np[: grad_res["0.Rmn"].shape[0]])
     onp.testing.assert_array_almost_equal(grad_res["0.Zmn"], grad_res_np[grad_res["0.Zmn"].shape[0] :])

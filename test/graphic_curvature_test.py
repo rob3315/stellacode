@@ -1,3 +1,4 @@
+from os.path import dirname, join, realpath
 import numpy as np
 
 from stellacode.surface.fourier import *
@@ -63,9 +64,10 @@ def surface_curvature_num(X, Y, Z):
 
 
 def test_graphic_curvature():
+    configs_folder = join(f"{dirname(dirname(realpath(__file__)))}", "data")
     lu, lv = 128, 128
     S = FourierSurfaceFactory.from_file(
-        "data/li383/cws.txt",
+        join(configs_folder,"li383","cws.txt"),
         integration_par=IntegrationParams(num_points_u=lu, num_points_v=lv),
         n_fp=3,
     )()

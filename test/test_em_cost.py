@@ -1,3 +1,4 @@
+from os.path import dirname, join, realpath
 import configparser
 
 import jax
@@ -31,7 +32,7 @@ from stellacode.tools.vmec import VMECIO
 
 def test_no_dimension_error():
     ###just check that all operations respects dimensions
-    path_config_file = "config_file/config_test_dim.ini"
+    path_config_file = join(f"{dirname(dirname(realpath(__file__)))}", "config_file","config_test_dim.ini")
     config = configparser.ConfigParser()
     config.read(path_config_file)
     EMCost.from_config_file(path_config_file)
@@ -62,8 +63,7 @@ def test_reproduce_regcoil_axisym():
     em_cost = EMCost.from_plasma_config(
         plasma_config=w7x_plasma, integration_par=IntegrationParams(num_points_u=32, num_points_v=32)
     )
-
-    filename = "test/data/w7x/regcoil_out.w7x_axis.nc"
+    filename = join(f"{(dirname(realpath(__file__)))}","data","w7x","regcoil_out.w7x_axis.nc")
     file_ = netcdf_file(filename, "r", mmap=False)
     # there is a different definition of lambda between regcoil and stellacode:
     # lambda_regcoil= lambda_stellacode*num_field_period
@@ -76,7 +76,8 @@ def test_reproduce_regcoil_axisym():
     chi_j = file_.variables["chi2_K"][()].astype(float)
     assert np.all((np.abs(chi_j - metrics.cost_J.values)) / chi_j < 5e-3)
 
-    vmec = VMECIO.from_grid("test/data/w7x/wout_d23p4_tm.nc")
+    test_file_folder = f"{(dirname(realpath(__file__)))}"
+    vmec = VMECIO.from_grid(join(test_file_folder,"data","w7x","wout_d23p4_tm.nc"))
     assert np.abs(file_.variables["curpol"][()].astype(float) - vmec.curpol) < 1e-19
     pol_cur = file_.variables["net_poloidal_current_Amperes"][()].astype(float)
     assert np.abs(pol_cur - vmec.net_poloidal_current) / pol_cur < 1e-9
@@ -84,11 +85,12 @@ def test_reproduce_regcoil_axisym():
 
 @pytest.mark.parametrize("use_mu_0_factor", [False, True])
 def test_compare_to_regcoil(use_mu_0_factor):
-    path_config_file = "test/data/li383/config.ini"
+    path_config_file = join(f"{dirname(realpath(__file__))}","data","li383","config.ini")
     config = configparser.ConfigParser()
     config.read(path_config_file)
 
-    filename = "test/data/li383/regcoil_out.li383.nc"
+    test_file_folder = f"{(dirname(realpath(__file__)))}"
+    filename = join(test_file_folder,"data","li383","regcoil_out.li383.nc")
     file_ = netcdf_file(filename, "r", mmap=False)
 
     cws_factory = get_cws(config)
@@ -183,7 +185,7 @@ def test_b_field_err(plasma_config, surface_label):
 
 
 def test_regcoil_with_axisymmetric():
-    path_config_file = "test/data/li383/config.ini"
+    path_config_file = join(f"{dirname(realpath(__file__))}","data","li383","config.ini")
     config = configparser.ConfigParser()
     config.read(path_config_file)
 
@@ -203,7 +205,7 @@ def test_regcoil_with_axisymmetric():
 
 
 def test_pwc_fit():
-    path_config_file = "test/data/li383/config.ini"
+    path_config_file = join(f"{dirname(realpath(__file__))}","data","li383","config.ini")
     config = configparser.ConfigParser()
     config.read(path_config_file)
 
@@ -235,7 +237,7 @@ def test_pwc_fit():
 
 
 def test_regcoil_with_pwc():
-    path_config_file = "test/data/li383/config.ini"
+    path_config_file = join(f"{dirname(realpath(__file__))}","data","li383","config.ini")
     config = configparser.ConfigParser()
     config.read(path_config_file)
 

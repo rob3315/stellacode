@@ -1,3 +1,4 @@
+from os.path import dirname, join, realpath
 import typing as tp
 
 import pandas as pd
@@ -268,7 +269,7 @@ class EMCost(AbstractCost):
         if Sp is None:
             Sp = get_plasma_surface(config)()
 
-        bnorm_ = -curpol * get_bnorm(str(config["other"]["path_bnorm"]), Sp)
+        bnorm_ = -curpol * get_bnorm(join(f"{dirname(dirname(dirname(realpath(__file__))))}",str(config["other"]["path_bnorm"])), Sp)
 
         if not use_mu_0_factor:
             bnorm_ /= mu_0_fac
