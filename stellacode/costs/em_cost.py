@@ -56,8 +56,7 @@ class RegCoilSolver(BaseModel):
         * use_mu_0_factor: divide inputs by mu_0_fac and multply outputs by mu_0_fac
     """
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = dict(arbitrary_types_allowed=True)
 
     current_basis_dot_prod: ArrayLike
     matrix: ArrayLike

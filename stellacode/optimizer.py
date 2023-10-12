@@ -62,9 +62,7 @@ class Optimizer(BaseModel):
     method: Optional[str] = None
     kwargs: dict = {}
 
-    class Config:
-        arbitrary_types_allowed = True
-        # extra = Extra.allow  # allow extra fields
+    model_config = dict(arbitrary_types_allowed=True)
 
     @classmethod
     def from_config_file(cls, config_file):
