@@ -58,6 +58,39 @@ class CoilFactory(AbstractBaseFactory):
             return coil_op
 
 
+class GroovedCoilFactory(AbstractBaseFactory):
+    """
+    Build a coil from a surface and grooves
+
+    TODO: add boundary element method to this class to compute automatically 
+    get_j3d from  a given definition of get_grooves.
+    """
+
+    trainable_params: tp.List[str] = []
+
+    def get_trainable_params(self):
+        return self.trainable_params
+
+    def update_params(self, **kwargs):
+        for k, v in kwargs.items():
+            if k in self.trainable_params:
+                setattr(self, k, v)
+
+    def __call__(self, surface: Surface, **kwargs):
+        j_3d = self.get_j_3d()
+        j_surface = np.einsum("klab,kla,kl->klb", surface.get_g_upper_basis(), j_3d, surface.ds)
+        coil = CoilSurface.from_surface(surface=surface, j_surface=j_surface, j_3d=j_3d)
+
+        return coil
+
+    def get_j3d(self):
+        raise NotImplementedError
+
+    def get_grooves(self, u):
+        """Return a list of values for v corresponding to the position of grooves on the surface"""
+        raise NotImplementedError
+
+
 class CoilOperator(Surface):
     """Represent a coil operator
 
@@ -213,19 +246,19 @@ class CoilSurface(Surface):
 
         return bf
 
-    def naive_laplace_force(self, epsilon: float = 1.):
+    def naive_laplace_force(self, epsilon: float = 1.0):
         """
         Naive computation of the Laplace force
 
         Args:
-            * epsilon: distance at which the magnetic field is computed in unit of inter points 
+            * epsilon: distance at which the magnetic field is computed in unit of inter points
                 grid distance. Should be larger than 1 otherwise the computation may be very inaccurate.
         """
         j_3d = self.j_3d
-        dist = np.min(np.linalg.norm(self.xyz[1:]-self.xyz[:-1], axis=-1))
+        dist = np.min(np.linalg.norm(self.xyz[1:] - self.xyz[:-1], axis=-1))
 
-        xyz_ext = self.xyz + epsilon*dist * self.normal_unit
-        xyz_int = self.xyz - epsilon*dist * self.normal_unit
+        xyz_ext = self.xyz + epsilon * dist * self.normal_unit
+        xyz_int = self.xyz - epsilon * dist * self.normal_unit
 
         b_avg = self.get_b_field(xyz_ext) + self.get_b_field(xyz_int)
 
