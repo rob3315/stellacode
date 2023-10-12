@@ -10,6 +10,7 @@ from stellacode.tools.laplace_force import laplace_force
 
 from .abstract_surface import AbstractBaseFactory, Surface, get_inv_ds_grad
 from .current import AbstractCurrent
+import jax
 
 
 class CoilFactory(AbstractBaseFactory):
@@ -62,11 +63,24 @@ class GroovedCoilFactory(AbstractBaseFactory):
     """
     Build a coil from a surface and grooves
 
-    TODO: add boundary element method to this class to compute automatically 
-    get_j3d from  a given definition of get_grooves.
+    TODO: add boundary element method to this class to compute automatically
+    j3d from the result of get_grooves.
+
+    Args:
+        * u_ctr_points: poloidal position of the control points of the grooves with dimensions: N_groove + 1 x N_ctr_points
+        * v_ctr_points_w: toroidal position weights of the control points of the grooves with dimensions: N_groove x N_ctr_points
+        * trainable_params: list of parameters that should be optimized
     """
 
-    trainable_params: tp.List[str] = []
+    u_ctr_points: Array
+    v_ctr_points_w: Array
+    trainable_params: tp.List[str] = ["v_ctr_points"]
+
+    @classmethod
+    def from_params(cls, num_grooves: int, num_ctr_points: int):
+        u_pos = np.tile(np.linspace(0, num_ctr_points, endpoint=False)[None], (num_grooves + 1, 1))
+        v_pos = np.zeros((num_grooves, num_ctr_points))
+        return cls(u_ctr_points=u_pos, v_ctr_points_w=v_pos)
 
     def get_trainable_params(self):
         return self.trainable_params
@@ -77,18 +91,29 @@ class GroovedCoilFactory(AbstractBaseFactory):
                 setattr(self, k, v)
 
     def __call__(self, surface: Surface, **kwargs):
-        j_3d = self.get_j_3d()
+        j_3d = self.get_j_3d(surface.grids)
         j_surface = np.einsum("klab,kla,kl->klb", surface.get_g_upper_basis(), j_3d, surface.ds)
-        coil = CoilSurface.from_surface(surface=surface, j_surface=j_surface, j_3d=j_3d)
+        coil = CoilSurface.from_surface(surface=surface)
+        coil.j_surface = j_surface
+        coil.j_3d = j_3d
 
         return coil
 
-    def get_j3d(self):
+    def get_j_3d(self, grids):
+        """Compute j_3d on surface grid points from the groove parameters using the Boundary Element Method"""
         raise NotImplementedError
 
     def get_grooves(self, u):
-        """Return a list of values for v corresponding to the position of grooves on the surface"""
-        raise NotImplementedError
+        """
+        Return a list of values for v corresponding to the position of grooves on the surface.
+        There may be advantages (and disadvantages) in using cubic interpolation, which is implemented for jax here:
+        https://jax-cosmo.readthedocs.io/en/latest/_modules/jax_cosmo/scipy/interpolate.html
+
+        Note that the first 'groove' is defined by v=0 and the last groove is defined by v=1.
+        """
+        v_ctr_points = np.cumsum(jax.nn.softmax(self.v_ctr_points_w), axis=0)
+        v_ctr_points = np.concatenate((np.zeros_like(v_ctr_points[:1]), v_ctr_points), axis=0)
+        return jax.vmap(np.interp, in_axes=(None, 0, 0))(u, self.u_ctr_points, v_ctr_points)
 
 
 class CoilOperator(Surface):
