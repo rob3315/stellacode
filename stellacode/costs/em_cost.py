@@ -214,7 +214,7 @@ class MSEBField(AbstractCost):
         bnorm_pred = S.get_b_field(xyz_plasma=self.Sp.xyz, plasma_normal=plasma_normal)
 
         cost, metrics, results_ = self.get_results(bnorm_pred=bnorm_pred, S=S)
-        return cost, metrics, merge_dataclasses(results, results_)
+        return cost, metrics, merge_dataclasses(results, results_), S
 
     def get_results(self, bnorm_pred, S):
         if self.use_mu_0_factor:
@@ -329,7 +329,8 @@ class EMCost(AbstractCost):
             phi_mn = solver.solve_lambda(lamb=self.lamb)
             bnorm_pred = solver.biot_et_savart_op.get_b_field(phi_mn)
         else:
-            assert isinstance(S, CoilSurface)
+            if isinstance(S, CoilOperator):
+                S = S.get_coil()
             phi_mn = None
 
             # old way, much more memory intensive
@@ -347,7 +348,7 @@ class EMCost(AbstractCost):
         cost, metrics, results_ = self.get_results(
             bnorm_pred=bnorm_pred, solver=solver, phi_mn=phi_mn, S=S, lamb=self.lamb
         )
-        return cost, metrics, merge_dataclasses(results, results_)
+        return cost, metrics, merge_dataclasses(results, results_), S
 
     def get_bs_operator(self, S, normal_b_field: bool = True):
         if normal_b_field:
@@ -386,7 +387,6 @@ class EMCost(AbstractCost):
         if solver is not None:
             if phi_mn is not None:
                 metrics["cost_J"] = np.einsum("i,ij,j->", phi_mn, solver.current_basis_dot_prod, phi_mn)
-            metrics["em_cost"] = metrics["cost_B"] + lamb * metrics["cost_J"]
 
         if self.slow_metrics:
             if isinstance(S, CoilOperator):

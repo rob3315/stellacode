@@ -22,4 +22,4 @@ class LaplaceForceCost(AbstractCost):
         lap_force_norm = np.linalg.norm(lap_force, axis=-1)
         loss = self.constraint.barrier(lap_force_norm).mean()
 
-        return loss, {"cost_laplace_force": loss}, results
+        return loss, {"cost_laplace_force": loss}, results, S

@@ -40,7 +40,7 @@ def test_laplace_force_naive(surf_type):
         distance=0.2,
     )
 
-    cost, metrics, results = em_cost.cost(factory())
+    cost, metrics, results, S = em_cost.cost(factory())
     factory.set_phi_mn(results.phi_mn_wnet_cur[2:])
 
     coil_surf = factory().get_coil(results.phi_mn_wnet_cur)

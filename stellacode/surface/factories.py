@@ -339,7 +339,7 @@ class FreeCylinders(AbstractToroidalCoils):
                 surface_factories=[
                     surface,
                     CoilFactory(
-                        current=current, build_coils=True
+                        current=current, build_coils=False
                     ),  # only build_coils=True is allopwed because concat surface has no current_op implemented
                 ]
             )

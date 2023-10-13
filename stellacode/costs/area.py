@@ -25,4 +25,4 @@ class AreaCost(AbstractCost):
 
         aux_dic = {}
         aux_dic["area"] = area
-        return area_cost, aux_dic, results
+        return area_cost, aux_dic, results, S

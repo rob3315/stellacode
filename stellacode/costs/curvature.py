@@ -23,7 +23,7 @@ class CurvatureCost(AbstractCost):
         aux_dic = {}
         aux_dic["max_curvature"] = max(np.max(pmax), np.max(-pmin))
 
-        return cost, aux_dic, results
+        return cost, aux_dic, results, S
 
 
 class NegTorCurvatureCost(AbstractCost):
@@ -36,7 +36,7 @@ class NegTorCurvatureCost(AbstractCost):
         curvature = self.get_toroidal_curvature(S)
         loss = self.constraint.barrier(curvature).sum()
 
-        return loss, {"min_v_curvature": curvature.min(), "cost_neg_pol_curv": loss}, results
+        return loss, {"min_v_curvature": curvature.min(), "cost_neg_pol_curv": loss}, results, S
 
     def get_toroidal_curvature(self, S):
         # TODO: check these formulae

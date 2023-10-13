@@ -49,6 +49,7 @@ class CoilFactory(AbstractBaseFactory):
             surface=surface,
             current_op=self.current(surface.grids, surface.integration_par.max_val_v),
             net_currents=self.current.net_currents,
+            phi_mn=self.current.get_phi_mn(),
         )
         if self.compute_grad_current_op:
             coil_op.grad_current_op = self.current.get_grad_current_op(surface.grids, surface.integration_par.max_val_v)
@@ -130,15 +131,23 @@ class CoilOperator(Surface):
         ArrayLike
     ] = None  # Dimensions of returned op are: dimensions: Ncurrent_op x Nu x Nv x N_j_surf x N_grad
     net_currents: tp.Optional[ArrayLike] = None
+    phi_mn: tp.Optional[ArrayLike] = None
 
     @classmethod
-    def from_surface(cls, surface: Surface, current_op: ArrayLike, net_currents: tp.Optional[ArrayLike] = None):
+    def from_surface(
+        cls,
+        surface: Surface,
+        current_op: ArrayLike,
+        net_currents: tp.Optional[ArrayLike] = None,
+        phi_mn: tp.Optional[ArrayLike] = None,
+    ):
         dict_ = {k: v for k, v in dict(surface).items() if k in cls.model_fields.keys()}
         dict_["current_op"] = current_op
         dict_["net_currents"] = net_currents
+        dict_["phi_mn"] = phi_mn
         return cls(**dict_)
 
-    def get_coil(self, phi_mn):
+    def get_coil(self, phi_mn: tp.Optional[ArrayLike] = None):
         dict_ = {k: v for k, v in dict(self).items() if k not in ["current_op", "grad_current_op"]}
         if self.jac_xyz is not None:
             dict_["j_surface"] = self.get_j_surface(phi_mn)
@@ -150,28 +159,35 @@ class CoilOperator(Surface):
 
         return CoilSurface(**dict_)
 
-    def get_j_surface(self, phi_mn):
+    def get_j_surface(self, phi_mn: tp.Optional[ArrayLike] = None):
         """
         Contravariant components of the current: J^i
         """
+        if phi_mn is None:
+            phi_mn = self.phi_mn
         return np.einsum("oijk,o->ijk", self.current_op, phi_mn)
 
-    def get_grad_j_surface(self, phi_mn):
+    def get_grad_j_surface(self, phi_mn: tp.Optional[ArrayLike] = None):
         """
         Contravariant components of the current: J^i
         """
+        if phi_mn is None:
+            phi_mn = self.phi_mn
         return np.einsum("oijkl,o->ijkl", self.grad_current_op, phi_mn)
 
-    def get_j_3d(self, phi_mn, scale_by_ds: bool = True):
+    def get_j_3d(self, phi_mn: tp.Optional[ArrayLike] = None, scale_by_ds: bool = True):
         """Compute the 3D current onto the surface"""
+        if phi_mn is None:
+            phi_mn = self.phi_mn
         if scale_by_ds:
             return np.einsum("oijk,ijdk,ij,o->ijd", self.current_op, self.jac_xyz, 1 / self.ds, phi_mn)
         else:
             return np.einsum("oijk,ijdk,o->ijd", self.current_op, self.jac_xyz, phi_mn)
 
-    def get_grad_j_3d(self, phi_mn):
+    def get_grad_j_3d(self, phi_mn: tp.Optional[ArrayLike] = None):
         """Compute the gradient of the 3D current versus u and v"""
-
+        if phi_mn is None:
+            phi_mn = self.phi_mn
         grad_j_surface = self.get_grad_j_surface(phi_mn)
 
         # Compute the gradient of 1/ds

@@ -42,14 +42,17 @@ class RotatedSurface(AbstractBaseFactory):
                     kwargs[k] = self.rotate_n(val, stack_dim=stack_dim)
 
             if "current_op" in dir(surface) and getattr(surface, "current_op") is not None:
+                assert "phi_mn" in dir(surface) and getattr(surface, "phi_mn") is not None
                 if self.different_currents:
                     kwargs["current_op"] = self._get_current_op(surface.current_op)
+                    kwargs["phi_mn"] = self._get_phi_mn(surface.phi_mn)
                 else:
                     kwargs["current_op"] = np.concatenate([surface.current_op] * self.rotate_n.n_rot, axis=2)
+                    kwargs["phi_mn"] = surface.phi_mn
 
-            for k in ["net_currents", "phi_mn"]:
+            for k in ["net_currents"]:
                 if k in dir(surface) and getattr(surface, k) is not None:
-                    kwargs[k] = surface.net_currents
+                    kwargs[k] = getattr(surface, k)
 
         return type(surface)(**kwargs)
 
@@ -64,8 +67,12 @@ class RotatedSurface(AbstractBaseFactory):
 
         # This is a hack because the status of the first two coefficients is
         # special (constant currents not regressed)
+        # TODO: treat constant currents just like others see issue #12
         blocks = np.concatenate(blocks, axis=2)
         return np.concatenate((np.concatenate([single_curent_op[:2]] * len(inner_blocks), axis=2), blocks), axis=0)
+
+    def _get_phi_mn(self, phi_mn):
+        return np.concatenate([phi_mn[:2]] + [phi_mn[2:]] * self.rotate_n.n_rot)
 
 
 class ConcatSurfaces(AbstractBaseFactory):
@@ -93,6 +100,19 @@ class ConcatSurfaces(AbstractBaseFactory):
             if k in dir(surfaces[0]) and getattr(surfaces[0], k) is not None:
                 kwargs[k] = np.concatenate([getattr(surface, k) for surface in surfaces], axis=1)
 
+        if "current_op" in dir(surfaces[0]) and getattr(surfaces[0], "current_op") is not None:
+            assert all(["current_op" in dir(surf) and getattr(surf, "current_op") is not None for surf in surfaces])
+            kwargs["current_op"] = self._get_current_op([surf.current_op for surf in surfaces])
+            assert all(["phi_mn" in dir(surf) and getattr(surf, "phi_mn") is not None for surf in surfaces])
+            kwargs["phi_mn"] = self._get_phi_mn([surf.phi_mn for surf in surfaces])
+
+
+        for k in ["net_currents"]:
+            if k in dir(surfaces[0]) and getattr(surfaces[0], k) is not None:
+                assert all([k in dir(surf) and getattr(surf, k) is not None for surf in surfaces])
+                # TODO: We should be able to treat each net_currents as a separate entity.
+                kwargs[k] = sum([getattr(surf, k) for surf in surfaces])
+
         return type(surfaces[0])(**kwargs)
 
     def get_trainable_params(self):
@@ -112,6 +132,21 @@ class ConcatSurfaces(AbstractBaseFactory):
         else:
             return super().__getattribute__(name)
 
+    def _get_current_op(self, single_curent_ops):
+        zeros_blocks = [np.zeros_like(op[2:]) for op in single_curent_ops]
+        num_ops = len(single_curent_ops)
+        blocks = []
+        for i in range(len(single_curent_ops)):
+            blocks.append(np.concatenate(zeros_blocks[:i] + [single_curent_ops[i][2:]] + zeros_blocks[i + 1 :], axis=0))
+
+        # This is a hack because the status of the first two coefficients is
+        # special (constant currents not regressed)
+        # TODO: treat constant currents just like others see issue #12
+        blocks = np.concatenate(blocks, axis=2)
+        return np.concatenate((np.concatenate([op[:2] for op in single_curent_ops], axis=2), blocks), axis=0)
+
+    def _get_phi_mn(self, phi_mns):
+        return np.concatenate([phi_mns[0][:2]] + [phi[2:] for phi in phi_mns])
 
 class Sequential(AbstractBaseFactory):
     """

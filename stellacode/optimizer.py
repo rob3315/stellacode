@@ -120,7 +120,7 @@ class Optimizer(BaseModel):
                 kwargs = scaler.unapply(kwargs)
 
             coil_factory.update_params(**kwargs)
-            res, metrics, results = cost.cost(coil_factory(), results=Results())
+            res, metrics, results, S = cost.cost(coil_factory(), results=Results())
             jax.debug.print(tostr_jax(metrics), **metrics)
 
             return res
@@ -148,7 +148,7 @@ class Optimizer(BaseModel):
         optimized_params = optim_res.x
 
         self.coil_factory.update_params(**optimized_params)
-        cost, metrics, results = self.cost.cost(self.coil_factory())
+        cost, metrics, results, S = self.cost.cost(self.coil_factory())
         return cost, metrics, results, optimized_params
 
 

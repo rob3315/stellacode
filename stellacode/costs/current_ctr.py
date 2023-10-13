@@ -16,7 +16,7 @@ class CurrentCtrCost(AbstractCost):
         j_3d_norm = np.linalg.norm(j_3d, axis=-1)
         loss = self.constraint.barrier(j_3d_norm).mean()
 
-        return loss, {"cost_j_ctr": loss}, results
+        return loss, {"cost_j_ctr": loss}, results, S
 
 
 class PoloidalCurrentCost(AbstractCost):
@@ -35,7 +35,7 @@ class PoloidalCurrentCost(AbstractCost):
 
         loss = self.constraint.barrier(ju).mean()
 
-        return loss, {"cost_ju_ctr": loss, "max_ju": np.max(ju), "min_ju": np.min(ju)}, results
+        return loss, {"cost_ju_ctr": loss, "max_ju": np.max(ju), "min_ju": np.min(ju)}, results, S
 
 
 class CriticalCurrentCtr(AbstractCost):
@@ -78,4 +78,4 @@ class CriticalCurrentCtr(AbstractCost):
 
         loss = self.constraint.barrier(j_3d_norm - jc).mean()
 
-        return loss, {"cost_j_ctr": loss}, results
+        return loss, {"cost_j_ctr": loss}, results, S

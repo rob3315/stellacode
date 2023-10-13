@@ -36,4 +36,4 @@ class DistanceCost(AbstractCost):
         loss = self.constraint.barrier(dist_min)
         cost = np.einsum("ij,ij->", loss, S.ds / S.npts)
 
-        return cost, {"min_distance": np.min(dist_min), "cost_distance": cost}, results
+        return cost, {"min_distance": np.min(dist_min), "cost_distance": cost}, results, S
