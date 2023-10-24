@@ -16,11 +16,10 @@ stages:          # List of stages for jobs, and their order of execution
 test:
   stage: test
   script:
-  - conda install -c conda-forge pandoc
-  - pip install -U sphinx
-  - pip install sphinx-autoapi nbsphinx nbsphinx-link pandoc
-  - sphinx-build -b html docs public
-
+    - pip install -e .[test]
+    - coverage run -m pytest -v test/*
+    - pip install pytest nbmake
+    - pytest --nbmake tutorials/*ipynb
 
 pages:      # This job runs in the deploy stage.
   stage: deploy  # It only runs when *both* jobs in the test stage complete successfully.

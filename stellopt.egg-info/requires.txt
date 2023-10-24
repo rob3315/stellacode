@@ -1,0 +1,17 @@
+dask
+matplotlib
+mayavi
+numpy
+opt-einsum
+scipy
+jax
+jaxlib
+
+[doc]
+sphinx-autoapi
+nbsphinx
+nbsphinx-link
+pandoc
+
+[test]
+pytest

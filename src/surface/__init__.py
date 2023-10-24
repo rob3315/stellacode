@@ -1,3 +1,0 @@
-"""
-implementation of the surfaces
-"""
