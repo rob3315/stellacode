@@ -18,7 +18,7 @@ requires-python = ">=3.7"
 keywords = ["stellarator", "coils"]
 dependencies = [
     "matplotlib",
-    "mayavi",
+    "mayavi @ https://github.com/enthought/mayavi/zipball/master",
     "numpy",
     "opt-einsum",
     "scipy",
