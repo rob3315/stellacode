@@ -11,7 +11,7 @@ class Results(BaseModel):
 
     Args:
         * j_3d: 3d current
-        * j_s: surfacic current
+        * j_s: surface current
         * phi_mn: current weights
         * phi_mn_wnet_cur: current weights with net poloidal or toroidal currents
         * bnorm_plasma_surface: normal magnetic field onto the plasma surface

@@ -120,6 +120,10 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
         """return the surface point parametrized by uv in cartesian coordinate"""
         raise NotImplementedError
 
+    def get_uv_unwrapped(self, uv):
+        """return the surface point parametrized by uv in cartesian coordinate"""
+        raise NotImplementedError
+
     def get_trainable_params(self):
         """Return the trainable parameters from the factory"""
         return {k: getattr(self, k) for k in self.trainable_params}
@@ -138,6 +142,32 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
         xyz = np.reshape(surf_res, (lu, lv, 3))
 
         return xyz
+
+    def get_xyz_over_line(self, grid_):
+        """Return the surface points over a line"""
+        surf = jax.vmap(self.get_xyz, in_axes=1, out_axes=0)
+        xyz = surf(grid_)
+        # xyz = np.reshape(surf_res, (lu, lv, 3))
+
+        return xyz
+
+    def get_uv_unwrapped_on_grid(self, grid):
+        """Return the surface points on the grid"""
+        _, lu, lv = grid.shape
+        grid_ = np.reshape(grid, (2, -1))
+        surf = jax.vmap(self.get_uv_unwrapped, in_axes=1, out_axes=0)
+        surf_res = surf(grid_)
+        uv_unwrapped = np.reshape(surf_res, (lu, lv, 2))
+
+        return uv_unwrapped
+
+    def get_uv_unwrapped_over_line(self, grid_):
+        """Return the surface points over a line"""
+        surf = jax.vmap(self.get_uv_unwrapped, in_axes=1, out_axes=0)
+        uv_unwrapped = surf(grid_)
+        # xyz = np.reshape(surf_res, (lu, lv, 3))
+
+        return uv_unwrapped
 
     def get_jac_xyz_on_grid(self, grid):
         """Return the surface jacobian on the grid"""
@@ -284,7 +314,7 @@ class Surface(BaseModel):
 
     def integrate(self, field):
         add_dims = "abcd"[: len(field.shape) - 2]
-        return np.einsum(f"ij,ij{add_dims}->{add_dims}", self.ds, field) * self.dudv
+        return np.einsum(f"ij,{add_dims}ij->{add_dims}", self.ds, field) * self.dudv # np.einsum(f"ij,ij{add_dims}->{add_dims}", self.ds, field) * self.dudv #
 
     @property
     def area(self):
@@ -357,21 +387,54 @@ class Surface(BaseModel):
 
         if nfp is None:
             xyz = self.expand_for_plot_part(num_tor_pts=num_tor_pts)
+            reduce_res_nfp = 1
         else:
             xyz = self.expand_for_plot_whole(detach_parts=detach_parts, nfp=nfp)
+            reduce_res_nfp = nfp
+                        
+        max_extent_X = 0
+        max_extent_Y = 0
+        max_extent_Z = 0
 
         kwargs = mesh_kwargs
         if scalar is not None:
-            scalar_ = np.concatenate((scalar, scalar[0:1]), axis=0)
-            kwargs["scalars"] = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[::reduce_res, ::reduce_res]
+            scalar_ = np.concatenate((scalar, scalar[0:1,:]), axis=0)
+            scalar_ = np.tile(scalar_, (1, reduce_res_nfp))
+            if cut_tor is None:
+                # kwargs["scalars"] = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[:xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
+                scalar_ = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[:xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
+            else:
+                # kwargs["scalars"] = scalar_[:xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
+                scalar_ = scalar_[:xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
+        else:
+            scalar_ = None
 
         for xyz_ in xyz:
+
+            if max_extent_X < np.max(np.abs(xyz_[:, :, 0])):
+                max_extent_X = np.max(np.abs(xyz_[:, :, 0]))
+            if max_extent_Y < np.max(np.abs(xyz_[:, :, 1])):
+                max_extent_Y = np.max(np.abs(xyz_[:, :, 1]))
+            if max_extent_Z < np.max(np.abs(xyz_[:, :, 2])):
+                max_extent_Z = np.max(np.abs(xyz_[:, :, 2]))
+
             if cut_tor is not None:
                 cuts = np.arange(xyz_.shape[1] + 1, step=cut_tor)
+                # if scalar_ is not None:
+                #     max_index_scalar=scalar_.shape[1]
+                if vector_field is not None:
+                    max_index_vector=vector_field.shape[1]
             else:
                 cuts = [0, 100000000]
             for first, last in zip(cuts[:-1], cuts[1:]):
                 xyz_c = xyz_[:, first:last]
+                
+                if scalar_ is not None:
+                    max_index_scalar=scalar_.shape[1]
+                    scalar_field = scalar_[:,first % max_index_scalar:(last % max_index_scalar) + max_index_scalar * ((last % max_index_scalar) == 0)]
+                else:
+                    scalar_field = None
+
                 surf = mlab.mesh(
                     xyz_c[..., 0],
                     xyz_c[..., 1],
@@ -379,32 +442,38 @@ class Surface(BaseModel):
                     representation=representation,
                     colormap=colormap,
                     color=color,
+                    scalars=scalar_field,
                     **kwargs,
                 )
                 if vector_field is not None:
+                    # vector_field_ = vector_field[:,first % max_index_vector:(last % max_index_vector) + max_index_vector * ((last % max_index_vector) == 0),:] / np.max(vector_field)
                     vector_field_ = vector_field[:, first:last] / np.max(vector_field)
 
                     xyz_c = xyz_c[:-1]
                     if nfp is not None:
                         xyz_c = xyz_c[:, :-1]
                     mlab.quiver3d(
-                        xyz_c[::reduce_res, ::reduce_res, 0],
-                        xyz_c[::reduce_res, ::reduce_res, 1],
-                        xyz_c[::reduce_res, ::reduce_res, 2],
+                        # xyz_c[::reduce_res, ::reduce_res, 0],
+                        # xyz_c[::reduce_res, ::reduce_res, 1],
+                        # xyz_c[::reduce_res, ::reduce_res, 2],
+                        xyz_c[::reduce_res, ::reduce_res*reduce_res_nfp, 0],
+                        xyz_c[::reduce_res, ::reduce_res*reduce_res_nfp, 1],
+                        xyz_c[::reduce_res, ::reduce_res*reduce_res_nfp, 2],
                         vector_field_[::reduce_res, ::reduce_res, 0],
                         vector_field_[::reduce_res, ::reduce_res, 1],
                         vector_field_[::reduce_res, ::reduce_res, 2],
                         **quiver_kwargs,
                     )
 
-        mlab.plot3d(np.linspace(0, 10, 100), np.zeros(100), np.zeros(100), color=(1, 0, 0))
-        mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100), np.zeros(100), color=(0, 1, 0))
-        mlab.plot3d(np.zeros(100), np.zeros(100), np.linspace(0, 10, 100), color=(0, 0, 1))
+        reference_axis_factor = np.min([max_extent_X, max_extent_Y, max_extent_Z]) * 0.1
+        mlab.plot3d(np.linspace(0, 10, 100) * reference_axis_factor, np.zeros(100), np.zeros(100), color=(1, 0, 0),tube_radius=0.001)
+        mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100) * reference_axis_factor, np.zeros(100), color=(0, 1, 0),tube_radius=0.001)
+        mlab.plot3d(np.zeros(100), np.zeros(100), np.linspace(0, 10, 100) * reference_axis_factor, color=(0, 0, 1),tube_radius=0.001)
 
         if scalar is not None:
             mlab.colorbar(surf, nb_labels=4, label_fmt="%.1E", orientation="vertical")
 
-        mlab.view(39.35065816238082, 52.4711478893247, 4.259806307223165, np.array([4.10903064, 2.9532187, 4.20616949]))
+        # mlab.view(39.35065816238082, 52.4711478893247, 4.259806307223165, np.array([4.10903064, 2.9532187, 4.20616949]))
 
     def plot_2d_field(self, field, num_prec=2, ax=None):
         """

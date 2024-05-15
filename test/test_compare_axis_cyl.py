@@ -1,3 +1,4 @@
+from os.path import dirname, join, realpath
 import configparser
 
 import numpy as np
@@ -15,7 +16,8 @@ from stellacode.surface.tore import ToroidalSurface
 
 
 def test_compare_axisymmetric_vs_cylindrical():
-    path_config = "test/data/w7x/config.ini"
+    path_config = join(f"{(dirname(realpath(__file__)))}", "data","w7x","config.ini")
+    # path_config = "test/data/w7x/config.ini"
     config = configparser.ConfigParser()
     config.read(path_config)
 

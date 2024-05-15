@@ -7,7 +7,7 @@ from jax.typing import ArrayLike
 from stellacode import np
 
 from .abstract_surface import AbstractSurfaceFactory
-from .utils import cartesian_to_cylindrical, cartesian_to_toroidal, fourier_transform
+from .utils import cartesian_to_cylindrical, cartesian_to_toroidal, fourier_transform, fourier_transform_derivative, unwrap_u
 
 
 class CylindricalSurface(AbstractSurfaceFactory):
@@ -81,6 +81,50 @@ class CylindricalSurface(AbstractSurfaceFactory):
 
         # shift along the cylinder
         return cyl_axis * v_ * _length + circle + self.distance * axis_orth + shear
+
+
+    def get_uv_unwrapped(self, uv):
+        u_ = 2 * np.pi * uv[0]  # poloidal variable (phi angle unwrapped)
+        v_ = uv[1] - 0.5 + 0.5 / self.integration_par.num_points_v  # length variable
+
+        # Calculate the radius at angle phi (u_)
+        if self.points is not None:
+            radius = (
+                np.interp(
+                    u_, np.linspace(0, 1, len(self.points), endpoint=False), nn.softmax(self.points) * len(self.points)
+                )
+                * self.radius
+            )
+        else:
+            radius = (fourier_transform(self.fourier_coeffs, u_) + 1) * self.radius
+
+        # Compute unwrapped u(phi)
+        unwrapped_u = unwrap_u(lambda phi: (fourier_transform(self.fourier_coeffs, phi) + 1) * self.radius,
+                        lambda phi: (fourier_transform_derivative(self.fourier_coeffs, phi)) * self.radius,u_)
+
+        # Calculate the axial length
+        dist_edge = self.distance - self.radius
+        length = 2 * dist_edge * np.tan(np.pi / self.nfp)
+        length *= self.scale_length
+
+        # Adjust length if make_joints is True
+        if self.make_joints:
+            p_dist = self.distance + np.cos(u_) * radius
+            length = length * p_dist / (self.distance - self.radius)
+
+        # Shear effect if applied
+        if self.shear_strength != 0.0:
+            axis_a = self._get_axis_angle()
+            shear_x = self.shear_strength * v_ * np.sin(axis_a + 2 * np.pi * v_)
+            shear_y = self.shear_strength * v_ * -np.cos(axis_a + 2 * np.pi * v_)
+        else:
+            shear_x = 0.0
+            shear_y = 0.0
+
+        # Since we are creating a 2D unwrapped surface, the output should be 2D points
+        # u_ maps directly to the circumferential position, while v_ maps to the axial position
+        # return np.array([u_ * radius,v_ * length]) + np.array([shear_x, shear_y])
+        return np.array([unwrapped_u,v_ * length]) + np.array([shear_x, shear_y])
 
     def _get_axis_angle(self):
         return np.pi / 2 + np.pi / self.nfp + self.axis_angle

@@ -47,6 +47,33 @@ def fourier_transform(coefficients, val):
         np.stack((np.cos(angle), np.sin(angle)), axis=1),
     )
 
+def unwrap_u(r_function, dr_dphi_function, phi, num_points=100):
+    all_phi = np.linspace(0, phi, num_points)
+
+    # Calculate radius and derivative at all phi points
+    dr_dphis = np.array([dr_dphi_function(p) for p in all_phi])
+    rs = np.array([r_function(p) for p in all_phi])
+    integrand = np.sqrt(dr_dphis**2 + rs**2)
+
+    return np.trapz(integrand, all_phi)
+
+def fourier_transform_derivative(coefficients, val):
+    k = (np.arange(coefficients.shape[0]) + 1)
+    angle = val * k
+
+    cos_terms = np.cos(angle)
+    sin_terms = np.sin(angle)
+    
+    d_cos = -k * sin_terms
+    d_sin = k * cos_terms
+    
+    derivative = np.einsum(
+        "ab,ab",
+        coefficients,
+        np.stack((d_cos, d_sin), axis=1),
+    )
+    
+    return derivative
 
 def fourier_coefficients(li, lf, n, f):
     # from: https://www.bragitoff.com/2021/05/fourier-series-coefficients-and-visualization-python-program/
