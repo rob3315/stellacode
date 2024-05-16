@@ -47,13 +47,14 @@ def fourier_transform(coefficients, val):
         np.stack((np.cos(angle), np.sin(angle)), axis=1),
     )
 
-def unwrap_u(r_function, dr_dphi_function, phi, num_points=100):
+def unwrap_u(radius_function, dr_dphi_function, phi, num_points=100):
     all_phi = np.linspace(0, phi, num_points)
 
-    # Calculate radius and derivative at all phi points
-    dr_dphis = np.array([dr_dphi_function(p) for p in all_phi])
-    rs = np.array([r_function(p) for p in all_phi])
-    integrand = np.sqrt(dr_dphis**2 + rs**2)
+    # Calculate radii and their derivatives at all points
+    all_dr_dphi = np.array([dr_dphi_function(p) for p in all_phi])
+    all_radii = np.array([radius_function(p) for p in all_phi])
+
+    integrand = np.sqrt(all_dr_dphi**2 + all_radii**2)
 
     return np.trapz(integrand, all_phi)
 

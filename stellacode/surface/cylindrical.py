@@ -97,10 +97,16 @@ class CylindricalSurface(AbstractSurfaceFactory):
             )
         else:
             radius = (fourier_transform(self.fourier_coeffs, u_) + 1) * self.radius
-
+        
         # Compute unwrapped u(phi)
-        unwrapped_u = unwrap_u(lambda phi: (fourier_transform(self.fourier_coeffs, phi) + 1) * self.radius,
-                        lambda phi: (fourier_transform_derivative(self.fourier_coeffs, phi)) * self.radius,u_)
+        if np.sum(np.diff(radius.val)) == 0:
+            # If the radius is NOT defined by a fourier series
+            unwrapped_u = u_ * radius
+        else:
+            # If the radius is defined by a fourier series
+            unwrapped_u = unwrap_u(lambda phi: (fourier_transform(self.fourier_coeffs, phi) + 1) * self.radius,
+                lambda phi: (fourier_transform_derivative(self.fourier_coeffs, phi)) * self.radius,u_)
+
 
         # Calculate the axial length
         dist_edge = self.distance - self.radius
@@ -122,7 +128,7 @@ class CylindricalSurface(AbstractSurfaceFactory):
             shear_y = 0.0
 
         # Since we are creating a 2D unwrapped surface, the output should be 2D points
-        # u_ maps directly to the circumferential position, while v_ maps to the axial position
+        # u_ maps the circumferential position, while v_ maps the axial position
         # return np.array([u_ * radius,v_ * length]) + np.array([shear_x, shear_y])
         return np.array([unwrapped_u,v_ * length]) + np.array([shear_x, shear_y])
 
