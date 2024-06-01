@@ -31,7 +31,8 @@ class PoloidalCurrentCost(AbstractCost):
     normalization: float = 1e6
 
     def cost(self, S, results: Results = Results()):
-        ju = S.j_surface[:, :, 0]
+        coil_surf = S.get_coil(phi_mn = results.phi_mn_wnet_cur)
+        ju = coil_surf.j_surface[:, :, 0]
 
         loss = self.constraint.barrier(ju).mean()
 
