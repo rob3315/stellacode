@@ -20,6 +20,7 @@ jobs:
         conda install -c conda-forge pandoc
         pip install -U sphinx
         pip install sphinx-autoapi nbsphinx nbsphinx-link pandoc
+        pip install docutils==0.19
 
     - name: Build documentation
       run: sphinx-build -b html docs public
