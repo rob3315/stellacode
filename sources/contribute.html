@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Contribute &#8212; Stellacode  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=12dfc556" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=fd3f3429" />
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Uninstall" href="uninstall.html" />
+    <link rel="prev" title="Set your own settings for your simulations" href="configurations.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="contribute">
+<h1>Contribute<a class="headerlink" href="#contribute" title="Link to this heading">¶</a></h1>
+<p><strong>Stellacode</strong> is an open source software and we welcome any contribution.
+Feel free to conctact <a class="reference external" href="https://rrobin.pages.math.cnrs.fr/#contact">me</a> directly or to contribute directly to the <a class="reference external" href="https://plmlab.math.cnrs.fr/rrobin/stellacode">gitlab</a> .</p>
+<p>the ticket list is <a class="reference external" href="https://plmlab.math.cnrs.fr/rrobin/stellacode/-/issues">here</a></p>
+<section id="code-structure">
+<h2>Code structure<a class="headerlink" href="#code-structure" title="Link to this heading">¶</a></h2>
+<p>The code structure has been thought to be (relatively) easily extended to other costs and surfaces parametrizations.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>src
+├── costs
+│   ├── abstract_shape_gradient.py
+│   ├── aux.py
+│   ├── curvature_shape_gradient.py
+│   ├── distance_shape_gradient.py
+│   ├── EM_cost.py
+│   ├── EM_shape_gradient.py
+│   ├── full_shape_gradient.py
+│   ├── perimeter_shape_gradient.py
+├── graphic_interface
+│   └── simu_result.py
+├── surface
+│   ├── abstract_surface.py
+│   └── surface_Fourier.py
+└── tools
+    ├── __init__.py
+    └── bnorm.py
+</pre></div>
+</div>
+</section>
+<section id="adding-a-new-cost">
+<h2>Adding a new cost<a class="headerlink" href="#adding-a-new-cost" title="Link to this heading">¶</a></h2>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">Stellacode</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorials/quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="configurations.html">Set your own settings for your simulations</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Contribute</a></li>
+<li class="toctree-l1"><a class="reference internal" href="uninstall.html">Uninstall</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">Licenses</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../autoapi/index.html">API Reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="configurations.html" title="previous chapter">Set your own settings for your simulations</a></li>
+      <li>Next: <a href="uninstall.html" title="next chapter">Uninstall</a></li>
+  </ul></li>
+</ul>
+</div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2021, R. Robin.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="../_sources/sources/contribute.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

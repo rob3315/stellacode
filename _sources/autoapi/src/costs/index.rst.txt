@@ -1,0 +1,27 @@
+src.costs
+=========
+
+.. py:module:: src.costs
+
+.. autoapi-nested-parse::
+
+   Module with all the usable costs for a simulation
+
+
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   /autoapi/src/costs/EM_cost/index
+   /autoapi/src/costs/EM_shape_gradient/index
+   /autoapi/src/costs/abstract_shape_gradient/index
+   /autoapi/src/costs/auxi/index
+   /autoapi/src/costs/curvature_shape_gradient/index
+   /autoapi/src/costs/distance_shape_gradient/index
+   /autoapi/src/costs/full_shape_gradient/index
+   /autoapi/src/costs/perimeter_shape_gradient/index
+
+

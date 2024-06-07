@@ -1,0 +1,46 @@
+src.costs.abstract_shape_gradient
+=================================
+
+.. py:module:: src.costs.abstract_shape_gradient
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   src.costs.abstract_shape_gradient.Abstract_shape_gradient
+
+
+Module Contents
+---------------
+
+.. py:class:: Abstract_shape_gradient
+
+   Bases: :py:obj:`abc.ABC`
+
+
+   An Abstract_shape_gradient is the interface for any cost
+
+   :param S: a surface
+   :type S: for now only Surface_Fourier are supported
+
+
+   .. py:method:: cost(S)
+      :abstractmethod:
+
+
+
+   .. py:method:: shape_gradient(S, theta_pertubation)
+      :abstractmethod:
+
+
+      The implementation of the shape gradient
+
+      :param S: a surface
+      :type S: for now only Surface_Fourier are supported
+      :param theta_pertubation: see `get_theta_perturbation of a surface`
+      :type theta_pertubation: dictionary
+
+
+

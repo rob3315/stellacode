@@ -1,0 +1,18 @@
+src
+===
+
+.. py:module:: src
+
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 1
+
+   /autoapi/src/costs/index
+   /autoapi/src/graphic_interface/index
+   /autoapi/src/surface/index
+   /autoapi/src/tools/index
+
+

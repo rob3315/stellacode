@@ -1,0 +1,56 @@
+src.surface.abstract_surface
+============================
+
+.. py:module:: src.surface.abstract_surface
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   src.surface.abstract_surface.Surface
+
+
+Module Contents
+---------------
+
+.. py:class:: Surface(surface_parametrization, nbpts, Np)
+
+   Bases: :py:obj:`abc.ABC`
+
+
+   A class used to represent an abstract toroidal surface
+
+
+
+   .. py:method:: load_file()
+      :abstractmethod:
+
+
+      extract the surface_parametrization from a file
+
+
+
+
+   .. py:method:: change_param(dcoeff)
+      :abstractmethod:
+
+
+      from a surface parameters and an array of modification,
+      return the right surface parameters
+      :param param: a complex type
+      :param dcoeff: the perturbation to apply
+      :type dcoeff: 1D array
+
+
+
+   .. py:method:: get_theta_pertubation()
+      :abstractmethod:
+
+
+      compute the perturbations of a surface
+
+
+
+

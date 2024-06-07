@@ -1,0 +1,116 @@
+src.costs.EM_cost
+=================
+
+.. py:module:: src.costs.EM_cost
+
+.. autoapi-nested-parse::
+
+   Various implementation of the main cost
+
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   src.costs.EM_cost.Surface_Fourier
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   src.costs.EM_cost.EM_cost
+   src.costs.EM_cost.EM_cost_without_dask
+   src.costs.EM_cost.EM_cost_dask
+   src.costs.EM_cost.EM_cost_dask_with_multipliers
+   src.costs.EM_cost.EM_cost_dask_old
+
+
+Module Contents
+---------------
+
+.. py:class:: Surface_Fourier(surface_parametrization, nbpts, Np)
+
+   Bases: :py:obj:`src.surface.abstract_surface.Surface`
+
+
+   A class used to represent an toroidal surface with Fourier coefficients
+
+   :param surface_parametrization: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
+   :type surface_parametrization: (int[],int[],float[],float[])
+   :param nbpts: see :func:`.abstract_surface.Abstract_surface`
+   :type nbpts: (int,int)
+   :param Np: see `.abstract_surface.Abstract_surface`
+   :type Np: int
+
+
+   .. py:method:: load_file()
+
+      load file with the format m,n,Rmn,Zmn
+
+
+
+   .. py:method:: change_param(dcoeff)
+
+      from a surface parameters and an array of modification,
+      return the right surface parameters
+
+
+
+   .. py:method:: compute_surface_attributes(deg=2)
+
+      compute surface elements used in the shape optimization up
+      to degree deg
+      deg is 0,1 or 2
+
+
+
+   .. py:method:: plot_surface()
+
+      Plot the surface
+
+
+
+   .. py:method:: get_boldpsi()
+
+      old, we should eliminate
+
+
+
+   .. py:method:: get_theta_pertubation(compute_curvature=True)
+
+      return a dictionary with the shape derivative of several elements
+
+
+
+.. py:function:: EM_cost(config, S=None, Sp=None)
+
+   dispatch depending on the dask option in config
+
+
+.. py:function:: EM_cost_without_dask(config, S, Sp)
+
+.. py:function:: EM_cost_dask(config, S, Sp)
+
+   new version without Lagrange multipliers, to use by default
+
+   :param config:
+   :type config: :class:`configparser.ConfigParser`
+   :param S:
+   :type S: `Surface`
+   :param Sp:
+   :type Sp: `Surface`
+   :return: various component of the cost
+   :rtype: dictionary
+
+
+.. py:function:: EM_cost_dask_with_multipliers(config, S, Sp)
+
+.. py:function:: EM_cost_dask_old(config, S, Sp)
+
+   old version
+
+

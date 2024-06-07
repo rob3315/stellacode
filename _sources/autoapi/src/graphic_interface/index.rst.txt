@@ -1,0 +1,15 @@
+src.graphic_interface
+=====================
+
+.. py:module:: src.graphic_interface
+
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   /autoapi/src/graphic_interface/simu_result/index
+
+

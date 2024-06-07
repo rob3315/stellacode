@@ -1,0 +1,174 @@
+src.costs.full_shape_gradient
+=============================
+
+.. py:module:: src.costs.full_shape_gradient
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   src.costs.full_shape_gradient.Distance_shape_gradient
+   src.costs.full_shape_gradient.Perimeter_shape_gradient
+   src.costs.full_shape_gradient.Curvature_shape_gradient
+   src.costs.full_shape_gradient.Surface_Fourier
+   src.costs.full_shape_gradient.Full_shape_gradient
+
+
+Module Contents
+---------------
+
+.. py:class:: Distance_shape_gradient(path_config_file=None, config=None)
+
+   Bases: :py:obj:`src.costs.abstract_shape_gradient.Abstract_shape_gradient`
+
+
+   Non linear penalization of the distance to the plasma (lower bound)
+
+
+   .. py:method:: cost(S)
+
+
+   .. py:method:: shape_gradient(S, theta_pertubation)
+
+      The implementation of the shape gradient
+
+      :param S: a surface
+      :type S: for now only Surface_Fourier are supported
+      :param theta_pertubation: see `get_theta_perturbation of a surface`
+      :type theta_pertubation: dictionary
+
+
+
+.. py:class:: Perimeter_shape_gradient(path_config_file=None, config=None)
+
+   Bases: :py:obj:`src.costs.abstract_shape_gradient.Abstract_shape_gradient`
+
+
+   Non linear penalization on the perimeter (upper bound)
+
+
+
+   .. py:method:: cost(S)
+
+
+   .. py:method:: shape_gradient(S, theta_peturbation)
+
+      The implementation of the shape gradient
+
+      :param S: a surface
+      :type S: for now only Surface_Fourier are supported
+      :param theta_pertubation: see `get_theta_perturbation of a surface`
+      :type theta_pertubation: dictionary
+
+
+
+.. py:class:: Curvature_shape_gradient(path_config_file=None, config=None)
+
+   Bases: :py:obj:`src.costs.abstract_shape_gradient.Abstract_shape_gradient`
+
+
+   Non linear penalization on the curvature (upper bound)
+
+
+
+   .. py:method:: cost(S)
+
+
+   .. py:method:: curvature_derivative(S, theta_peturbation)
+
+
+   .. py:method:: shape_gradient(S, theta_pertubation)
+
+      The implementation of the shape gradient
+
+      :param S: a surface
+      :type S: for now only Surface_Fourier are supported
+      :param theta_pertubation: see `get_theta_perturbation of a surface`
+      :type theta_pertubation: dictionary
+
+
+
+.. py:class:: Surface_Fourier(surface_parametrization, nbpts, Np)
+
+   Bases: :py:obj:`src.surface.abstract_surface.Surface`
+
+
+   A class used to represent an toroidal surface with Fourier coefficients
+
+   :param surface_parametrization: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
+   :type surface_parametrization: (int[],int[],float[],float[])
+   :param nbpts: see :func:`.abstract_surface.Abstract_surface`
+   :type nbpts: (int,int)
+   :param Np: see `.abstract_surface.Abstract_surface`
+   :type Np: int
+
+
+   .. py:method:: load_file()
+
+      load file with the format m,n,Rmn,Zmn
+
+
+
+   .. py:method:: change_param(dcoeff)
+
+      from a surface parameters and an array of modification,
+      return the right surface parameters
+
+
+
+   .. py:method:: compute_surface_attributes(deg=2)
+
+      compute surface elements used in the shape optimization up
+      to degree deg
+      deg is 0,1 or 2
+
+
+
+   .. py:method:: plot_surface()
+
+      Plot the surface
+
+
+
+   .. py:method:: get_boldpsi()
+
+      old, we should eliminate
+
+
+
+   .. py:method:: get_theta_pertubation(compute_curvature=True)
+
+      return a dictionary with the shape derivative of several elements
+
+
+
+.. py:class:: Full_shape_gradient(path_config_file=None, config=None)
+
+   Put together all the costs
+
+
+   .. py:method:: get_surface(param_S_array)
+
+      Return the surface associated with the 1D input
+
+      :param param_S_array: a float 1D array
+      :rtype: Surface
+
+
+
+   .. py:method:: cost(param_S_array)
+
+
+   .. py:method:: shape_gradient(param_S_array)
+
+      Full_shape_gradient only needs the surface parametrization
+
+      :param param_S_array:
+      :type param_S_array: 1D array
+      :return: the shape gradient
+      :rtype: 1D array
+
+
+

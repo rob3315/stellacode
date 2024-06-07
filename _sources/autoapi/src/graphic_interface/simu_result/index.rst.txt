@@ -1,0 +1,190 @@
+src.graphic_interface.simu_result
+=================================
+
+.. py:module:: src.graphic_interface.simu_result
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   src.graphic_interface.simu_result.Distance_shape_gradient
+   src.graphic_interface.simu_result.Perimeter_shape_gradient
+   src.graphic_interface.simu_result.Curvature_shape_gradient
+   src.graphic_interface.simu_result.Surface_Fourier
+   src.graphic_interface.simu_result.Simu_result
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   src.graphic_interface.simu_result.load_all_simulation
+
+
+Module Contents
+---------------
+
+.. py:class:: Distance_shape_gradient(path_config_file=None, config=None)
+
+   Bases: :py:obj:`src.costs.abstract_shape_gradient.Abstract_shape_gradient`
+
+
+   Non linear penalization of the distance to the plasma (lower bound)
+
+
+   .. py:method:: cost(S)
+
+
+   .. py:method:: shape_gradient(S, theta_pertubation)
+
+      The implementation of the shape gradient
+
+      :param S: a surface
+      :type S: for now only Surface_Fourier are supported
+      :param theta_pertubation: see `get_theta_perturbation of a surface`
+      :type theta_pertubation: dictionary
+
+
+
+.. py:class:: Perimeter_shape_gradient(path_config_file=None, config=None)
+
+   Bases: :py:obj:`src.costs.abstract_shape_gradient.Abstract_shape_gradient`
+
+
+   Non linear penalization on the perimeter (upper bound)
+
+
+
+   .. py:method:: cost(S)
+
+
+   .. py:method:: shape_gradient(S, theta_peturbation)
+
+      The implementation of the shape gradient
+
+      :param S: a surface
+      :type S: for now only Surface_Fourier are supported
+      :param theta_pertubation: see `get_theta_perturbation of a surface`
+      :type theta_pertubation: dictionary
+
+
+
+.. py:class:: Curvature_shape_gradient(path_config_file=None, config=None)
+
+   Bases: :py:obj:`src.costs.abstract_shape_gradient.Abstract_shape_gradient`
+
+
+   Non linear penalization on the curvature (upper bound)
+
+
+
+   .. py:method:: cost(S)
+
+
+   .. py:method:: curvature_derivative(S, theta_peturbation)
+
+
+   .. py:method:: shape_gradient(S, theta_pertubation)
+
+      The implementation of the shape gradient
+
+      :param S: a surface
+      :type S: for now only Surface_Fourier are supported
+      :param theta_pertubation: see `get_theta_perturbation of a surface`
+      :type theta_pertubation: dictionary
+
+
+
+.. py:class:: Surface_Fourier(surface_parametrization, nbpts, Np)
+
+   Bases: :py:obj:`src.surface.abstract_surface.Surface`
+
+
+   A class used to represent an toroidal surface with Fourier coefficients
+
+   :param surface_parametrization: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
+   :type surface_parametrization: (int[],int[],float[],float[])
+   :param nbpts: see :func:`.abstract_surface.Abstract_surface`
+   :type nbpts: (int,int)
+   :param Np: see `.abstract_surface.Abstract_surface`
+   :type Np: int
+
+
+   .. py:method:: load_file()
+
+      load file with the format m,n,Rmn,Zmn
+
+
+
+   .. py:method:: change_param(dcoeff)
+
+      from a surface parameters and an array of modification,
+      return the right surface parameters
+
+
+
+   .. py:method:: compute_surface_attributes(deg=2)
+
+      compute surface elements used in the shape optimization up
+      to degree deg
+      deg is 0,1 or 2
+
+
+
+   .. py:method:: plot_surface()
+
+      Plot the surface
+
+
+
+   .. py:method:: get_boldpsi()
+
+      old, we should eliminate
+
+
+
+   .. py:method:: get_theta_pertubation(compute_curvature=True)
+
+      return a dictionary with the shape derivative of several elements
+
+
+
+.. py:class:: Simu_result(path)
+
+   A class to easily handle results of simulations
+
+   :param path: path to a folder with a config.ini file and `scipy.optimize.OptimizeResult` object in a file named *result*
+   :type path: String
+   :raises Exception: unable to find the folder with right files
+
+
+   .. py:method:: get_data_dic(surf_param=None)
+
+      get the different costs of the results of the simulation
+
+      :param surf_param: surface to use, if None, use the last one of the simulation
+      :type surf_param: 1D array
+
+      :rtype: dictionary
+
+
+
+   .. py:method:: get_data_dic_ref()
+
+      get the different costs of the surface used to initialize the optimization
+
+      :rtype: dictionary
+
+
+
+.. py:function:: load_all_simulation(path)
+
+   Load all the folder in a given path
+
+   :type path: String
+   :rtype: list :class:`Simu_result`
+
+

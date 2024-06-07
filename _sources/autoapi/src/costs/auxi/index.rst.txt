@@ -1,0 +1,65 @@
+src.costs.auxi
+==============
+
+.. py:module:: src.costs.auxi
+
+.. autoapi-nested-parse::
+
+   contained non linear functions (and there derivative) to impose constraints
+
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   src.costs.auxi.f_non_linear
+   src.costs.auxi.grad_f_non_linear
+   src.costs.auxi.f_e
+   src.costs.auxi.grad_f_e
+
+
+Module Contents
+---------------
+
+.. py:function:: f_non_linear(d_min_hard, d_min_soft, d_min_penalization, x)
+
+   blow up before d_min_hard and zero after d_min_soft
+
+   :param d_min_hard: cost is inf for x smaller than this value
+   :type d_min_hard: float
+   :param d_min_soft: cost is 0 for x bigger than this value
+   :type d_min_soft: float
+   :param d_min_penalization: a multiplicative constant in the cost
+   :type d_min_penalization: float
+   :param x: the argument
+   :type x: float
+   :rtype: float
+
+
+.. py:function:: grad_f_non_linear(d_min_hard, d_min_soft, d_min_penalization, x)
+
+   gradient of :func: f_non_linear
+
+
+
+.. py:function:: f_e(c0, c1, x)
+
+   blow up after c0 and zero before c1
+
+   :param c0: cost is 0 for x smaller than this value
+   :type c0: float
+   :param c1: cost is inf for x bigger than this value
+   :type c1: float
+   :param x: the argument
+   :type x: float
+   :rtype: float
+
+
+.. py:function:: grad_f_e(c0, c1, x)
+
+   gradient of :func: f_e
+
+
+

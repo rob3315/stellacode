@@ -1,0 +1,137 @@
+src.surface.surface_Fourier
+===========================
+
+.. py:module:: src.surface.surface_Fourier
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   src.surface.surface_Fourier.Surface
+   src.surface.surface_Fourier.Surface_Fourier
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   src.surface.surface_Fourier.expand_for_plot
+   src.surface.surface_Fourier.plot
+   src.surface.surface_Fourier.plot_function_on_surface
+
+
+Module Contents
+---------------
+
+.. py:class:: Surface(surface_parametrization, nbpts, Np)
+
+   Bases: :py:obj:`abc.ABC`
+
+
+   A class used to represent an abstract toroidal surface
+
+
+
+   .. py:method:: load_file()
+      :abstractmethod:
+
+
+      extract the surface_parametrization from a file
+
+
+
+
+   .. py:method:: change_param(dcoeff)
+      :abstractmethod:
+
+
+      from a surface parameters and an array of modification,
+      return the right surface parameters
+      :param param: a complex type
+      :param dcoeff: the perturbation to apply
+      :type dcoeff: 1D array
+
+
+
+   .. py:method:: get_theta_pertubation()
+      :abstractmethod:
+
+
+      compute the perturbations of a surface
+
+
+
+
+.. py:class:: Surface_Fourier(surface_parametrization, nbpts, Np)
+
+   Bases: :py:obj:`src.surface.abstract_surface.Surface`
+
+
+   A class used to represent an toroidal surface with Fourier coefficients
+
+   :param surface_parametrization: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
+   :type surface_parametrization: (int[],int[],float[],float[])
+   :param nbpts: see :func:`.abstract_surface.Abstract_surface`
+   :type nbpts: (int,int)
+   :param Np: see `.abstract_surface.Abstract_surface`
+   :type Np: int
+
+
+   .. py:method:: load_file()
+
+      load file with the format m,n,Rmn,Zmn
+
+
+
+   .. py:method:: change_param(dcoeff)
+
+      from a surface parameters and an array of modification,
+      return the right surface parameters
+
+
+
+   .. py:method:: compute_surface_attributes(deg=2)
+
+      compute surface elements used in the shape optimization up
+      to degree deg
+      deg is 0,1 or 2
+
+
+
+   .. py:method:: plot_surface()
+
+      Plot the surface
+
+
+
+   .. py:method:: get_boldpsi()
+
+      old, we should eliminate
+
+
+
+   .. py:method:: get_theta_pertubation(compute_curvature=True)
+
+      return a dictionary with the shape derivative of several elements
+
+
+
+.. py:function:: expand_for_plot(S)
+
+   from a toroidal_surface surface return X,Y,Z
+   and add redundancy of first row
+
+
+.. py:function:: plot(lst_S)
+
+   plot a list of surfaces
+
+
+.. py:function:: plot_function_on_surface(S, f)
+
+   Plot f the surface given by S.X,S.Y,S.Z
+
+

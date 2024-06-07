@@ -1,0 +1,154 @@
+src.costs.distance_shape_gradient
+=================================
+
+.. py:module:: src.costs.distance_shape_gradient
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   src.costs.distance_shape_gradient.Abstract_shape_gradient
+   src.costs.distance_shape_gradient.Surface_Fourier
+   src.costs.distance_shape_gradient.Distance_shape_gradient
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   src.costs.distance_shape_gradient.f_non_linear
+   src.costs.distance_shape_gradient.grad_f_non_linear
+
+
+Module Contents
+---------------
+
+.. py:class:: Abstract_shape_gradient
+
+   Bases: :py:obj:`abc.ABC`
+
+
+   An Abstract_shape_gradient is the interface for any cost
+
+   :param S: a surface
+   :type S: for now only Surface_Fourier are supported
+
+
+   .. py:method:: cost(S)
+      :abstractmethod:
+
+
+
+   .. py:method:: shape_gradient(S, theta_pertubation)
+      :abstractmethod:
+
+
+      The implementation of the shape gradient
+
+      :param S: a surface
+      :type S: for now only Surface_Fourier are supported
+      :param theta_pertubation: see `get_theta_perturbation of a surface`
+      :type theta_pertubation: dictionary
+
+
+
+.. py:class:: Surface_Fourier(surface_parametrization, nbpts, Np)
+
+   Bases: :py:obj:`src.surface.abstract_surface.Surface`
+
+
+   A class used to represent an toroidal surface with Fourier coefficients
+
+   :param surface_parametrization: (m,n,Rmn,Zmn) 4 lists to parametrize the surface
+   :type surface_parametrization: (int[],int[],float[],float[])
+   :param nbpts: see :func:`.abstract_surface.Abstract_surface`
+   :type nbpts: (int,int)
+   :param Np: see `.abstract_surface.Abstract_surface`
+   :type Np: int
+
+
+   .. py:method:: load_file()
+
+      load file with the format m,n,Rmn,Zmn
+
+
+
+   .. py:method:: change_param(dcoeff)
+
+      from a surface parameters and an array of modification,
+      return the right surface parameters
+
+
+
+   .. py:method:: compute_surface_attributes(deg=2)
+
+      compute surface elements used in the shape optimization up
+      to degree deg
+      deg is 0,1 or 2
+
+
+
+   .. py:method:: plot_surface()
+
+      Plot the surface
+
+
+
+   .. py:method:: get_boldpsi()
+
+      old, we should eliminate
+
+
+
+   .. py:method:: get_theta_pertubation(compute_curvature=True)
+
+      return a dictionary with the shape derivative of several elements
+
+
+
+.. py:function:: f_non_linear(d_min_hard, d_min_soft, d_min_penalization, x)
+
+   blow up before d_min_hard and zero after d_min_soft
+
+   :param d_min_hard: cost is inf for x smaller than this value
+   :type d_min_hard: float
+   :param d_min_soft: cost is 0 for x bigger than this value
+   :type d_min_soft: float
+   :param d_min_penalization: a multiplicative constant in the cost
+   :type d_min_penalization: float
+   :param x: the argument
+   :type x: float
+   :rtype: float
+
+
+.. py:function:: grad_f_non_linear(d_min_hard, d_min_soft, d_min_penalization, x)
+
+   gradient of :func: f_non_linear
+
+
+
+.. py:class:: Distance_shape_gradient(path_config_file=None, config=None)
+
+   Bases: :py:obj:`src.costs.abstract_shape_gradient.Abstract_shape_gradient`
+
+
+   Non linear penalization of the distance to the plasma (lower bound)
+
+
+   .. py:method:: cost(S)
+
+
+   .. py:method:: shape_gradient(S, theta_pertubation)
+
+      The implementation of the shape gradient
+
+      :param S: a surface
+      :type S: for now only Surface_Fourier are supported
+      :param theta_pertubation: see `get_theta_perturbation of a surface`
+      :type theta_pertubation: dictionary
+
+
+

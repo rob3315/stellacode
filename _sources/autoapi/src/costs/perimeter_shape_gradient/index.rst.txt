@@ -1,0 +1,98 @@
+src.costs.perimeter_shape_gradient
+==================================
+
+.. py:module:: src.costs.perimeter_shape_gradient
+
+
+Classes
+-------
+
+.. autoapisummary::
+
+   src.costs.perimeter_shape_gradient.Abstract_shape_gradient
+   src.costs.perimeter_shape_gradient.Perimeter_shape_gradient
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   src.costs.perimeter_shape_gradient.f_e
+   src.costs.perimeter_shape_gradient.grad_f_e
+
+
+Module Contents
+---------------
+
+.. py:class:: Abstract_shape_gradient
+
+   Bases: :py:obj:`abc.ABC`
+
+
+   An Abstract_shape_gradient is the interface for any cost
+
+   :param S: a surface
+   :type S: for now only Surface_Fourier are supported
+
+
+   .. py:method:: cost(S)
+      :abstractmethod:
+
+
+
+   .. py:method:: shape_gradient(S, theta_pertubation)
+      :abstractmethod:
+
+
+      The implementation of the shape gradient
+
+      :param S: a surface
+      :type S: for now only Surface_Fourier are supported
+      :param theta_pertubation: see `get_theta_perturbation of a surface`
+      :type theta_pertubation: dictionary
+
+
+
+.. py:function:: f_e(c0, c1, x)
+
+   blow up after c0 and zero before c1
+
+   :param c0: cost is 0 for x smaller than this value
+   :type c0: float
+   :param c1: cost is inf for x bigger than this value
+   :type c1: float
+   :param x: the argument
+   :type x: float
+   :rtype: float
+
+
+.. py:function:: grad_f_e(c0, c1, x)
+
+   gradient of :func: f_e
+
+
+
+.. py:class:: Perimeter_shape_gradient(path_config_file=None, config=None)
+
+   Bases: :py:obj:`src.costs.abstract_shape_gradient.Abstract_shape_gradient`
+
+
+   Non linear penalization on the perimeter (upper bound)
+
+
+
+   .. py:method:: cost(S)
+
+
+   .. py:method:: shape_gradient(S, theta_peturbation)
+
+      The implementation of the shape gradient
+
+      :param S: a surface
+      :type S: for now only Surface_Fourier are supported
+      :param theta_pertubation: see `get_theta_perturbation of a surface`
+      :type theta_pertubation: dictionary
+
+
+

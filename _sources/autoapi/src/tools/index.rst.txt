@@ -1,0 +1,106 @@
+src.tools
+=========
+
+.. py:module:: src.tools
+
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   /autoapi/src/tools/bnorm/index
+
+
+Attributes
+----------
+
+.. autoapisummary::
+
+   src.tools.eijk
+
+
+Functions
+---------
+
+.. autoapisummary::
+
+   src.tools.get_tensor_distance
+   src.tools.phi_coeff_from_nb
+   src.tools.get_matrix_dPhi
+   src.tools.compute_j
+   src.tools.compute_dpsi_full
+   src.tools.get_rot_tensor
+   src.tools.compute_Qj
+   src.tools.compute_dQjdtheta
+   src.tools.compute_LS_old
+   src.tools.compute_LS
+   src.tools.compute_dLS
+
+
+Package Contents
+----------------
+
+.. py:data:: eijk
+
+.. py:function:: get_tensor_distance(S1, S2, rot_tensor)
+
+   S1 has a grid lu1 x lv1 and S2 lu2 x lv2x3 with the same Np
+   return the tensor Npxlu1xlv1xlu2xlv2 x 3 of the vector between
+   such that T[i,j,k,l,m,n] is the nth coordinates bwn the rotation of
+   2pi i/Np psi1_j,k and psi2_l,m
+
+
+.. py:function:: phi_coeff_from_nb(k, phisize)
+
+   the coefficents of Phi are store as 1d array,
+   this function make the conversion with a 2d matrix
+
+
+.. py:function:: get_matrix_dPhi(phisize, grids)
+
+   generate the tensor (2+lc) xluxlvx2 of divergence free vector fields
+   lc is the number of fourier component given by phisize
+
+
+.. py:function:: compute_j(boldpsi, matrixd_phi, Np)
+
+.. py:function:: compute_dpsi_full(dpsi, Np)
+
+.. py:function:: get_rot_tensor(Np)
+
+.. py:function:: compute_Qj(matrixd_phi, dpsi, dS)
+
+   take only the segment whitout rotation of j
+
+
+.. py:function:: compute_dQjdtheta(matrixd_phi, dpsi, dS, dtheta, dSdtheta)
+
+   take only the segment whitout rotation of j
+
+
+.. py:function:: compute_LS_old(T, j, dS, normalp)
+
+   T is the distance tensor Npxlu1xlv1xlu2xlv2 x 3
+   and j the current tensor (lc+2) x Np x lu1 x lv1 x 3
+   dS lu1 x lv1
+   normalp 3 x lu2 x lv2
+
+
+.. py:function:: compute_LS(T, matrixd_phi, dpsi, rot_tensor, normalp)
+
+   T is the distance tensor Npxlu1xlv1xlu2xlv2 x 3
+   and j the current tensor (lc+2) x Np x lu1 x lv1 x 3
+   dS lu1 x lv1
+   normalp 3 x lu2 x lv2
+
+
+.. py:function:: compute_dLS(T, matrixd_phi, dpsi, rot_tensor, normalp, theta, dtildetheta)
+
+   T is the distance tensor Npxlu1xlv1xlu2xlv2 x 3
+   and j the current tensor (lc+2) x Np x lu1 x lv1 x 3
+   dS lu1 x lv1
+   normalp 3 x lu2 x lv2
+
+
