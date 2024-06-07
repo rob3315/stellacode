@@ -1,14 +1,13 @@
-[![pipeline status](https://plmlab.math.cnrs.fr/rrobin/stellacode/badges/master/pipeline.svg)](https://plmlab.math.cnrs.fr/rrobin/stellacode/commits/master)
-
 Stellacode
 ---
 
 Stellacode is a python package for coil winding surface shape optimization.
 
-TODO :  add link to article
+The code is based on this [article](https://www.sciencedirect.com/science/article/pii/S0021782422000587?via%3Dihub) (preprint also available [here](https://arxiv.org/abs/2112.05049))
 
-The full documentation with installation guide and tutorials is available [here](https://rrobin.pages.math.cnrs.fr/stellacode).
+The full documentation with installation guide and tutorials is available TODO.
 
 Copyright 2021-present [Rémi Robin](https://rrobin.pages.math.cnrs.fr/) and [Stellacage](https://www.ljll.math.upmc.fr/~sigalotti/cage/stellacage.html),
 
 Released under the [MPL 2 license](https://mozilla.org/MPL/2.0).
+
