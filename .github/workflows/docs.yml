@@ -1,0 +1,31 @@
+name: Documentation Build and Deploy
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    container:
+      image: continuumio/miniconda3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install dependencies
+      run: |
+        conda install -c conda-forge pandoc
+        pip install -U sphinx
+        pip install sphinx-autoapi nbsphinx nbsphinx-link pandoc
+
+    - name: Build documentation
+      run: sphinx-build -b html docs public
+
+    - name: Deploy documentation
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./public
