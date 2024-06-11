@@ -1,8 +1,20 @@
 import matplotlib.pyplot as plt
-from stellacode.surface import Surface
+from stellacode.surface import Surface, CoilFactory
 import numpy as onp
 
-def plot_CWS_LCFS(S: Surface, Sp: Surface, n_cyl :int , ax=None, save_fig:bool=False, output_path:str=""):
+def plot_cross_sections(coil_factory:CoilFactory, Sp: Surface,  save_fig:bool=False, output_path:str=""):
+    """
+    Plot a cross section of the CWS and several cross sections of the LCFS
+    """
+    ax = coil_factory.plot_cross_section(c="r")
+    Sp.plot_cross_sections(convex_envelope=False, ax=ax)
+
+    if save_fig:
+        ax.savefig(output_path)
+    
+    return ax
+
+def plot_CWS_LCFS(S: Surface, Sp: Surface, n_cyl :int ,save_fig:bool=False, output_path:str=""):
     """
     Plot in the XY plane:
     * the CWS boundaries projection
@@ -42,7 +54,7 @@ def plot_CWS_LCFS(S: Surface, Sp: Surface, n_cyl :int , ax=None, save_fig:bool=F
 
     return fig, ax
 
-def plot_j2D_CWS(S: Surface,ax=None, save_fig: bool=False, output_path:str=""):
+def plot_j2D_CWS(S: Surface,save_fig: bool=False, output_path:str=""):
     """
     Unwrap the CWS to plot j in 2D
     """
