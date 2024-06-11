@@ -1,0 +1,39 @@
+dask-worker-space/
+__pycache__/
+
+
+
+*checkpoint.ipynb
+.ipynb_checkpoints/
+.mypy_cache/
+.pytest_cache/
+
+.vscode/settings.json
+
+*.pyc
+
+tmp/
+
+# Sphinx documentation
+docs/_build/
+docs/_autosummary/
+public/
+
+stellacode.egg-info/
+stellopt.egg-info/
+
+.flake8
+.gitlab-ci.yml
+
+
+*.egg
+*.egg-info
+
+MANIFEST
+
+# outputs from notebooks
+tutorials/*.png
+tutorials/*.pkl
+
+# outputs from scripts
+outputs/*
