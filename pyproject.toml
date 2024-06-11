@@ -29,9 +29,6 @@ dependencies = [
     "autograd_minimize",
 ]
 
-[tool.setuptools]
-py-modules = ["stellacode"]
-
 [project.optional-dependencies]
 test = [
     "pytest", "flake8", "mypy", "isort", "black"
@@ -45,10 +42,17 @@ doc = ["sphinx-autoapi",
 Documentation = "https://rrobin.pages.math.cnrs.fr/stellacode/sources/tutorials/quickstart.html"
 Source = "https://github.com/rob3315/stellacode/"
 
+[project.scripts]
+
+[tool.setuptools]
+py-modules = ["stellacode"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["stellacode*"]
+
 [tool.black]
 line-length = 120
 
 [tool.isort]
 profile = "black"
-
-[project.scripts]
