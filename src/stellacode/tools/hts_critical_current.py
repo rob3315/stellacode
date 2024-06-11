@@ -11,7 +11,7 @@ class HTSCriticalCurrent:
     Computes the critical current for a number of HTS tapes
     """
 
-    HTS_DATABASE_PATH = join(dirname(dirname(dirname(__file__))), "data", "hts_params_jeroen.xlsx")
+    HTS_DATABASE_PATH = join(dirname(dirname(dirname(dirname(__file__)))), "data", "hts_params_jeroen.xlsx")
     B_MIN = 0.1
     EPS = 1e-15
 

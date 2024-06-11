@@ -21,7 +21,7 @@ class PlasmaConfig(BaseModel):
     path_cws: tp.Optional[str] = None
 
 
-configs_folder = join(f"{dirname(dirname(realpath(__file__)))}", "data")
+configs_folder = join(f"{dirname(dirname(dirname(realpath(__file__))))}", "data")
 w7x_plasma = PlasmaConfig(
     path_plasma=join(configs_folder, "w7x", "wout_d23p4_tm.nc"),
     minor_radius=0.53,
