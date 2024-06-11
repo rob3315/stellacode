@@ -44,7 +44,11 @@ class AbstractToroidalCoils(AbstractBaseFactory):
 
 
 class WrappedCoil(AbstractToroidalCoils):
+    """
+    A coil factory with a number of coil periods
+    """
     coil_factory: AbstractBaseFactory
+    ncp : int
 
     @classmethod
     def from_plasma(
@@ -80,7 +84,8 @@ class WrappedCoil(AbstractToroidalCoils):
                     convex=convex,
                     match_surface=match_surface,
                     build_coils=build_coils,
-                )
+                ),
+                ncp = surf_plasma.nfp*rotate_diff_current
             )
         elif surf_type == "toroidal":
             return cls(
@@ -94,7 +99,8 @@ class WrappedCoil(AbstractToroidalCoils):
                     sin_basis=sin_basis,
                     cos_basis=cos_basis,
                     build_coils=build_coils,
-                )
+                ),
+                ncp = 1
             )
 
         else:
@@ -177,7 +183,7 @@ def get_toroidal_surface(
             num_coeff=10, convex=convex)
         tor_surf.update_params(minor_radius=tor_surf.minor_radius + distance)
     else:
-        minor_radius = surf_plasma.get_minor_radius()
+        minor_radius = surf_plasma.get_minor_radius(vmec=False)
         major_radius = surf_plasma.get_major_radius()
         tor_surf = ToroidalSurface(
             nfp=surf_plasma.nfp,
@@ -325,7 +331,7 @@ class FreeCylinders(AbstractToroidalCoils):
                 num_pol=n_harmonics_u, num_tor=n_harmonics_v, sin_basis=True, cos_basis=True, net_currents=np.zeros(2)
             )
             fourier_coeffs = np.zeros((5, 2))
-            minor_radius = surf_plasma.get_minor_radius()
+            minor_radius = surf_plasma.get_minor_radius(vmec=False)
             major_radius = surf_plasma.get_major_radius()
             surface = CylindricalSurface(
                 fourier_coeffs=fourier_coeffs,

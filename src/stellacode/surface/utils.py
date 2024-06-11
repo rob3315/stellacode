@@ -107,7 +107,7 @@ def fit_to_surface(fitted_surface, surface, distance: float = 0.0):
     # assuming surface has get_major_radius and get_minor_radius methods
 
     major_radius = surface.get_major_radius()
-    minor_radius = surface.get_minor_radius()
+    minor_radius = surface.get_minor_radius(vmec=False)
     new_surf = fitted_surface.model_copy()
     new_surf.surface_factories[0].update_params(
         radius=minor_radius + major_radius / 3,

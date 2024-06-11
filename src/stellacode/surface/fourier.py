@@ -225,8 +225,16 @@ class FourierSurface(Surface):
     def get_major_radius(self):
         return self.major_radius
 
-    def get_minor_radius(self):
-        return self.minor_radius
+    def get_minor_radius(self, vmec=True):
+        """
+        Get the minor radius :
+        - from vmec file
+        - as the maximum value of the radius in toroidal coords
+        """
+        if vmec:
+            return self.minor_radius
+        else:
+            return np.max(self.cartesian_to_toroidal()[:, :, 0])
 
     def cartesian_to_cylindrical(self):
         return cartesian_to_cylindrical(xyz=self.xyz)
