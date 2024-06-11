@@ -346,7 +346,9 @@ class Surface(BaseModel):
         """Returns X, Y, Z arrays of one field period, adding redundancy of first column."""
         import numpy as np
 
-        P = np.array(self.xyz[:, :num_tor_pts])
+        num_pts = min(self.xyz.shape[1],num_tor_pts)
+
+        P = np.array(self.xyz[:, :num_pts])
         return [np.concatenate((P, P[:1]), axis=0)]
 
     def expand_for_plot_whole(self, nfp: int, detach_parts: bool = False):
@@ -365,6 +367,7 @@ class Surface(BaseModel):
         else:
             points = np.concatenate(points_, axis=1)
             return [np.concatenate((points, points[:, :1]), axis=1)]
+
 
     @mlab.show
     def plot(
