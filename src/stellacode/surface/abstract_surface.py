@@ -6,7 +6,9 @@ import numpy as onp
 import seaborn as sns
 from jax.typing import ArrayLike
 from pydantic import BaseModel, Extra
+
 from mayavi import mlab
+import plotly.graph_objects as go
 
 from stellacode import np
 from stellacode.tools.rotate_n_times import RotateNTimes
@@ -213,9 +215,11 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
         # We also compute surface element dS and derivatives dS_u and dS_v:
         if deg >= 1:
             surface.jac_xyz = self.get_jac_xyz_on_grid(uv_grid)
-            surface.normal = np.cross(surface.jac_xyz[..., 0], surface.jac_xyz[..., 1], -1, -1, -1)
+            surface.normal = np.cross(
+                surface.jac_xyz[..., 0], surface.jac_xyz[..., 1], -1, -1, -1)
             surface.ds = np.linalg.norm(surface.normal, axis=-1)
-            surface.normal_unit = surface.normal / surface.ds[:, :, None]  # normal inward unit vector
+            surface.normal_unit = surface.normal / \
+                surface.ds[:, :, None]  # normal inward unit vector
 
         if deg >= 2:
             surface.hess_xyz = self.get_hess_xyz_on_grid(uv_grid)
@@ -317,7 +321,8 @@ class Surface(BaseModel):
 
     def integrate(self, field):
         add_dims = "abcd"[: len(field.shape) - 2]
-        return np.einsum(f"ij,{add_dims}ij->{add_dims}", self.ds, field) * self.dudv # np.einsum(f"ij,ij{add_dims}->{add_dims}", self.ds, field) * self.dudv #
+        # np.einsum(f"ij,ij{add_dims}->{add_dims}", self.ds, field) * self.dudv #
+        return np.einsum(f"ij,{add_dims}ij->{add_dims}", self.ds, field) * self.dudv
 
     @property
     def area(self):
@@ -346,7 +351,7 @@ class Surface(BaseModel):
         """Returns X, Y, Z arrays of one field period, adding redundancy of first column."""
         import numpy as np
 
-        num_pts = min(self.xyz.shape[1],num_tor_pts)
+        num_pts = min(self.xyz.shape[1], num_tor_pts)
 
         P = np.array(self.xyz[:, :num_pts])
         return [np.concatenate((P, P[:1]), axis=0)]
@@ -368,8 +373,127 @@ class Surface(BaseModel):
             points = np.concatenate(points_, axis=1)
             return [np.concatenate((points, points[:, :1]), axis=1)]
 
+    def plotly_plot(
+        self,
+        scalar: tp.Optional[onp.ndarray] = None,
+        vector_field: tp.Optional[onp.ndarray] = None,
+        nfp: tp.Optional[int] = None,
+        colormap: str = "Yellowes",
+        detach_parts: bool = False,
+        surface_kwargs: dict = dict(),
+        cone_kwargs: dict = dict(
+            sizeref=1,
+            colorscale="Viridis",  # Define color of cones
+        ),
+        num_tor_pts: int = 1000000000000,
+        reduce_res: int = 10,
+        cut_tor: tp.Optional[int] = None,
+    ):
+        """Plot the surface with Plotly"""
 
-    @mlab.show
+        if nfp is None:
+            xyz = self.expand_for_plot_part(num_tor_pts=num_tor_pts)
+            reduce_res_nfp = 1
+        else:
+            xyz = self.expand_for_plot_whole(
+                detach_parts=detach_parts, nfp=nfp)
+            reduce_res_nfp = nfp
+
+        if scalar is not None:
+            scalar_ = onp.concatenate((scalar, scalar[0:1, :]), axis=0)
+            scalar_ = onp.tile(scalar_, (1, reduce_res_nfp))
+            if cut_tor is None:
+                scalar_ = onp.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[
+                    :xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
+            else:
+                scalar_ = scalar_[:xyz[0].shape[0]:reduce_res,
+                                  :xyz[0].shape[1]:reduce_res]
+        else:
+            scalar_ = None
+
+        fig = go.Figure()
+
+        for xyz_ in xyz:
+            if cut_tor is not None:
+                cuts = onp.arange(xyz_.shape[1] + 1, step=cut_tor)
+            else:
+                cuts = [0, num_tor_pts]
+
+            for first, last in zip(cuts[:-1], cuts[1:]):
+                xyz_c = xyz_[:, first:last]
+                x_c, y_c, z_c = xyz_c[..., 0], xyz_c[..., 1], xyz_c[..., 2]
+
+                if scalar_ is not None:
+                    max_index_scalar = scalar_.shape[1]
+                    scalar_field = scalar_[:, first % max_index_scalar:(
+                        last % max_index_scalar) + max_index_scalar * ((last % max_index_scalar) == 0)]
+                else:
+                    scalar_field = None
+
+                # # Debugging information
+                # print("Plot segment shape:", x_c.shape, y_c.shape, z_c.shape)
+                # print("Cone sizeref:", cone_kwargs.get("sizeref", 0.1))
+
+                surface = go.Surface(
+                    x=x_c,
+                    y=y_c,
+                    z=z_c,
+                    surfacecolor=scalar_field,
+                    colorscale=colormap,
+                    showscale=False,
+                    **surface_kwargs,
+                )
+
+                fig.add_trace(surface)
+
+                if vector_field is not None:
+                    vector_field_ = vector_field[:,
+                                                 first:last]/onp.max(vector_field)
+                    xyz_c = xyz_c[:-1]
+                    if nfp is not None:
+                        xyz_c = xyz_c[:, :-1]
+                    x, y, z = xyz_c[..., 0], xyz_c[..., 1], xyz_c[..., 2]
+
+                    # magnitudes = np.sqrt(vector_field_[
+                    #                      :, :, 0]**2 + vector_field_[:, :, 1]**2 + vector_field_[:, :, 2]**2)
+                    # print("Vector magnitudes (min, max):",
+                    #       magnitudes.min(), magnitudes.max())
+
+                    # print("Vector field shape:", vector_field_.shape)
+                    # print("Down-sampled x shape:",
+                    #       x[::reduce_res, ::reduce_res*reduce_res_nfp].shape)
+
+                    # print("Sample cone positions (x, y, z):",
+                    #       x[0, 0], y[0, 0], z[0, 0])
+                    # print("Sample cone vectors (u, v, w):", vector_field_[
+                    #       0, 0, 0], vector_field_[0, 0, 1], vector_field_[0, 0, 2])
+
+                    fig.add_trace(
+                        go.Cone(
+                            x=x[::reduce_res, ::reduce_res*reduce_res_nfp],
+                            y=y[::reduce_res, ::reduce_res*reduce_res_nfp],
+                            z=z[::reduce_res, ::reduce_res*reduce_res_nfp],
+                            u=vector_field_[::reduce_res, ::reduce_res, 0],
+                            v=vector_field_[::reduce_res, ::reduce_res, 1],
+                            w=vector_field_[::reduce_res, ::reduce_res, 2],
+                            anchor="tip",
+                            visible=True,
+                            **cone_kwargs,
+                        )
+                    )
+
+        fig.update_layout(
+            scene=dict(
+                xaxis=dict(title='X'),
+                yaxis=dict(title='Y'),
+                zaxis=dict(title='Z'),
+                aspectmode='data',
+            ),
+            margin=dict(l=0, r=0, t=0, b=0),
+        )
+        return fig
+
+    @ mlab.show
     def plot(
         self,
         scalar: tp.Optional[onp.ndarray] = None,
@@ -377,7 +501,7 @@ class Surface(BaseModel):
         nfp: tp.Optional[int] = None,
         representation: str = "surface",
         color: tp.Optional[str] = None,
-        colormap: str = "Wistia",
+        colormap: str = "Oranges",
         detach_parts: bool = False,
         quiver_kwargs: dict = dict(
             line_width=0.5,
@@ -394,23 +518,26 @@ class Surface(BaseModel):
             xyz = self.expand_for_plot_part(num_tor_pts=num_tor_pts)
             reduce_res_nfp = 1
         else:
-            xyz = self.expand_for_plot_whole(detach_parts=detach_parts, nfp=nfp)
+            xyz = self.expand_for_plot_whole(
+                detach_parts=detach_parts, nfp=nfp)
             reduce_res_nfp = nfp
-                        
+
         max_extent_X = 0
         max_extent_Y = 0
         max_extent_Z = 0
 
         kwargs = mesh_kwargs
         if scalar is not None:
-            scalar_ = np.concatenate((scalar, scalar[0:1,:]), axis=0)
+            scalar_ = np.concatenate((scalar, scalar[0:1, :]), axis=0)
             scalar_ = np.tile(scalar_, (1, reduce_res_nfp))
             if cut_tor is None:
                 # kwargs["scalars"] = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[:xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
-                scalar_ = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[:xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
+                scalar_ = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[
+                    :xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
             else:
                 # kwargs["scalars"] = scalar_[:xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
-                scalar_ = scalar_[:xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
+                scalar_ = scalar_[:xyz[0].shape[0]:reduce_res,
+                                  :xyz[0].shape[1]:reduce_res]
         else:
             scalar_ = None
 
@@ -428,15 +555,16 @@ class Surface(BaseModel):
                 # if scalar_ is not None:
                 #     max_index_scalar=scalar_.shape[1]
                 if vector_field is not None:
-                    max_index_vector=vector_field.shape[1]
+                    max_index_vector = vector_field.shape[1]
             else:
                 cuts = [0, 100000000]
             for first, last in zip(cuts[:-1], cuts[1:]):
                 xyz_c = xyz_[:, first:last]
-                
+
                 if scalar_ is not None:
-                    max_index_scalar=scalar_.shape[1]
-                    scalar_field = scalar_[:,first % max_index_scalar:(last % max_index_scalar) + max_index_scalar * ((last % max_index_scalar) == 0)]
+                    max_index_scalar = scalar_.shape[1]
+                    scalar_field = scalar_[:, first % max_index_scalar:(
+                        last % max_index_scalar) + max_index_scalar * ((last % max_index_scalar) == 0)]
                 else:
                     scalar_field = None
 
@@ -452,7 +580,8 @@ class Surface(BaseModel):
                 )
                 if vector_field is not None:
                     # vector_field_ = vector_field[:,first % max_index_vector:(last % max_index_vector) + max_index_vector * ((last % max_index_vector) == 0),:] / np.max(vector_field)
-                    vector_field_ = vector_field[:, first:last] / np.max(vector_field)
+                    vector_field_ = vector_field[:,
+                                                 first:last] / np.max(vector_field)
 
                     xyz_c = xyz_c[:-1]
                     if nfp is not None:
@@ -470,14 +599,18 @@ class Surface(BaseModel):
                         **quiver_kwargs,
                     )
 
-        reference_axis_factor = np.min(np.array([max_extent_X, max_extent_Y, max_extent_Z])) * 0.1
-        mlab.plot3d(np.linspace(0, 10, 100) * reference_axis_factor, np.zeros(100), np.zeros(100), color=(1, 0, 0),tube_radius=0.001)
-        mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100) * reference_axis_factor, np.zeros(100), color=(0, 1, 0),tube_radius=0.001)
-        mlab.plot3d(np.zeros(100), np.zeros(100), np.linspace(0, 10, 100) * reference_axis_factor, color=(0, 0, 1),tube_radius=0.001)
+        reference_axis_factor = np.min(
+            np.array([max_extent_X, max_extent_Y, max_extent_Z])) * 0.1
+        mlab.plot3d(np.linspace(0, 10, 100) * reference_axis_factor,
+                    np.zeros(100), np.zeros(100), color=(1, 0, 0), tube_radius=0.001)
+        mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100) * reference_axis_factor,
+                    np.zeros(100), color=(0, 1, 0), tube_radius=0.001)
+        mlab.plot3d(np.zeros(100), np.zeros(100), np.linspace(
+            0, 10, 100) * reference_axis_factor, color=(0, 0, 1), tube_radius=0.001)
 
         # if scalar is not None:
-        mlab.colorbar(surf, nb_labels=4, label_fmt="%.1E", orientation="vertical")
-
+        mlab.colorbar(surf, nb_labels=4, label_fmt="%.1E",
+                      orientation="vertical")
 
     def plot_2d_field(self, field, num_prec=2, ax=None):
         """
@@ -488,7 +621,8 @@ class Surface(BaseModel):
         assert field.shape[1] == self.xyz.shape[1]
 
         field_norm = np.linalg.norm(field, axis=-1)
-        field_cov = np.einsum("ija,ijau->iju", field, self.jac_xyz) # parfois ijua parfois ijau...
+        # parfois ijua parfois ijau...
+        field_cov = np.einsum("ija,ijau->iju", field, self.jac_xyz)
         ax = sns.heatmap(field_norm, cmap="winter", ax=ax)
 
         x_pos = self.grids[1][::num_prec, ::num_prec].T * field_norm.shape[1]
@@ -503,7 +637,8 @@ class Surface(BaseModel):
 
 def get_ds_grad(surf):
     norm_dx_uv = np.linalg.norm(surf.jac_xyz, axis=-2)
-    di_inv_dj_x = np.einsum("ijl,ijdl,ijdkl->ijkl", 1 / norm_dx_uv, surf.jac_xyz, surf.hess_xyz)
+    di_inv_dj_x = np.einsum("ijl,ijdl,ijdkl->ijkl", 1 /
+                            norm_dx_uv, surf.jac_xyz, surf.hess_xyz)
     return np.einsum("ijkl,ijl->ijk", di_inv_dj_x, norm_dx_uv[..., ::-1])
 
 
