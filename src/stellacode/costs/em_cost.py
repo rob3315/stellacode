@@ -417,7 +417,7 @@ class EMCost(AbstractCost):
         metrics["max_deltaB_normal"] = np.max(b_err)
 
         if isinstance(S, CoilOperator):
-            metrics["deltaB_B_rmse"] = get_b_field_err(self, S, err="rmse")
+            metrics["deltaB_B_L2"] = get_b_field_err(self, S, err="L2")
             metrics["deltaB_B_max"] = get_b_field_err(
                 self, S, err="max")
 
@@ -475,7 +475,7 @@ def to_float(dict_):
     return {k: float(v) for k, v in dict_.items()}
 
 
-def get_b_field_err(em_cost, coil_surface, err: str = "rmse"):
+def get_b_field_err(em_cost, coil_surface, err: str = "L2"):
     """
     Root mean square or max relative error on a flux surface.
     """
@@ -484,7 +484,7 @@ def get_b_field_err(em_cost, coil_surface, err: str = "rmse"):
         surface_labels=-1)[:, : em_cost.Sp.integration_par.num_points_v]
     delta_b_module = np.linalg.norm(b_field - b_field_gt, axis=-1)
     b_field_module = np.linalg.norm(b_field_gt, axis=-1)
-    if err == "rmse":
+    if err == "L2":
         return np.sqrt(em_cost.Sp.integrate(delta_b_module ** 2/b_field_module ** 2))
     elif err == "max":
         return np.max(delta_b_module / b_field_module)
