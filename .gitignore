@@ -1,4 +1,5 @@
-dask-worker-space/
+__pycache__/
+**/__pycache__/
 __pycache__
 *.pyc
 
@@ -10,8 +11,6 @@ __pycache__
 .pytest_cache/
 
 .vscode/settings.json
-
-*.pyc
 
 tmp/
 
@@ -37,4 +36,4 @@ tutorials/*.png
 tutorials/*.pkl
 
 # outputs from scripts
-outputs/*
+outputs
