@@ -378,7 +378,7 @@ class Surface(BaseModel):
         scalar: tp.Optional[onp.ndarray] = None,
         vector_field: tp.Optional[onp.ndarray] = None,
         nfp: tp.Optional[int] = None,
-        colormap: str = "Yellowes",
+        colormap: str = "Reds",
         detach_parts: bool = False,
         surface_kwargs: dict = dict(),
         cone_kwargs: dict = dict(
@@ -419,12 +419,17 @@ class Surface(BaseModel):
             else:
                 cuts = [0, num_tor_pts]
 
+            if scalar_ is not None:
+                max_index_scalar = scalar_.shape[1]
+                showscale = True
+            else:
+                showscale = False
+
             for first, last in zip(cuts[:-1], cuts[1:]):
                 xyz_c = xyz_[:, first:last]
                 x_c, y_c, z_c = xyz_c[..., 0], xyz_c[..., 1], xyz_c[..., 2]
 
                 if scalar_ is not None:
-                    max_index_scalar = scalar_.shape[1]
                     scalar_field = scalar_[:, first % max_index_scalar:(
                         last % max_index_scalar) + max_index_scalar * ((last % max_index_scalar) == 0)]
                 else:
@@ -440,7 +445,7 @@ class Surface(BaseModel):
                     z=z_c,
                     surfacecolor=scalar_field,
                     colorscale=colormap,
-                    showscale=False,
+                    showscale=showscale,
                     **surface_kwargs,
                 )
 
@@ -454,10 +459,16 @@ class Surface(BaseModel):
                         xyz_c = xyz_c[:, :-1]
                     x, y, z = xyz_c[..., 0], xyz_c[..., 1], xyz_c[..., 2]
 
-                    # magnitudes = np.sqrt(vector_field_[
-                    #                      :, :, 0]**2 + vector_field_[:, :, 1]**2 + vector_field_[:, :, 2]**2)
-                    # print("Vector magnitudes (min, max):",
-                    #       magnitudes.min(), magnitudes.max())
+                    # magnitude_u = np.abs(vector_field_[
+                    #                      :, :, 0])
+                    # magnitude_v = np.abs(vector_field_[:, :, 1])
+                    # magnitude_w = np.abs(vector_field_[:, :, 2])
+                    # print("Vector u magnitude (min, max):",
+                    #       magnitude_u.min(), magnitude_u.max())
+                    # print("Vector v magnitude (min, max):",
+                    #       magnitude_v.min(), magnitude_v.max())
+                    # print("Vector w magnitude (min, max):",
+                    #       magnitude_w.min(), magnitude_w.max())
 
                     # print("Vector field shape:", vector_field_.shape)
                     # print("Down-sampled x shape:",
@@ -470,13 +481,18 @@ class Surface(BaseModel):
 
                     fig.add_trace(
                         go.Cone(
-                            x=x[::reduce_res, ::reduce_res*reduce_res_nfp],
-                            y=y[::reduce_res, ::reduce_res*reduce_res_nfp],
-                            z=z[::reduce_res, ::reduce_res*reduce_res_nfp],
-                            u=vector_field_[::reduce_res, ::reduce_res, 0],
-                            v=vector_field_[::reduce_res, ::reduce_res, 1],
-                            w=vector_field_[::reduce_res, ::reduce_res, 2],
-                            anchor="tip",
+                            x=x[::reduce_res, ::reduce_res *
+                                reduce_res_nfp].flatten(),
+                            y=y[::reduce_res, ::reduce_res *
+                                reduce_res_nfp].flatten(),
+                            z=z[::reduce_res, ::reduce_res *
+                                reduce_res_nfp].flatten(),
+                            u=vector_field_[::reduce_res,
+                                            ::reduce_res, 0].flatten(),
+                            v=vector_field_[::reduce_res,
+                                            ::reduce_res, 1].flatten(),
+                            w=vector_field_[::reduce_res,
+                                            ::reduce_res, 2].flatten(),
                             visible=True,
                             **cone_kwargs,
                         )
@@ -496,23 +512,54 @@ class Surface(BaseModel):
     @ mlab.show
     def plot(
         self,
-        scalar: tp.Optional[onp.ndarray] = None,
-        vector_field: tp.Optional[onp.ndarray] = None,
+        scalar: tp.Optional[onp.ndarray] = None,  #: Scalar field to plot
+        vector_field: tp.Optional[onp.ndarray] = None,  #: Vector field to plot
+        #: Number of field periods (toroidal direction)
         nfp: tp.Optional[int] = None,
+        #: Type of representation (surface, wireframe, ...)
         representation: str = "surface",
-        color: tp.Optional[str] = None,
-        colormap: str = "Oranges",
-        detach_parts: bool = False,
+        color: tp.Optional[str] = None,  #: Color of the surface
+        colormap: str = "Oranges",  #: Colormap to use for the surface
+        detach_parts: bool = False,  #: If True, plot each part separately
         quiver_kwargs: dict = dict(
             line_width=0.5,
             scale_factor=0.1,
-        ),
-        mesh_kwargs: dict = dict(),
-        num_tor_pts: int = 1000000000000,
-        reduce_res: int = 1,
-        cut_tor: tp.Optional[int] = None,
+        ),  #: Arguments for the quiver plot
+        mesh_kwargs: dict = dict(),  #: Arguments for the mesh plot
+        num_tor_pts: int = 1000000000000,  #: Number of toroidal points to plot
+        reduce_res: int = 1,  #: Reduced resolution factor
+        cut_tor: tp.Optional[int] = None,  #: Cut the toroidal direction
     ):
-        """Plot the surface"""
+        """
+        Plot the surface.
+
+        Parameters
+        ----------
+        scalar : np.ndarray, optional
+            Scalar field to plot.
+        vector_field : np.ndarray, optional
+            Vector field to plot.
+        nfp : int, optional
+            Number of field periods (toroidal direction).
+        representation : str, optional
+            Type of representation (surface, wireframe, ...).
+        color : str, optional
+            Color of the surface.
+        colormap : str, optional
+            Colormap to use for the surface.
+        detach_parts : bool, optional
+            If True, plot each part separately.
+        quiver_kwargs : dict, optional
+            Arguments for the quiver plot.
+        mesh_kwargs : dict, optional
+            Arguments for the mesh plot.
+        num_tor_pts : int, optional
+            Number of toroidal points to plot.
+        reduce_res : int, optional
+            Reduced resolution factor.
+        cut_tor : int, optional
+            Cut the toroidal direction.
+        """
 
         if nfp is None:
             xyz = self.expand_for_plot_part(num_tor_pts=num_tor_pts)
@@ -522,6 +569,7 @@ class Surface(BaseModel):
                 detach_parts=detach_parts, nfp=nfp)
             reduce_res_nfp = nfp
 
+        # Compute the maximum extent of the plot in each dimension
         max_extent_X = 0
         max_extent_Y = 0
         max_extent_Z = 0
@@ -531,11 +579,9 @@ class Surface(BaseModel):
             scalar_ = np.concatenate((scalar, scalar[0:1, :]), axis=0)
             scalar_ = np.tile(scalar_, (1, reduce_res_nfp))
             if cut_tor is None:
-                # kwargs["scalars"] = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[:xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
                 scalar_ = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[
                     :xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
             else:
-                # kwargs["scalars"] = scalar_[:xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
                 scalar_ = scalar_[:xyz[0].shape[0]:reduce_res,
                                   :xyz[0].shape[1]:reduce_res]
         else:
@@ -543,17 +589,14 @@ class Surface(BaseModel):
 
         for xyz_ in xyz:
 
-            if max_extent_X < np.max(np.abs(xyz_[:, :, 0])):
-                max_extent_X = np.max(np.abs(xyz_[:, :, 0]))
-            if max_extent_Y < np.max(np.abs(xyz_[:, :, 1])):
-                max_extent_Y = np.max(np.abs(xyz_[:, :, 1]))
-            if max_extent_Z < np.max(np.abs(xyz_[:, :, 2])):
-                max_extent_Z = np.max(np.abs(xyz_[:, :, 2]))
+            max_extent_X = max(max_extent_X, np.max(np.abs(xyz_[:, :, 0])))
+            max_extent_Y = max(max_extent_Y, np.max(np.abs(xyz_[:, :, 1])))
+            max_extent_Z = max(max_extent_Z, np.max(np.abs(xyz_[:, :, 2])))
 
             if cut_tor is not None:
                 cuts = np.arange(xyz_.shape[1] + 1, step=cut_tor)
-                # if scalar_ is not None:
-                #     max_index_scalar=scalar_.shape[1]
+                if scalar_ is not None:
+                    max_index_scalar = scalar_.shape[1]
                 if vector_field is not None:
                     max_index_vector = vector_field.shape[1]
             else:
@@ -579,7 +622,6 @@ class Surface(BaseModel):
                     **kwargs,
                 )
                 if vector_field is not None:
-                    # vector_field_ = vector_field[:,first % max_index_vector:(last % max_index_vector) + max_index_vector * ((last % max_index_vector) == 0),:] / np.max(vector_field)
                     vector_field_ = vector_field[:,
                                                  first:last] / np.max(vector_field)
 
@@ -587,9 +629,6 @@ class Surface(BaseModel):
                     if nfp is not None:
                         xyz_c = xyz_c[:, :-1]
                     mlab.quiver3d(
-                        # xyz_c[::reduce_res, ::reduce_res, 0],
-                        # xyz_c[::reduce_res, ::reduce_res, 1],
-                        # xyz_c[::reduce_res, ::reduce_res, 2],
                         xyz_c[::reduce_res, ::reduce_res*reduce_res_nfp, 0],
                         xyz_c[::reduce_res, ::reduce_res*reduce_res_nfp, 1],
                         xyz_c[::reduce_res, ::reduce_res*reduce_res_nfp, 2],
@@ -599,6 +638,7 @@ class Surface(BaseModel):
                         **quiver_kwargs,
                     )
 
+        # Add reference axes
         reference_axis_factor = np.min(
             np.array([max_extent_X, max_extent_Y, max_extent_Z])) * 0.1
         mlab.plot3d(np.linspace(0, 10, 100) * reference_axis_factor,
@@ -608,6 +648,7 @@ class Surface(BaseModel):
         mlab.plot3d(np.zeros(100), np.zeros(100), np.linspace(
             0, 10, 100) * reference_axis_factor, color=(0, 0, 1), tube_radius=0.001)
 
+        # Add colorbar
         # if scalar is not None:
         mlab.colorbar(surf, nb_labels=4, label_fmt="%.1E",
                       orientation="vertical")
