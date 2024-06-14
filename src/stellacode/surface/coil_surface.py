@@ -29,33 +29,82 @@ class CoilFactory(AbstractBaseFactory):
 
     @classmethod
     def from_config(cls, config):
+        """
+        Build a `CoilFactory` instance from a configuration dictionary.
+
+        Args:
+            config (dict): The configuration dictionary.
+
+        Returns:
+            `CoilFactory`: The built `CoilFactory` instance.
+        """
+        # Import the necessary functions from the 'imports' module
         from .imports import get_current_potential, get_cws_grid
 
+        # Get the current potential from the configuration
         current = get_current_potential(config)
+        # Get the surface from the configuration
         surface = get_cws_grid(config)
 
+        # Construct and return the `CoilFactory` instance
         return cls(surface=surface, current=current)
 
-    def get_trainable_params(self):
+    def get_trainable_params(self) -> tp.Dict[str, tp.Any]:
+        """
+        Return the trainable parameters from the current object.
+
+        Returns:
+            A dictionary of the trainable parameters, where each key is the name
+            of the parameter and the corresponding value is the parameter value.
+        """
         return self.current.get_trainable_params()
 
     def update_params(self, **kwargs):
+        """
+        Update the parameters of the current class.
+
+        Args:
+            **kwargs: Keyword arguments containing the parameters to update.
+                Each key should be the name of a trainable parameter and the
+                corresponding value is the new value for that parameter.
+        """
+        # Loop over the keyword arguments
         for k, v in kwargs.items():
+            # Check if the key is a trainable parameter of the current class
             if k in type(self.current).model_fields:
+                # Update the value of the parameter in the current class
                 setattr(self.current, k, v)
 
     def __call__(self, surface: Surface, **kwargs):
+        """
+        Construct a `CoilOperator` from a `Surface` and compute the current on the surface.
+
+        Args:
+            surface (Surface): The `Surface` object representing the surface on which the current is computed.
+            **kwargs: Additional keyword arguments.
+
+        Returns:
+            CoilOperator or CoilSurface: The `CoilOperator` object representing the current on the surface,
+                or the `CoilSurface` object if `self.build_coils` is `True`.
+        """
+
+        # Construct the `CoilOperator` from the surface and compute the current on the surface
         coil_op = CoilOperator.from_surface(
-            surface=surface,
-            current_op=self.current(
+            surface=surface,  # The `Surface` object representing the surface
+            current_op=self.current(  # The current operator computed on the surface
                 surface.grids, surface.integration_par.max_val_v),
-            net_currents=self.current.net_currents,
+            net_currents=self.current.net_currents,  # The net currents
+            # The Fourier coefficients of the surface current
             phi_mn=self.current.get_phi_mn(),
         )
+
+        # Compute the gradient of the current operator if `self.compute_grad_current_op` is `True`
         if self.compute_grad_current_op:
             coil_op.grad_current_op = self.current.get_grad_current_op(
                 surface.grids, surface.integration_par.max_val_v)
 
+        # If `self.build_coils` is `True`, return the `CoilSurface` object representing the coil operator,
+        # otherwise return the `CoilOperator` object
         if self.build_coils:
             return coil_op.get_coil(phi_mn=self.current.get_phi_mn())
         else:
@@ -145,61 +194,163 @@ class CoilOperator(Surface):
         current_op: ArrayLike,
         net_currents: tp.Optional[ArrayLike] = None,
         phi_mn: tp.Optional[ArrayLike] = None,
-    ):
+    ) -> "CoilOperator":
+        """
+        Create a CoilOperator object from a Surface object.
+
+        Args:
+            surface (Surface): Surface object on which to create a CoilOperator.
+            current_op (ArrayLike): Tensor for computing the 2D surface current from the current weights.
+            net_currents (ArrayLike, optional): Net poloidal and toroidal currents. Defaults to None.
+            phi_mn (ArrayLike, optional): Vector of Fourier coefficients of the surface current.
+                If None, use self.phi_mn. Defaults to None.
+
+        Returns:
+            CoilOperator: CoilOperator object created from the input parameters.
+        """
+        # Create a dictionary of the surface attributes that are also in CoilOperator's model_fields
         dict_ = {k: v for k, v in dict(
             surface).items() if k in cls.model_fields.keys()}
+        # Add the current_op attribute to the dictionary
         dict_["current_op"] = current_op
+        # Add the net_currents attribute to the dictionary
         dict_["net_currents"] = net_currents
+        # Add the phi_mn attribute to the dictionary
         dict_["phi_mn"] = phi_mn
+        # Create and return a CoilOperator object from the dictionary
         return cls(**dict_)
 
     def get_coil(self, phi_mn: tp.Optional[ArrayLike] = None):
+        """
+        Return a CoilSurface object representing the coil operator.
+
+        Parameters
+        ----------
+        phi_mn : ArrayLike, optional
+            Vector of Fourier coefficients of the surface current.
+            If None, use self.phi_mn.
+
+        Returns
+        -------
+        CoilSurface
+            CoilSurface object representing the coil operator.
+        """
+        # Create a dictionary of all attributes except current_op and grad_current_op
         dict_ = {k: v for k, v in dict(self).items() if k not in [
             "current_op", "grad_current_op"]}
-        if self.jac_xyz is not None:
-            dict_["j_surface"] = self.get_j_surface(phi_mn)
-            dict_["j_3d"] = self.get_j_3d(phi_mn)
 
+        # If jac_xyz is not None, compute the surface and 3D current
+        if self.jac_xyz is not None:
+            dict_["j_surface"] = self.get_j_surface(
+                phi_mn)  # Compute the surface current
+            dict_["j_3d"] = self.get_j_3d(phi_mn)  # Compute the 3D current
+
+            # If grad_current_op is not None, compute the gradient of the surface and 3D currents
             if self.grad_current_op is not None:
                 dict_["grad_j_surface"] = self.get_grad_j_surface(phi_mn)
                 dict_["grad_j_3d"] = self.get_grad_j_3d(phi_mn)
 
+        # Return a CoilSurface object with the computed attributes
         return CoilSurface(**dict_)
 
     def get_j_surface(self, phi_mn: tp.Optional[ArrayLike] = None):
         """
-        Contravariant components of the current: J^i
+        Compute the contravariant components of the surface current.
+
+        Parameters
+        ----------
+        phi_mn : ArrayLike, optional
+            Vector of Fourier coefficients of the surface current.
+            If None, use self.phi_mn.
+
+        Returns
+        -------
+        numpy.ndarray
+            Contravariant components of the surface current.
+            Dimensions: Nu x Nv x N_current_op
         """
+        # If phi_mn is not provided, use self.phi_mn
         if phi_mn is None:
             phi_mn = self.phi_mn
+
+        # Compute the contravariant components of the surface current
+        #   1) Multiply by the current operator
+        #   2) Multiply by the vector of Fourier coefficients
         return np.einsum("oijk,o->ijk", self.current_op, phi_mn)
 
     def get_grad_j_surface(self, phi_mn: tp.Optional[ArrayLike] = None):
         """
-        Contravariant components of the current: J^i
+        Compute the gradient of the contravariant components of the surface current.
+
+        Parameters
+        ----------
+        phi_mn : ArrayLike, optional
+            Vector of Fourier coefficients of the surface current.
+            If None, use self.phi_mn.
+
+        Returns
+        -------
+        numpy.ndarray
+            Gradient of the surface current.
+            Dimensions: Nu x Nv x N_current_op x N_j_surf
         """
         if phi_mn is None:
             phi_mn = self.phi_mn
+        # Compute the gradient of the surface current
+        #   1) Multiply by the gradient operator
+        #   2) Multiply by the vector of Fourier coefficients
         return np.einsum("oijkl,o->ijkl", self.grad_current_op, phi_mn)
 
     def get_j_3d(self, phi_mn: tp.Optional[ArrayLike] = None, scale_by_ds: bool = True):
-        """Compute the 3D current onto the surface"""
+        """
+        Compute the 3D current onto the surface
+
+        Args:
+            * phi_mn: vector of fourier coefficients of the surface current (optional, default: self.phi_mn)
+            * scale_by_ds: whether to scale the result by 1/ds (optional, default: True)
+
+        Returns:
+            * 3D current onto the surface (Nu x Nv x 3)
+        """
+        assert (self.ds is not None)
+
+        # If phi_mn is not provided, use self.phi_mn
         if phi_mn is None:
             phi_mn = self.phi_mn
+
+        # If scale_by_ds is True, scale the result by 1/ds
         if scale_by_ds:
             return np.einsum("oijk,ijdk,ij,o->ijd", self.current_op, self.jac_xyz, 1 / self.ds, phi_mn)
         else:
             return np.einsum("oijk,ijdk,o->ijd", self.current_op, self.jac_xyz, phi_mn)
 
     def get_grad_j_3d(self, phi_mn: tp.Optional[ArrayLike] = None):
-        """Compute the gradient of the 3D current versus u and v"""
+        """
+        Compute the gradient of the 3D current versus u and v
+
+        Args:
+            * phi_mn: vector of fourier coefficients of the surface current (optional, default: self.phi_mn)
+
+        Returns:
+            * gradient of the 3D current (Nu x Nv x 3 x 2)
+        """
+        assert (self.ds is not None)
+
         if phi_mn is None:
             phi_mn = self.phi_mn
+
+        # Compute the gradient of the surface current
         grad_j_surface = self.get_grad_j_surface(phi_mn)
 
         # Compute the gradient of 1/ds
         invds_grad = get_inv_ds_grad(self)
 
+        # Compute the gradient of the 3D current
+        #   1) Compute the gradient of the surface current wrt u and v
+        #   2) Multiply by the Jacobian matrix
+        #   3) Multiply by 1/ds
+        #   4) Add the contribution of the Hessian of the surface current
+        #   5) Add the contribution of the gradient of 1/ds
         fac1 = np.einsum("ijkl,ijdk,ij->ijdl", grad_j_surface,
                          self.jac_xyz, 1 / self.ds)
         fac2 = np.einsum("oijk,ijdkl,ij,o->ijdl", self.current_op,
@@ -209,17 +360,25 @@ class CoilOperator(Surface):
         return fac1 + fac2 + fac3
 
     def get_b_field_op(
-        self, xyz_plasma: ArrayLike, plasma_normal: tp.Optional[ArrayLike] = None, use_mu_0_factor: bool = True
-    ):
+        self,
+        xyz_plasma: ArrayLike,
+        plasma_normal: tp.Optional[ArrayLike] = None,
+        use_mu_0_factor: bool = True
+    ) -> ArrayLike:
         """
-        Compute the magnetic field operator
+        Compute the magnetic field operator using the Biot et Savart operator
 
         Args:
-            * xyz_plasma: Surface on which the magnetic field is computed
-            * plasma_normal: The plasma normal vector, against which is computed the normal magnetic field
-            * use_mu_0_factor: Whether to multiply the result by mu_0/4pi
+            xyz_plasma (ArrayLike): Surface on which the magnetic field is computed
+            plasma_normal (Optional[ArrayLike], optional): The plasma normal vector,
+                against which is computed the normal magnetic field. Defaults to None.
+            use_mu_0_factor (bool, optional): Whether to multiply the result by mu_0/4pi.
+                Defaults to True.
 
+        Returns:
+            ArrayLike: The magnetic field operator
         """
+        # Compute the magnetic field operator using the Biot-Savart operator
         bs_op = biot_et_savart_op(
             xyz_plasma=xyz_plasma,
             xyz_coil=self.xyz,
@@ -229,24 +388,35 @@ class CoilOperator(Surface):
             plasma_normal=plasma_normal,
         )
 
+        # Multiply the magnetic field operator by mu_0/4pi if use_mu_0_factor is True
         if use_mu_0_factor:
-            return bs_op*mu_0_fac
+            return bs_op * mu_0_fac
         else:
             return bs_op
 
     def get_current_basis_dot_prod(self):
-        """Compute the scalar product matrix of the current basis functions"""
+        """Compute the scalar product matrix of the current basis functions
+
+        This function computes the scalar product matrix of the current basis
+        functions. The scalar product matrix is a tensor that specifies the
+        scalar product of the current basis functions with themselves.
+
+        Returns:
+            numpy.ndarray: The scalar product matrix of the current basis
+                functions.
+        """
+        # Compute the scalar product matrix using einsum
         return (
             np.einsum(
-                "oija,ijda,ijdk,pijk,ij->op",
-                self.current_op,
-                self.jac_xyz,
-                self.jac_xyz,
-                self.current_op,
-                1 / self.ds,
-                optimize=True,
+                "oija,ijda,ijdk,pijk,ij->op",  # einsum formula
+                self.current_op,  # current op tensor
+                self.jac_xyz,  # jacobian tensor
+                self.jac_xyz,  # jacobian tensor
+                self.current_op,  # current op tensor
+                1 / self.ds,  # inverse of ds
+                optimize=True,  # enable optimization
             )
-            * self.dudv
+            * self.dudv  # multiply by dudv
         )
 
     def plot_j_surface(self, num_prec: int = 2, ax=None):
@@ -276,54 +446,96 @@ class CoilSurface(Surface):
 
     @property
     def field_keys(self):
-        return super().field_keys + ["j_surface", "j_3d"]
+        """
+        Compute the keys of the fields associated with the coil surface.
+
+        Returns:
+            list[str]: List of field keys.
+        """
+        # Concatenate the superclass field keys with the additional keys
+        return super().field_keys + [
+            "j_surface",  # contravariant components of the current: J^i
+            "j_3d"  # 3D current
+        ]
 
     def get_b_field(
         self,
         xyz_plasma: ArrayLike,
         plasma_normal: tp.Optional[ArrayLike] = None,
         use_mu_0_factor: bool = True
-    ):
+    ) -> ArrayLike:
         """
         Compute the magnetic field.
 
         Args:
-            * xyz_plasma: Surface on which the magnetic field is computed
-            * plasma_normal: The plasma normal vector, against which is computed the normal magnetic field
-            * use_mu_0_factor: Whether to multiply the result by mu_0/4pi
+            xyz_plasma (ArrayLike): Surface on which the magnetic field is computed.
+            plasma_normal (Optional[ArrayLike], optional): The plasma normal vector,
+                against which is computed the normal magnetic field. Defaults to None.
+            use_mu_0_factor (bool, optional): Whether to multiply the result by mu_0/4pi.
+                Defaults to True.
 
+        Returns:
+            ArrayLike: The magnetic field.
         """
+        assert (self.ds is not None)
+        # Compute the magnetic field using the Biot-Savart law.
+        # The magnetic field is computed on the surface of the plasma.
         bf = biot_et_savart(
             xyz_plasma=xyz_plasma,
             xyz_coil=self.xyz,
+            # Current density multiplied by the element size.
             j_3d=self.j_3d * self.ds[..., None],
             dudv=self.dudv,
             plasma_normal=plasma_normal,
         )
+
+        # Multiply the magnetic field by mu_0/4pi if use_mu_0_factor is True.
+        # This is done to convert the magnetic field from units of Tesla to Webers.
         if use_mu_0_factor:
-            return bf*mu_0_fac
+            return bf * mu_0_fac
         else:
             return bf
 
     def get_j_surface(self):
+        """
+        Get the contravariant components of the surface current.
+
+        Returns:
+            ArrayLike: The contravariant components of the surface current.
+        """
+        # Compute and return the contravariant components of the surface current.
+        # The contravariant components are the components of the surface current vector
+        # in the basis defined by the surface tangent vectors.
         return self.j_surface
 
     def naive_laplace_force(self, epsilon: float = 1.0):
         """
-        Naive computation of the Laplace force
+        Naive computation of the Laplace force.
+
+        This method computes the Laplace force of a distribution of currents on itself.
+        It does so by computing the average magnetic field at two points displaced by plus or minus
+        `epsilon` times the minimal distance between two neighboring points in the direction of the normal unit vector.
+        The magnetic field is computed at these two points using the `get_b_field` method.
+        The Laplace force is then computed as the cross product of the surface current and
+        the average magnetic field.
 
         Args:
-            * epsilon: distance at which the magnetic field is computed in unit of inter points
-                grid distance. Should be larger than 1 otherwise the computation may be very inaccurate.
-        """
-        j_3d = self.j_3d
-        dist = np.min(np.linalg.norm(self.xyz[1:] - self.xyz[:-1], axis=-1))
+            epsilon (float, optional): Factor of the distance at which the magnetic field is computed
+                in unit of inter points. Should be greater than 1 otherwise the computation may be very inaccurate. Defaults to 1.0.
 
+        Returns:
+            numpy.ndarray: The naive Laplace force of the surface current.
+        """
+        # Get the surface current
+        j_3d = self.j_3d
+        # Compute the minimum distance between two neighboring points
+        dist = np.min(np.linalg.norm(self.xyz[1:] - self.xyz[:-1], axis=-1))
+        # Compute the displaced points
         xyz_ext = self.xyz + epsilon * dist * self.normal_unit
         xyz_int = self.xyz - epsilon * dist * self.normal_unit
-
+        # Compute the average magnetic field at the displaced points
         b_avg = self.get_b_field(xyz_ext) + self.get_b_field(xyz_int)
-
+        # Compute the naive Laplace force
         return 0.5 * np.cross(j_3d, b_avg)
 
     def laplace_force(
@@ -333,7 +545,24 @@ class CoilSurface(Surface):
         end_u: int = 1000000,
         end_v: int = 1000000,
     ):
+        """
+        Compute the Laplace force of a distribution of currents on itself.
+
+        Args:
+            * cut_coils: list of indexes of coils to cut. If None, compute the force on the full surface.
+            * num_tor_pts: number of toroidal points to use for the force computation.
+            * end_u: cut the points along u at end_u (this parameter is there for checking the coherence with older implementations).
+            * end_v: cut the points along v at end_v.
+
+        Returns:
+            * array of shape (3,) containing the force along the x, y, z axes.
+        """
+        # Get the upper basis function
         g_up = self.get_g_upper_basis()
+
+        assert (self.j_3d is not None)
+
+        # If no cuts are specified, compute the force on the full surface
         if cut_coils is None:
             return laplace_force(
                 j_3d_f=self.j_3d[:, :num_tor_pts],
@@ -349,6 +578,10 @@ class CoilSurface(Surface):
                 end_v=end_v,
             )
         else:
+            assert (self.normal_unit is not None)
+            assert (self.ds is not None)
+
+            # Compute the Laplace force for each coil segment
             lap_forces = []
             begin = 0
             _cut_coils = cut_coils + [1000000]
@@ -367,11 +600,38 @@ class CoilSurface(Surface):
                     )
                 )
                 begin = end
-        return sum(lap_forces)
+            # Sum the forces from all segments
+            return sum(lap_forces)
 
     def imshow_j(self):
-        """Show the current surface density"""
-        plt.imshow(np.linalg.norm(self.j_3d, axis=-1), cmap="seismic")
+        """
+        Show the current surface density using imshow.
+
+        This function plots the magnitude of the current density on the
+        coil winding surface using the imshow function from matplotlib.
+
+        Parameters:
+            None
+
+        Returns:
+            None
+        """
+        # Compute the magnitude of the current density in the last axis
+        j_mag = np.linalg.norm(self.j_3d, axis=-1)
+
+        # Plot the magnitude of the current density using imshow
+        plt.imshow(j_mag, cmap="seismic")
 
     def plot_j_surface(self, num_prec: int = 2, ax=None):
+        """
+        Plots the current density on the coil winding surface.
+
+        Parameters:
+            - num_prec: an integer representing the precision of the plot (default is 2).
+            - ax: a matplotlib axis object to plot the field on (default is None).
+
+        Returns:
+            The matplotlib axis object with the current density plot.
+        """
+        assert (self.j_3d is not None)
         return self.plot_2d_field(self.j_3d[:, : self.nbpts[1]], num_prec=num_prec, ax=ax)
