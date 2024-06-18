@@ -159,46 +159,84 @@ class FourierSurfaceFactory(AbstractSurfaceFactory):
         scale_envelope: float = 1.0,
         ax=None,
     ):
+        """
+        Plot cross-sections of the surface factory.
+
+        Args:
+            num_cyl (int, optional): Number of cylindrical coordinates to plot.
+            num (int, optional): Number of cross-sections to plot.
+            convex_envelope (bool, optional): Plot convex envelope.
+            concave_envelope (bool, optional): Plot concave envelope.
+            scale_envelope (float, optional): Scale factor for envelope.
+            ax (Axes, optional): Matplotlib axes object to plot on.
+
+        Returns:
+            Axes: Matplotlib axes object.
+        """
         import matplotlib.pyplot as plt
 
+        # Create axes if not provided
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
 
+        # Define u and v coordinates
         u = np.linspace(0, 1, 100, endpoint=True)
         v = np.linspace(0, 1, num, endpoint=True)
         ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
+
+        # Create surface instance and calculate xyz coordinates
         surf = self()
         xyz = self.get_xyz_on_grid(np.stack((ugrid, vgrid)))
 
+        # Calculate radial and theta coordinates
         rtheta = surf._get_rtheta(xyz=xyz, num_cyl=num_cyl)
 
+        # Plot cross-sections
         for i in range(num):
             rphi = np.concatenate((rtheta[:, i, :], rtheta[:, i, :]), axis=0)
-            ax.plot(rphi[:, 1], rphi[:, 0], c=[0, 0] +
-                    [float((i + 1) / (num + 1))])
+            ax.plot(
+                rphi[:, 1],
+                rphi[:, 0],
+                c=[0, 0] + [float((i + 1) / (num + 1))],
+            )
 
+        # Plot convex envelope if requested
         if convex_envelope:
             env, rtheta = surf.get_envelope(num_cyl=num_cyl, convex=True)
-            # ax.scatter(rtheta[:, 1], rtheta[:, 0], c="k")
             ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="r", linewidth=3)
 
+        # Plot concave envelope if requested
         if concave_envelope:
             env, rtheta = surf.get_envelope(num_cyl=num_cyl, convex=False)
-            # ax.scatter(rtheta[:, 1], rtheta[:, 0], c="k")
             ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
+
         return ax
 
     def __call__(self, **kwargs):
+        """
+        Call the surface factory to create a new instance of the surface.
+
+        Args:
+            **kwargs: Additional parameters to override the default parameters.
+
+        Returns:
+            surface: A new instance of the FourierSurface class.
+        """
+
+        # Call the parent class to get the initial surface
         surface = super().__call__(**kwargs)
+
+        # Create a new instance of the FourierSurface class with overridden parameters
         surface = FourierSurface(
-            major_radius=self.get_major_radius(),
-            file_path=self.file_path,
-            **dict(surface),
-            nfp=self.nfp,
-            Raxis=self.Raxis,
-            Zaxis=self.Zaxis,
-            minor_radius=self.minor_radius,
+            major_radius=self.get_major_radius(),  # Get the major radius
+            file_path=self.file_path,  # Use the file path
+            **dict(surface),  # Add any additional parameters
+            nfp=self.nfp,  # Use the number of field periods
+            Raxis=self.Raxis,  # Use the major radius axis
+            Zaxis=self.Zaxis,  # Use the minor radius axis
+            minor_radius=self.minor_radius,  # Use the minor radius
         )
+
         return surface
 
 
@@ -287,13 +325,36 @@ class FourierSurface(Surface):
         return rphiz_l
 
     def _get_rtheta(self, xyz=None, num_cyl: tp.Optional[int] = None, angle: float = 0.0):
+        """
+        Get radial and theta coordinates of the given xyz coordinates.
+
+        Parameters
+        ----------
+        xyz : ArrayLike, optional
+            Coordinates in cartesian coordinates. Defaults to self.xyz.
+        num_cyl : int, optional
+            Number of cylindrical coordinates. Defaults to None.
+        angle : float, optional
+            Angle of rotation of the cylindrical coordinates. Defaults to 0.0.
+
+        Returns
+        -------
+        ndarray
+            Array of radial and theta coordinates.
+        """
+        # If xyz is not provided, use self.xyz
         if xyz is None:
             xyz = self.xyz
+
+        # If num_cyl is not provided, use toroidal coordinates
         if num_cyl is None:
             rtheta = self.cartesian_to_toroidal(xyz=xyz)[..., :2]
         else:
+            # If num_cyl is provided, use shifted cylindrical coordinates
             rtheta = self.cartesian_to_shifted_cylindrical(
                 xyz=xyz, num_cyl=num_cyl, angle=angle)[..., :2]
+
+        # Return radial and theta coordinates
         return rtheta
 
     def get_envelope(
@@ -386,7 +447,21 @@ class FourierSurface(Surface):
         num_coeff: int = 5,
         convex: bool = False,
         angle: float = 0.0,
-    ):
+    ) -> tp.Union[ToroidalSurface, CylindricalSurface]:
+        """
+        Return a surface with Fourier coefficients that match the envelope.
+
+        Args:
+            num_cyl: the number of cylinders if the surface is piecewise cylindrical
+            num_coeff: the number of Fourier coefficients to use
+            convex: whether to compute a convex envelope
+            angle: the angle of the poloidal plane
+
+        Returns:
+            A Surface instance with Fourier coefficients matching the envelope of this surface.
+            If `num_cyl` is None, returns a `ToroidalSurface` instance. Otherwise, returns a
+            `CylindricalSurface` instance.
+        """
         minor_radius, coefs = self.get_envelope_fourier_coeff(
             num_cyl=num_cyl, num_coeff=num_coeff, convex=convex, angle=angle
         )
@@ -408,21 +483,44 @@ class FourierSurface(Surface):
             )
 
     def get_gt_b_field(self, surface_labels: int = -1, b_norm_file: tp.Optional[str] = None):
+        """
+        Returns the magnetic field in Cartesian coordinates on a given closed flux surface.
+        If surface_labels is a list of integers, the magnetic field on all surfaces with these labels is returned.
+        If b_norm_file is provided, add the normal magnetic field component
+        component of the magnetic field on the plasma surface.
+
+        Parameters
+        ----------
+        surface_labels : int or list of int
+            The labels of the surfaces to consider.
+        b_norm_file : str, optional
+            The path to a file containing the normal component of the magnetic field.
+
+        Returns
+        -------
+        numpy.ndarray
+            The magnetic field on the given surfaces.
+        """
+        # Load the VMECIO object
         vmec = VMECIO.from_grid(
             self.file_path,
             ntheta=self.integration_par.num_points_u,
-            nzeta=self.integration_par.num_points_v * self.nfp,
+            nzeta=self.integration_par.num_points_v,
             surface_label=surface_labels,
         )
+
+        # If surface_labels is an integer, only consider the surface with this label
         if isinstance(surface_labels, int):
             b_field = vmec.b_cartesian[0]
+        # If surface_labels is a list of integers, consider all surfaces with these labels
         else:
             b_field = vmec.b_cartesian[surface_labels]
 
-        b_field = b_field[:, : self.nbpts[1]]
-
+        # If a normal component of the magnetic field is provided, add it to the magnetic field
         if b_norm_file is not None:
+            # Load the normal component of the magnetic field
             bnorm = -vmec.scale_bnorm(get_bnorm(b_norm_file, self))
+            # Add the normal component
             b_field += bnorm[..., None] * self.normal_unit
 
         return b_field
