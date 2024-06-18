@@ -1,5 +1,6 @@
 def generate_conformal_non_constant_separation(vmec_wout_file, fa, filepath="conformal_cws.txt"):
-    """Reads a VMEC wout file and writes a CWS conformal to the plasma LCFS.
+    """
+    Reads a VMEC wout file and writes a CWS conformal to the plasma LCFS.
     The distance between the plasma and the CWS will NOT be constant.
     If the separation needs to be constant, you should use REGCOIL.
 
@@ -9,13 +10,18 @@ def generate_conformal_non_constant_separation(vmec_wout_file, fa, filepath="con
     :param fa: ratio between new radius and previous radius
     :type fa: float
 
+    :param filepath: path to the output file
+    :type filepath: str
+
     :return: None
     :rtype: NoneType
     """
+    # Import necessary libraries
     from scipy.io import netcdf_file
 
     from stellacode import np
 
+    # Open NetCDF file
     f = netcdf_file(vmec_wout_file, "r", mmap=False)
 
     # Number of toroidal modes
@@ -77,6 +83,8 @@ def generate_conformal_non_constant_separation(vmec_wout_file, fa, filepath="con
     if lasym == 0:
         data = np.column_stack((xm, -xn, rmnc_scaled, zmns_scaled))
     else:
-        data = np.column_stack((xm, -xn, rmnc_scaled, rmns_scaled, zmnc_scaled, zmns_scaled))
+        data = np.column_stack(
+            (xm, -xn, rmnc_scaled, rmns_scaled, zmnc_scaled, zmns_scaled))
 
+    # Write the data to the output file
     np.savetxt(filepath, data, header="fourier", comments="")

@@ -1,9 +1,34 @@
 import numpy as np
 
 
-def cylindrical_to_cartesian(vector_field: np.ndarray, phi: np.ndarray):
-    """Map an array from cylindrical to cartesian coordinates"""
-    vr, vphi, vz = vector_field[..., 0], vector_field[..., 1], vector_field[..., 2]
+def cylindrical_to_cartesian(vector_field: np.ndarray, phi: np.ndarray) -> np.ndarray:
+    """
+    Map an array from cylindrical to cartesian coordinates.
+
+    Parameters
+    ----------
+    vector_field : ndarray
+        The vector field in cylindrical coordinates.
+    phi : ndarray
+        The angle in cylindrical coordinates.
+
+    Returns
+    -------
+    ndarray
+        The vector field in cartesian coordinates.
+
+    Notes
+    -----
+    The mapping is defined as:
+    x = vr * cos(phi) - vphi * sin(phi)
+    y = vr * sin(phi) + vphi * cos(phi)
+    z = vz
+    """
+    # Extract the components of the vector field
+    vr, vphi, vz = vector_field[...,
+                                0], vector_field[..., 1], vector_field[..., 2]
+
+    # Apply the mapping to convert the vector field from cylindrical to cartesian coordinates
     return np.stack(
         (
             vr * np.cos(phi) - vphi * np.sin(phi),
@@ -15,16 +40,46 @@ def cylindrical_to_cartesian(vector_field: np.ndarray, phi: np.ndarray):
 
 
 def vmec_to_cylindrical(vector_field: np.ndarray, rphiz: np.ndarray, grad_rphiz: np.ndarray):
-    """Map an array from vmec to cylindrical coordinates"""
+    """
+    Map an array from vmec to cylindrical coordinates.
+
+    Parameters
+    ----------
+    vector_field : ndarray
+        The vector field in vmec coordinates.
+    rphiz : ndarray
+        The cylindrical coordinates.
+    grad_rphiz : ndarray
+        The gradient of the cylindrical coordinates.
+
+    Returns
+    -------
+    ndarray
+        The vector field in cylindrical coordinates.
+
+    Notes
+    -----
+    The mapping is defined as:
+    vr = ∂r/∂r * partial_r / (∂r^2 + ∂z^2)^(1/2)
+    vz = ∂z/∂r * partial_r / (∂r^2 + ∂z^2)^(1/2)
+    vphi = r * partial_phi / (∂r^2 + ∂z^2)^(1/2)
+    """
+    # Extract the components of the gradient of the cylindrical coordinates
     r_grad = grad_rphiz[..., 0, :]
     z_grad = grad_rphiz[..., 2, :]
-    radius = rphiz[..., 0]
 
+    # Compute the radius and partial_r
+    radius = rphiz[..., 0]
+    partial_r = np.sqrt(r_grad**2 + z_grad**2)
+
+    # Apply the mapping to convert the vector field from vmec to cylindrical coordinates
     return np.stack(
         (
-            np.einsum("tzmc,tzmc->tzm", vector_field[..., :2], r_grad),
+            np.einsum("tzmc,tzmc->tzm",
+                      vector_field[..., :2], r_grad) / partial_r,
             radius * vector_field[..., 1],
-            np.einsum("tzmc,tzmc->tzm", vector_field[..., :2], z_grad),
+            np.einsum("tzmc,tzmc->tzm",
+                      vector_field[..., :2], z_grad) / partial_r,
         ),
         axis=-1,
     )
