@@ -7,14 +7,11 @@ import seaborn as sns
 from jax.typing import ArrayLike
 from pydantic import BaseModel, Extra
 
-from mayavi import mlab
 import plotly.graph_objects as go
 
 from stellacode import np
 from stellacode.tools.rotate_n_times import RotateNTimes
-from stellacode.tools.utils import get_min_dist
-
-from .utils import get_principles
+from stellacode.surface.utils import get_principles, get_min_dist
 
 
 class IntegrationParams(BaseModel):
@@ -96,7 +93,7 @@ class AbstractBaseFactory(BaseModel):
     def update_params(self, **kwargs):
         pass
 
-    def __call__(self, surface=None, deg: int = 2):
+    def __call__(self, surface=None, deg: int = 2, **kwargs):
         raise NotImplementedError
 
     def __gt__(self, surface):
@@ -388,6 +385,7 @@ class Surface(BaseModel):
         num_tor_pts: int = 1000000000000,
         reduce_res: int = 10,
         cut_tor: tp.Optional[int] = None,
+        scale: bool = False,
     ):
         """Plot the surface with Plotly"""
 
@@ -452,8 +450,12 @@ class Surface(BaseModel):
                 fig.add_trace(surface)
 
                 if vector_field is not None:
+                    if scale:
+                        scaling_factor = onp.max(vector_field)
+                    else:
+                        scaling_factor = 1
                     vector_field_ = vector_field[:,
-                                                 first:last]/onp.max(vector_field)
+                                                 first:last] / scaling_factor
                     xyz_c = xyz_c[:-1]
                     if nfp is not None:
                         xyz_c = xyz_c[:, :-1]
@@ -508,150 +510,6 @@ class Surface(BaseModel):
             margin=dict(l=0, r=0, t=0, b=0),
         )
         return fig
-
-    @ mlab.show
-    def plot(
-        self,
-        scalar: tp.Optional[onp.ndarray] = None,  #: Scalar field to plot
-        vector_field: tp.Optional[onp.ndarray] = None,  #: Vector field to plot
-        #: Number of field periods (toroidal direction)
-        nfp: tp.Optional[int] = None,
-        #: Type of representation (surface, wireframe, ...)
-        representation: str = "surface",
-        color: tp.Optional[str] = None,  #: Color of the surface
-        colormap: str = "Oranges",  #: Colormap to use for the surface
-        detach_parts: bool = False,  #: If True, plot each part separately
-        quiver_kwargs: dict = dict(
-            line_width=0.5,
-            scale_factor=0.1,
-        ),  #: Arguments for the quiver plot
-        mesh_kwargs: dict = dict(),  #: Arguments for the mesh plot
-        num_tor_pts: int = 1000000000000,  #: Number of toroidal points to plot
-        reduce_res: int = 1,  #: Reduced resolution factor
-        cut_tor: tp.Optional[int] = None,  #: Cut the toroidal direction
-    ):
-        """
-        Plot the surface.
-
-        Parameters
-        ----------
-        scalar : np.ndarray, optional
-            Scalar field to plot.
-        vector_field : np.ndarray, optional
-            Vector field to plot.
-        nfp : int, optional
-            Number of field periods (toroidal direction).
-        representation : str, optional
-            Type of representation (surface, wireframe, ...).
-        color : str, optional
-            Color of the surface.
-        colormap : str, optional
-            Colormap to use for the surface.
-        detach_parts : bool, optional
-            If True, plot each part separately.
-        quiver_kwargs : dict, optional
-            Arguments for the quiver plot.
-        mesh_kwargs : dict, optional
-            Arguments for the mesh plot.
-        num_tor_pts : int, optional
-            Number of toroidal points to plot.
-        reduce_res : int, optional
-            Reduced resolution factor.
-        cut_tor : int, optional
-            Cut the toroidal direction.
-        """
-
-        if nfp is None:
-            xyz = self.expand_for_plot_part(num_tor_pts=num_tor_pts)
-            reduce_res_nfp = 1
-        else:
-            xyz = self.expand_for_plot_whole(
-                detach_parts=detach_parts, nfp=nfp)
-            reduce_res_nfp = nfp
-
-        # Compute the maximum extent of the plot in each dimension
-        max_extent_X = 0
-        max_extent_Y = 0
-        max_extent_Z = 0
-
-        kwargs = mesh_kwargs
-        if scalar is not None:
-            scalar_ = np.concatenate((scalar, scalar[0:1, :]), axis=0)
-            scalar_ = np.tile(scalar_, (1, reduce_res_nfp))
-            if cut_tor is None:
-                scalar_ = np.concatenate((scalar_, scalar_[:, 0:1]), axis=1)[
-                    :xyz[0].shape[0]:reduce_res, :xyz[0].shape[1]:reduce_res]
-            else:
-                scalar_ = scalar_[:xyz[0].shape[0]:reduce_res,
-                                  :xyz[0].shape[1]:reduce_res]
-        else:
-            scalar_ = None
-
-        for xyz_ in xyz:
-
-            max_extent_X = max(max_extent_X, np.max(np.abs(xyz_[:, :, 0])))
-            max_extent_Y = max(max_extent_Y, np.max(np.abs(xyz_[:, :, 1])))
-            max_extent_Z = max(max_extent_Z, np.max(np.abs(xyz_[:, :, 2])))
-
-            if cut_tor is not None:
-                cuts = np.arange(xyz_.shape[1] + 1, step=cut_tor)
-                if scalar_ is not None:
-                    max_index_scalar = scalar_.shape[1]
-                if vector_field is not None:
-                    max_index_vector = vector_field.shape[1]
-            else:
-                cuts = [0, 100000000]
-            for first, last in zip(cuts[:-1], cuts[1:]):
-                xyz_c = xyz_[:, first:last]
-
-                if scalar_ is not None:
-                    max_index_scalar = scalar_.shape[1]
-                    scalar_field = scalar_[:, first % max_index_scalar:(
-                        last % max_index_scalar) + max_index_scalar * ((last % max_index_scalar) == 0)]
-                else:
-                    scalar_field = None
-
-                surf = mlab.mesh(
-                    xyz_c[..., 0],
-                    xyz_c[..., 1],
-                    xyz_c[..., 2],
-                    representation=representation,
-                    colormap=colormap,
-                    color=color,
-                    scalars=scalar_field,
-                    **kwargs,
-                )
-                if vector_field is not None:
-                    vector_field_ = vector_field[:,
-                                                 first:last] / np.max(vector_field)
-
-                    xyz_c = xyz_c[:-1]
-                    if nfp is not None:
-                        xyz_c = xyz_c[:, :-1]
-                    mlab.quiver3d(
-                        xyz_c[::reduce_res, ::reduce_res*reduce_res_nfp, 0],
-                        xyz_c[::reduce_res, ::reduce_res*reduce_res_nfp, 1],
-                        xyz_c[::reduce_res, ::reduce_res*reduce_res_nfp, 2],
-                        vector_field_[::reduce_res, ::reduce_res, 0],
-                        vector_field_[::reduce_res, ::reduce_res, 1],
-                        vector_field_[::reduce_res, ::reduce_res, 2],
-                        **quiver_kwargs,
-                    )
-
-        # Add reference axes
-        reference_axis_factor = np.min(
-            np.array([max_extent_X, max_extent_Y, max_extent_Z])) * 0.1
-        mlab.plot3d(np.linspace(0, 10, 100) * reference_axis_factor,
-                    np.zeros(100), np.zeros(100), color=(1, 0, 0), tube_radius=0.001)
-        mlab.plot3d(np.zeros(100), np.linspace(0, 10, 100) * reference_axis_factor,
-                    np.zeros(100), color=(0, 1, 0), tube_radius=0.001)
-        mlab.plot3d(np.zeros(100), np.zeros(100), np.linspace(
-            0, 10, 100) * reference_axis_factor, color=(0, 0, 1), tube_radius=0.001)
-
-        # Add colorbar
-        # if scalar is not None:
-        mlab.colorbar(surf, nb_labels=4, label_fmt="%.1E",
-                      orientation="vertical")
 
     def plot_2d_field(self, field, num_prec=2, ax=None):
         """
