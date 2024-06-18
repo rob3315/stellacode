@@ -56,13 +56,6 @@ def vmec_to_cylindrical(vector_field: np.ndarray, rphiz: np.ndarray, grad_rphiz:
     -------
     ndarray
         The vector field in cylindrical coordinates.
-
-    Notes
-    -----
-    The mapping is defined as:
-    vr = ∂r/∂r * partial_r / (∂r^2 + ∂z^2)^(1/2)
-    vz = ∂z/∂r * partial_r / (∂r^2 + ∂z^2)^(1/2)
-    vphi = r * partial_phi / (∂r^2 + ∂z^2)^(1/2)
     """
     # Extract the components of the gradient of the cylindrical coordinates
     r_grad = grad_rphiz[..., 0, :]
@@ -70,16 +63,15 @@ def vmec_to_cylindrical(vector_field: np.ndarray, rphiz: np.ndarray, grad_rphiz:
 
     # Compute the radius and partial_r
     radius = rphiz[..., 0]
-    partial_r = np.sqrt(r_grad**2 + z_grad**2)
 
     # Apply the mapping to convert the vector field from vmec to cylindrical coordinates
     return np.stack(
         (
             np.einsum("tzmc,tzmc->tzm",
-                      vector_field[..., :2], r_grad) / partial_r,
+                      vector_field[..., :2], r_grad),
             radius * vector_field[..., 1],
             np.einsum("tzmc,tzmc->tzm",
-                      vector_field[..., :2], z_grad) / partial_r,
+                      vector_field[..., :2], z_grad),
         ),
         axis=-1,
     )

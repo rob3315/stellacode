@@ -38,11 +38,11 @@ class HTSCriticalCurrent:
         data = pd.read_excel(hts_database_path, index_col="label")
 
         # Check if the given tapeLabel is in the database
-        if tapeLabel not in data.index:
+        if tapeLabel not in data.columns:
             raise ValueError(f"Invalid tapeLabel: {tapeLabel}")
 
         # Set the parameters and unit of the HTS tape
-        self.par = data.loc[tapeLabel]
+        self.par = data[tapeLabel]
         self.unit = unit
 
     @classmethod

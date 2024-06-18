@@ -37,7 +37,8 @@ class ToroidalSurface(AbstractSurfaceFactory):
         u_ = 2 * np.pi * uv[0]  # poloidal angle
         v_ = 2 * np.pi * uv[1] / self.nfp + self.axis_angle  # toroidal angle
 
-        minor_radius = (fourier_transform(self.fourier_coeffs, u_) + 1) * self.minor_radius
+        minor_radius = (fourier_transform(
+            self.fourier_coeffs, u_) + 1) * self.minor_radius
 
         x = (self.major_radius + minor_radius * np.cos(u_)) * np.cos(v_)
         y = (self.major_radius + minor_radius * np.cos(u_)) * np.sin(v_)
@@ -50,7 +51,8 @@ class ToroidalSurface(AbstractSurfaceFactory):
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
         surf = self()
-        rtphi = cartesian_to_toroidal(xyz=surf.xyz, tore_radius=self.major_radius, height=0.0)
+        rtphi = cartesian_to_toroidal(
+            xyz=surf.xyz, tore_radius=self.major_radius, tore_height=0.0)
         rphi = np.concatenate((rtphi[:, :, :], rtphi[:1, :, :]), axis=0)
         ax.plot(rphi[:, 0, 1], rphi[:, 0, 0], **kwargs)
         return ax

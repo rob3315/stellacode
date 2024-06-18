@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from stellacode.surface import Surface, CoilFactory
 import numpy as onp
+from typing import Tuple
 
 
 def plot_cross_sections(coil_factory: CoilFactory, Sp: Surface,
