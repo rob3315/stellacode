@@ -1,7 +1,8 @@
 import typing as tp
-from os.path import dirname, join, realpath
+from os.path import join
 
 from pydantic import BaseModel
+from stellacode import DATA_PATH
 
 
 class PlasmaConfig(BaseModel):
@@ -21,28 +22,27 @@ class PlasmaConfig(BaseModel):
     path_cws: tp.Optional[str] = None
 
 
-configs_folder = join(f"{dirname(dirname(dirname(realpath(__file__))))}", "data")
 w7x_plasma = PlasmaConfig(
-    path_plasma=join(configs_folder, "w7x", "wout_d23p4_tm.nc"),
+    path_plasma=join(DATA_PATH, "w7x", "wout_d23p4_tm.nc"),
     minor_radius=0.53,
-    path_bnorm=join(configs_folder, "w7x", "bnorm.d23p4_tm"),
-    path_cws=join(configs_folder, "w7x",
+    path_bnorm=join(DATA_PATH, "w7x", "bnorm.d23p4_tm"),
+    path_cws=join(DATA_PATH, "w7x",
                   "nescin.w7x_winding_surface_from_Drevlak"),
 )
 w7x_scaled_plasma = PlasmaConfig(
-    path_plasma=join(configs_folder, "w7x_scaled", "wout_w7x_d4_1024.nc"),
+    path_plasma=join(DATA_PATH, "w7x_scaled", "wout_w7x_d4_1024.nc"),
     minor_radius=0.058,
-    path_bnorm=join(configs_folder, "w7x_scaled", "bnorm.w7x_d4_1024"),
-    path_cws=join(configs_folder, "w7x_scaled", "nescin.w7x_d4_1024"),
+    path_bnorm=join(DATA_PATH, "w7x_scaled", "bnorm.w7x_d4_1024"),
+    path_cws=join(DATA_PATH, "w7x_scaled", "nescin.w7x_d4_1024"),
 )
 ncsx_plasma = PlasmaConfig(
-    path_plasma=join(configs_folder, "li383", "wout_li383_1.4m.nc"),
+    path_plasma=join(DATA_PATH, "li383", "wout_li383_1.4m.nc"),
     minor_radius=0.33,
-    path_bnorm=join(configs_folder, "li383", "bnorm.li383_1.4m"),
-    path_cws=join(configs_folder, "li383", "nescin.li383_realWindingSurface"),
+    path_bnorm=join(DATA_PATH, "li383", "bnorm.li383_1.4m"),
+    path_cws=join(DATA_PATH, "li383", "nescin.li383_realWindingSurface"),
 )
 hsx_plasma = PlasmaConfig(
-    path_plasma=join(configs_folder, "hsx", "wout_HSX_QHS.nc"),
+    path_plasma=join(DATA_PATH, "hsx", "wout_HSX_QHS.nc"),
     minor_radius=0.15,
     path_bnorm=None,
     path_cws=None,

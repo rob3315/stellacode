@@ -382,6 +382,7 @@ class Surface(BaseModel):
             sizeref=1,
             colorscale="Viridis",  # Define color of cones
         ),
+        streamlines: bool = False,
         num_tor_pts: int = 1000000000000,
         reduce_res: int = 10,
         cut_tor: tp.Optional[int] = None,
@@ -461,44 +462,43 @@ class Surface(BaseModel):
                         xyz_c = xyz_c[:, :-1]
                     x, y, z = xyz_c[..., 0], xyz_c[..., 1], xyz_c[..., 2]
 
-                    # magnitude_u = np.abs(vector_field_[
-                    #                      :, :, 0])
-                    # magnitude_v = np.abs(vector_field_[:, :, 1])
-                    # magnitude_w = np.abs(vector_field_[:, :, 2])
-                    # print("Vector u magnitude (min, max):",
-                    #       magnitude_u.min(), magnitude_u.max())
-                    # print("Vector v magnitude (min, max):",
-                    #       magnitude_v.min(), magnitude_v.max())
-                    # print("Vector w magnitude (min, max):",
-                    #       magnitude_w.min(), magnitude_w.max())
-
-                    # print("Vector field shape:", vector_field_.shape)
-                    # print("Down-sampled x shape:",
-                    #       x[::reduce_res, ::reduce_res*reduce_res_nfp].shape)
-
-                    # print("Sample cone positions (x, y, z):",
-                    #       x[0, 0], y[0, 0], z[0, 0])
-                    # print("Sample cone vectors (u, v, w):", vector_field_[
-                    #       0, 0, 0], vector_field_[0, 0, 1], vector_field_[0, 0, 2])
-
-                    fig.add_trace(
-                        go.Cone(
-                            x=x[::reduce_res, ::reduce_res *
-                                reduce_res_nfp].flatten(),
-                            y=y[::reduce_res, ::reduce_res *
-                                reduce_res_nfp].flatten(),
-                            z=z[::reduce_res, ::reduce_res *
-                                reduce_res_nfp].flatten(),
-                            u=vector_field_[::reduce_res,
-                                            ::reduce_res, 0].flatten(),
-                            v=vector_field_[::reduce_res,
-                                            ::reduce_res, 1].flatten(),
-                            w=vector_field_[::reduce_res,
-                                            ::reduce_res, 2].flatten(),
-                            visible=True,
-                            **cone_kwargs,
+                    if streamlines:
+                        fig.add_trace(
+                            go.Streamtube(
+                                x=x.flatten(),
+                                y=y.flatten(),
+                                z=z.flatten(),
+                                u=vector_field_[..., 0].flatten(),
+                                v=vector_field_[..., 1].flatten(),
+                                w=vector_field_[..., 2].flatten(),
+                                starts=dict(
+                                    x=x[0, :].flatten(),
+                                    y=y[0, :].flatten(),
+                                    z=z[0, :].flatten(),
+                                ),
+                                visible=True,
+                                **cone_kwargs,
+                            )
                         )
-                    )
+                    else:
+                        fig.add_trace(
+                            go.Cone(
+                                x=x[::reduce_res, ::reduce_res *
+                                    reduce_res_nfp].flatten(),
+                                y=y[::reduce_res, ::reduce_res *
+                                    reduce_res_nfp].flatten(),
+                                z=z[::reduce_res, ::reduce_res *
+                                    reduce_res_nfp].flatten(),
+                                u=vector_field_[::reduce_res,
+                                                ::reduce_res, 0].flatten(),
+                                v=vector_field_[::reduce_res,
+                                                ::reduce_res, 1].flatten(),
+                                w=vector_field_[::reduce_res,
+                                                ::reduce_res, 2].flatten(),
+                                visible=True,
+                                **cone_kwargs,
+                            )
+                        )
 
         fig.update_layout(
             scene=dict(

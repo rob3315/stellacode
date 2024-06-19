@@ -54,7 +54,9 @@ class LinearElasticityCoeffs(BaseModel):
 
 def displacement_green_function(xyz_pos: Array, xyz_force: Array, lin_coeff: LinearElasticityCoeffs) -> Array:
     """
-    Compute the displacement green function.
+    Compute the displacement green function `U_{i,k}`
+    where U is the displacement green function, i is the displacement dimension
+    and k is the force dimension.
 
     Args:
         xyz_pos (Array): Position of the point.
@@ -63,10 +65,6 @@ def displacement_green_function(xyz_pos: Array, xyz_force: Array, lin_coeff: Lin
 
     Returns:
         Array: Displacement green function.
-
-    The displacement green function `U_{i,k}` is defined as:
-    where U is the displacement green function, i is the displacement dimension
-    and k is the force dimension.
     """
     # Calculate the vector from the point to the force
     xyz = xyz_pos - xyz_force
@@ -102,7 +100,8 @@ def displacement_green_function(xyz_pos: Array, xyz_force: Array, lin_coeff: Lin
 #     )
 
 # The jacobian adds a dimension along the last dimension
-grad_displacement_green_function = jax.jacobian(displacement_green_function)
+grad_displacement_green_function = jax.jacobian(
+    displacement_green_function, argnums=0)
 
 
 def strain_green_function(xyz_pos: Array, xyz_force: Array, lin_coeff: LinearElasticityCoeffs) -> Array:

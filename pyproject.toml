@@ -18,7 +18,6 @@ requires-python = ">=3.7"
 keywords = ["stellarator", "coils"]
 dependencies = [
     "matplotlib",
-    "mayavi @ https://github.com/enthought/mayavi/zipball/master",
     "numpy",
     "opt-einsum",
     "scipy",
@@ -31,7 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = [
-    "pytest", "flake8", "mypy", "isort", "black"
+    "pytest", "flake8", "mypy", "isort", "black", "coverage"
 ]
 doc = ["sphinx-autoapi", 
         "nbsphinx",

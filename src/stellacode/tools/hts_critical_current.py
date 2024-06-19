@@ -1,18 +1,15 @@
-from os.path import dirname, join
 from typing import Optional
 
 import pandas as pd
 
-from stellacode import np
+from stellacode import np, HTS_DATABASE_PATH
 
 
 class HTSCriticalCurrent:
     """
     Computes the critical current for a number of HTS tapes
     """
-
-    HTS_DATABASE_PATH = join(
-        dirname(dirname(dirname(dirname(__file__)))), "data", "hts_params_jeroen.xlsx")
+    HTS_DATABASE_PATH = HTS_DATABASE_PATH
     B_MIN = 0.1
     EPS = 1e-15
 
@@ -32,7 +29,7 @@ class HTSCriticalCurrent:
         """
         # Set the default path to the HTS database
         if hts_database_path is None:
-            hts_database_path = self.HTS_DATABASE_PATH
+            hts_database_path = HTS_DATABASE_PATH
 
         # Read the HTS parameters from the database
         data = pd.read_excel(hts_database_path, index_col="label")

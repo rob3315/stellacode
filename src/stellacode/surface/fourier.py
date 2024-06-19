@@ -210,7 +210,7 @@ class FourierSurfaceFactory(AbstractSurfaceFactory):
             env, rtheta = surf.get_envelope(num_cyl=num_cyl, convex=False)
             ax.plot(env[:, 1], env[:, 0] * scale_envelope, c="g", linewidth=3)
 
-        return ax
+        return ax.get_figure(), ax
 
     def __call__(self, **kwargs):
         """

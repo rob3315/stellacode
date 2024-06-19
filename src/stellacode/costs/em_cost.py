@@ -1,4 +1,4 @@
-from os.path import dirname, join, realpath
+from os.path import join
 import typing as tp
 
 import pandas as pd
@@ -6,7 +6,7 @@ from jax import Array
 from jax.typing import ArrayLike
 from pydantic import BaseModel
 
-from stellacode import mu_0_fac, np
+from stellacode import mu_0_fac, np, PROJECT_PATH
 from stellacode.costs.abstract_cost import AbstractCost, Results
 from stellacode.definitions import PlasmaConfig
 from stellacode.surface import FourierSurfaceFactory, IntegrationParams, Surface
@@ -282,7 +282,7 @@ class EMCost(AbstractCost):
             Sp = get_plasma_surface(config)()
 
         bnorm_ = -curpol * get_bnorm(
-            join(f"{dirname(dirname(dirname(realpath(__file__))))}",
+            join(PROJECT_PATH,
                  str(config["other"]["path_bnorm"])), Sp
         )
 
@@ -477,7 +477,7 @@ def to_float(dict_):
 
 def get_b_field_err(em_cost, coil_surface, err: str = "L2"):
     """
-    Root mean square or max relative error on a flux surface.
+    L2 norm of the difference or max relative error on a flux surface.
     """
     b_field = em_cost.get_b_field(coil_surface)
     b_field_gt = em_cost.Sp.get_gt_b_field(

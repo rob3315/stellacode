@@ -1,0 +1,2 @@
+pwc ellipticity triangularity 3
+5.4 1.2 0.3 12.5 1.6 0.0

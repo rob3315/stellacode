@@ -1,0 +1,11 @@
+{
+    "n_cyl": 8,
+    "parametrization": "ell_tri",
+    "symmetry": true,
+    "a": 1.2,
+    "kappa": 1.2,
+    "delta": 0.3,
+    "R0": 5,
+    "alpha": 1.6,
+    "beta": 0
+}
