@@ -26,10 +26,8 @@ from os.path import dirname, join, realpath
 import configparser
 
 import jax
-
-jax.config.update("jax_enable_x64", True)
-
 matplotlib.use('Agg')
+jax.config.update("jax_enable_x64", True)
 
 TEST_FOLDER_PATH = f"{(dirname(realpath(__file__)))}"
 TEST_CONFIG_PATH = join(
@@ -190,26 +188,6 @@ def test_compare_to_regcoil(use_mu_0_factor):
     # Compare the result for very low lambdas
     phi_mn = solver.solve_lambda(1e-30)
     bs = em_cost.get_bs_operator(cws, normal_b_field=False)
-
-    # Uncomment the following code to plot the comparison between regcoil and stellacode
-    # import pandas as pd
-    # import matplotlib.pyplot as plt;import seaborn as sns;import matplotlib;matplotlib.use('TkAgg')
-    # from coil_optim.plots import format_axis
-    # df = pd.concat({"regcoil": pd.Series(chi2_b, index=chi_j),"stellacode": pd.Series(metrics.cost_B.values, index=chi_j),}, axis=1)
-    # ax=df.iloc[11:].plot(marker='.', linestyle='dashed')
-    # ax.set_xlabel( r"$\chi^2_K$")
-    # ax.set_ylabel(r"$\chi^2_B$")
-    # format_axis(ax)
-    # plt.show()
-    # # for comparing the errors
-    # b_err = np.linalg.norm(b_field_gt - np.transpose(b_field, (1, 2, 0)), axis=-1)
-    # import matplotlib.pyplot as plt
-    # import seaborn as sns
-    # f, axes=plt.subplots(3,1)
-    # sns.heatmap(b_err, ax=axes[0])
-    # sns.heatmap(np.linalg.norm(b_field_gt, axis=-1), ax=axes[1])
-    # sns.heatmap(np.linalg.norm(np.transpose(b_field, (1, 2, 0)), axis=-1), ax=axes[2])
-    # plt.show()
 
 
 @pytest.mark.parametrize("plasma_config", [w7x_plasma, ncsx_plasma])
