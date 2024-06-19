@@ -34,6 +34,7 @@ MANIFEST
 # outputs from notebooks
 tutorials/*.png
 tutorials/*.pkl
+tutorials/*.html
 
 # outputs from scripts
 outputs

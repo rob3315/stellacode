@@ -345,32 +345,61 @@ class Surface(BaseModel):
         return np.einsum("...kl,...ak->...al", g_up, self.jac_xyz)
 
     def expand_for_plot_part(self, num_tor_pts=1e11):
-        """Returns X, Y, Z arrays of one field period, adding redundancy of first column."""
+        """
+        Returns X, Y, Z arrays of one field period, adding redundancy of the first column.
+        :param num_tor_pts: Number of toroidal points to take from the surface.
+        :return: A list of arrays of shape (N+1, 3), where N is the number of points
+        taken from the surface.
+        """
         import numpy as np
 
         num_pts = min(self.xyz.shape[1], num_tor_pts)
 
+        # Take the first num_tor_pts points from the surface and concatenate with the first point
         P = np.array(self.xyz[:, :num_pts])
         return [np.concatenate((P, P[:1]), axis=0)]
 
     def expand_for_plot_whole(self, nfp: int, detach_parts: bool = False):
-        """Returns X, Y, Z arrays of the whole Stellarator."""
+        """
+        Returns X, Y, Z arrays of the whole Stellarator.
+
+        Args:
+            nfp (int): Number of field periods to include.
+            detach_parts (bool, optional): If True, returns a list of arrays,
+                where each array corresponds to a field period. If False, returns
+                a single array containing all points. Defaults to False.
+
+        Returns:
+            Union[List[np.ndarray], np.ndarray]: Arrays or list of arrays of shape
+                (N+1, 3), where N is the number of points in a field period,
+                including the redundancy of the first column.
+        """
         import numpy as np
 
+        # Get the points for one field period
         points = self.expand_for_plot_part()[0]
 
+        # Rotate the points to include all field periods
         points_rot = RotateNTimes.from_nfp(nfp)(points)
+
+        # Reshape the rotated points to include all field periods
         pol, torrot, _ = points_rot.shape
         points_rot = np.reshape(points_rot, (pol, nfp, torrot // nfp, 3))
+
+        # Split the rotated points into separate arrays for each field period
         points_ = [points_rot[:, i] for i in range(nfp)]
 
         if detach_parts:
+            # Return the points for each field period as a list of arrays
             return points_
         else:
+            # Concatenate the points for each field period into a single array
             points = np.concatenate(points_, axis=1)
+
+            # Add the redundancy of the first column to the last point
             return [np.concatenate((points, points[:, :1]), axis=1)]
 
-    def plotly_plot(
+    def plot(
         self,
         scalar: tp.Optional[onp.ndarray] = None,
         vector_field: tp.Optional[onp.ndarray] = None,
@@ -388,7 +417,26 @@ class Surface(BaseModel):
         cut_tor: tp.Optional[int] = None,
         scale: bool = False,
     ):
-        """Plot the surface with Plotly"""
+        """
+        Plot the surface, a scalar field or a vector field.
+
+        Args:
+            scalar (ndarray, optional): Scalar field to plot. Defaults to None.
+            vector_field (ndarray, optional): Vector field to plot. Defaults to None.
+            nfp (int, optional): Number of field periods. Defaults to None.
+            colormap (str, optional): Colormap to use. Defaults to "Reds".
+            detach_parts (bool, optional): Whether to detach parts. Defaults to False.
+            surface_kwargs (dict, optional): Keyword arguments for surface. Defaults to dict().
+            cone_kwargs (dict, optional): Keyword arguments for cone. Defaults to dict(sizeref=1, colorscale="Viridis").
+            streamlines (bool, optional): Whether to use streamlines. Defaults to False.
+            num_tor_pts (int, optional): Number of toroidal points. Defaults to 1000000000000.
+            reduce_res (int, optional): Reduce resolution. Defaults to 10.
+            cut_tor (int, optional): Cut toroidal direction. Defaults to None.
+            scale (bool, optional): Whether to scale the vector field. Defaults to False.
+
+        Returns:
+            go.Figure: Plotly figure.
+        """
 
         if nfp is None:
             xyz = self.expand_for_plot_part(num_tor_pts=num_tor_pts)
@@ -424,6 +472,7 @@ class Surface(BaseModel):
             else:
                 showscale = False
 
+            # Plot each segment
             for first, last in zip(cuts[:-1], cuts[1:]):
                 xyz_c = xyz_[:, first:last]
                 x_c, y_c, z_c = xyz_c[..., 0], xyz_c[..., 1], xyz_c[..., 2]
@@ -434,10 +483,7 @@ class Surface(BaseModel):
                 else:
                     scalar_field = None
 
-                # # Debugging information
-                # print("Plot segment shape:", x_c.shape, y_c.shape, z_c.shape)
-                # print("Cone sizeref:", cone_kwargs.get("sizeref", 0.1))
-
+                # Plot the surface
                 surface = go.Surface(
                     x=x_c,
                     y=y_c,
@@ -450,6 +496,7 @@ class Surface(BaseModel):
 
                 fig.add_trace(surface)
 
+                # Plot the vector field
                 if vector_field is not None:
                     if scale:
                         scaling_factor = onp.max(vector_field)
@@ -463,6 +510,7 @@ class Surface(BaseModel):
                     x, y, z = xyz_c[..., 0], xyz_c[..., 1], xyz_c[..., 2]
 
                     if streamlines:
+                        # Plot streamlines
                         fig.add_trace(
                             go.Streamtube(
                                 x=x.flatten(),
@@ -481,6 +529,7 @@ class Surface(BaseModel):
                             )
                         )
                     else:
+                        # Plot cones
                         fig.add_trace(
                             go.Cone(
                                 x=x[::reduce_res, ::reduce_res *
@@ -500,6 +549,7 @@ class Surface(BaseModel):
                             )
                         )
 
+        # Update layout
         fig.update_layout(
             scene=dict(
                 xaxis=dict(title='X'),
@@ -509,6 +559,7 @@ class Surface(BaseModel):
             ),
             margin=dict(l=0, r=0, t=0, b=0),
         )
+
         return fig
 
     def plot_2d_field(self, field, num_prec=2, ax=None):
