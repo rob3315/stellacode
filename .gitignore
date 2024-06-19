@@ -37,4 +37,4 @@ tutorials/*.pkl
 tutorials/*.html
 
 # outputs from scripts
-outputs
+outputs/*
