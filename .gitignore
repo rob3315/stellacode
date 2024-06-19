@@ -36,4 +36,4 @@ tutorials/*.png
 tutorials/*.pkl
 
 # outputs from scripts
-outputs
+outputs/*
