@@ -26,7 +26,8 @@ class RotatedSurface(AbstractBaseFactory):
     def __call__(self, surface: Surface, **kwargs):
         """ """
 
-        integration_par = IntegrationParams.sum_toroidally([surface.integration_par] * self.rotate_n.n_rot)
+        integration_par = IntegrationParams.sum_toroidally(
+            [surface.integration_par] * self.rotate_n.n_rot)
         grids = integration_par.get_uvgrid()
         kwargs = dict(
             integration_par=integration_par,
@@ -42,12 +43,15 @@ class RotatedSurface(AbstractBaseFactory):
                     kwargs[k] = self.rotate_n(val, stack_dim=stack_dim)
 
             if "current_op" in dir(surface) and getattr(surface, "current_op") is not None:
-                assert "phi_mn" in dir(surface) and getattr(surface, "phi_mn") is not None
+                assert "phi_mn" in dir(surface) and getattr(
+                    surface, "phi_mn") is not None
                 if self.different_currents:
-                    kwargs["current_op"] = self._get_current_op(surface.current_op)
+                    kwargs["current_op"] = self._get_current_op(
+                        surface.current_op)
                     kwargs["phi_mn"] = self._get_phi_mn(surface.phi_mn)
                 else:
-                    kwargs["current_op"] = np.concatenate([surface.current_op] * self.rotate_n.n_rot, axis=2)
+                    kwargs["current_op"] = np.concatenate(
+                        [surface.current_op] * self.rotate_n.n_rot, axis=2)
                     kwargs["phi_mn"] = surface.phi_mn
 
             for k in ["net_currents"]:
@@ -59,7 +63,8 @@ class RotatedSurface(AbstractBaseFactory):
     def _get_current_op(self, single_curent_op):
         current_op_ = single_curent_op[2:]
 
-        inner_blocks = collections.deque([current_op_] + [np.zeros_like(current_op_)] * (self.rotate_n.n_rot - 1))
+        inner_blocks = collections.deque(
+            [current_op_] + [np.zeros_like(current_op_)] * (self.rotate_n.n_rot - 1))
         blocks = []
         for _ in range(len(inner_blocks)):
             blocks.append(np.concatenate(inner_blocks, axis=0))
@@ -90,7 +95,8 @@ class ConcatSurfaces(AbstractBaseFactory):
             else:
                 surfaces.append(surface_factory(surface, **kwargs))
 
-        integration_par = IntegrationParams.sum_toroidally([surf.integration_par for surf in surfaces])
+        integration_par = IntegrationParams.sum_toroidally(
+            [surf.integration_par for surf in surfaces])
         grids = integration_par.get_uvgrid()
         kwargs = dict(
             integration_par=integration_par,
@@ -98,18 +104,23 @@ class ConcatSurfaces(AbstractBaseFactory):
         )
         for k in surfaces[0].field_keys:
             if k in dir(surfaces[0]) and getattr(surfaces[0], k) is not None:
-                kwargs[k] = np.concatenate([getattr(surface, k) for surface in surfaces], axis=1)
+                kwargs[k] = np.concatenate(
+                    [getattr(surface, k) for surface in surfaces], axis=1)
 
         if "current_op" in dir(surfaces[0]) and getattr(surfaces[0], "current_op") is not None:
-            assert all(["current_op" in dir(surf) and getattr(surf, "current_op") is not None for surf in surfaces])
-            kwargs["current_op"] = self._get_current_op([surf.current_op for surf in surfaces])
-            assert all(["phi_mn" in dir(surf) and getattr(surf, "phi_mn") is not None for surf in surfaces])
-            kwargs["phi_mn"] = self._get_phi_mn([surf.phi_mn for surf in surfaces])
-
+            assert all(["current_op" in dir(surf) and getattr(
+                surf, "current_op") is not None for surf in surfaces])
+            kwargs["current_op"] = self._get_current_op(
+                [surf.current_op for surf in surfaces])
+            assert all(["phi_mn" in dir(surf) and getattr(
+                surf, "phi_mn") is not None for surf in surfaces])
+            kwargs["phi_mn"] = self._get_phi_mn(
+                [surf.phi_mn for surf in surfaces])
 
         for k in ["net_currents"]:
             if k in dir(surfaces[0]) and getattr(surfaces[0], k) is not None:
-                assert all([k in dir(surf) and getattr(surf, k) is not None for surf in surfaces])
+                assert all([k in dir(surf) and getattr(surf, k)
+                           is not None for surf in surfaces])
                 # TODO: We should be able to treat each net_currents as a separate entity.
                 kwargs[k] = sum([getattr(surf, k) for surf in surfaces])
 
@@ -118,12 +129,14 @@ class ConcatSurfaces(AbstractBaseFactory):
     def get_trainable_params(self):
         params = {}
         for i, surface_factory in enumerate(self.surface_factories):
-            params = {**params, **{f"{i}.{k}": v for k, v in surface_factory.get_trainable_params().items()}}
+            params = {**params, **{f"{i}.{k}": v for k,
+                                   v in surface_factory.get_trainable_params().items()}}
         return params
 
     def update_params(self, **kwargs):
         for i in range(len(self.surface_factories)):
-            _kwargs = {".".join(k.split(".")[1:]): v for k, v in kwargs.items() if int(k.split(".")[0]) == i}
+            _kwargs = {".".join(k.split(".")[1:]): v for k, v in kwargs.items() if int(
+                k.split(".")[0]) == i}
             self.surface_factories[i].update_params(**_kwargs)
 
     def __getattribute__(self, name: str):
@@ -137,7 +150,8 @@ class ConcatSurfaces(AbstractBaseFactory):
         num_ops = len(single_curent_ops)
         blocks = []
         for i in range(len(single_curent_ops)):
-            blocks.append(np.concatenate(zeros_blocks[:i] + [single_curent_ops[i][2:]] + zeros_blocks[i + 1 :], axis=0))
+            blocks.append(np.concatenate(
+                zeros_blocks[:i] + [single_curent_ops[i][2:]] + zeros_blocks[i + 1:], axis=0))
 
         # This is a hack because the status of the first two coefficients is
         # special (constant currents not regressed)
@@ -147,6 +161,7 @@ class ConcatSurfaces(AbstractBaseFactory):
 
     def _get_phi_mn(self, phi_mns):
         return np.concatenate([phi_mns[0][:2]] + [phi[2:] for phi in phi_mns])
+
 
 class Sequential(AbstractBaseFactory):
     """
@@ -169,12 +184,14 @@ class Sequential(AbstractBaseFactory):
     def get_trainable_params(self):
         params = {}
         for i, surface in enumerate(self.surface_factories):
-            params = {**params, **{f"{i}.{k}": v for k, v in surface.get_trainable_params().items()}}
+            params = {**params, **{f"{i}.{k}": v for k,
+                                   v in surface.get_trainable_params().items()}}
         return params
 
     def update_params(self, **kwargs):
         for i in range(len(self.surface_factories)):
-            _kwargs = {".".join(k.split(".")[1:]): v for k, v in kwargs.items() if int(k.split(".")[0]) == i}
+            _kwargs = {".".join(k.split(".")[1:]): v for k, v in kwargs.items() if int(
+                k.split(".")[0]) == i}
             self.surface_factories[i].update_params(**_kwargs)
 
 
@@ -184,14 +201,35 @@ def rotate_coil(
     num_surf_per_period: int = 1,
     continuous_current_in_period: bool = False,
     build_coils: bool = False,
-):
+) -> Sequential:
+    """
+    Build a rotational coil factory from a current and the number of field periods.
+
+    Args:
+        current (AbstractCurrent): The current class computing a current operator on a given surface grid.
+        nfp (int): The number of field periods.
+        num_surf_per_period (int, optional): The number of surfaces per period. Defaults to 1.
+        continuous_current_in_period (bool, optional): Use continuous current in each period. Defaults to False.
+        build_coils (bool, optional): Build coils instead of a coilOperator. Defaults to False.
+
+    Returns:
+        Sequential: A sequential surface factory that applies a rotation and a coil factory.
+    """
+
+    # Rotate the common current operator
     rot_common_current = RotatedSurface(
-        rotate_n=RotateNTimes(angle=2 * np.pi / (num_surf_per_period * nfp), max_num=num_surf_per_period),
+        rotate_n=RotateNTimes(
+            angle=2 * np.pi / (num_surf_per_period * nfp), max_num=num_surf_per_period),
         different_currents=not continuous_current_in_period,
     )
+
+    # Rotate the surface factory
     rot_nfp = RotatedSurface(rotate_n=RotateNTimes.from_nfp(nfp))
+
+    # Build the coil factory
     coil_factory = CoilFactory(current=current, build_coils=build_coils)
 
+    # Apply the rotations and the coil factory in the correct order
     if continuous_current_in_period:
         return Sequential(surface_factories=[rot_common_current, coil_factory, rot_nfp])
     else:

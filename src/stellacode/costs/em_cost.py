@@ -437,6 +437,8 @@ class EMCost(AbstractCost):
         Returns:
             EMCost: An instance of EMCost.
         """
+        integration_par.num_points_v *= plasma_config.nfp
+
         # Create a Fourier surface from the plasma configuration if Sp is None
         if Sp is None:
             Sp = FourierSurfaceFactory.from_file(
@@ -695,7 +697,7 @@ class EMCost(AbstractCost):
         # Solve for the current weights using the lambda value
         return solver.solve_lambda(lamb=self.lamb)
 
-    def get_b_field(self, coil_surf):  # unused ?
+    def get_b_field(self, coil_surf):
         """
         Compute the magnetic field on a given coil surface.
 
@@ -752,7 +754,7 @@ def get_b_field_err(em_cost, coil_surface, err: str = "L2"):
 
     # Compute the ground truth magnetic field on the coil surface
     b_field_gt = em_cost.Sp.get_gt_b_field(
-        surface_labels=-1)[:, : em_cost.Sp.integration_par.num_points_v]
+        surface_labels=-1)
 
     # Compute the module of the difference between the computed and ground truth magnetic field
     delta_b_module = np.linalg.norm(b_field - b_field_gt, axis=-1)

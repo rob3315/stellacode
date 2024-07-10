@@ -187,7 +187,7 @@ def unwrap_u(radius_function, dr_dphi_function, phi, num_points=100):
     integrand = np.sqrt(all_dr_dphi**2 + all_radii**2)
 
     # Numerically integrate the integrand to find the length of the curve
-    return np.trapz(integrand, all_phi)
+    return np.trapezoid(integrand, all_phi)
 
 
 def fourier_transform_derivative(coefficients, val):
@@ -226,7 +226,7 @@ def fourier_transform_derivative(coefficients, val):
     return derivative
 
 
-def fourier_coefficients(li, lf, n, f):
+def fourier_coefficients(li, lf, n, f, **kwargs):
     """
     Calculate the Fourier coefficients of a function.
 
@@ -247,7 +247,7 @@ def fourier_coefficients(li, lf, n, f):
 
     # Calculate the constant term
     # The constant term is twice the mean value of the function over the interval
-    a0 = 1 / l * quad(lambda x: f(x), li, lf)[0]
+    a0 = 1 / l * quad(lambda x: f(x), li, lf, **kwargs)[0]
 
     # Initialize arrays to store the cosine and sine coefficients
     A = np.zeros((n))
@@ -260,10 +260,10 @@ def fourier_coefficients(li, lf, n, f):
         omega = i * np.pi / l
 
         # Calculate the cosine coefficient
-        A = quad(lambda x: f(x) * np.cos(omega * x), li, lf)[0] / l
+        A = quad(lambda x: f(x) * np.cos(omega * x), li, lf, **kwargs)[0] / l
 
         # Calculate the sine coefficient
-        B = quad(lambda x: f(x) * np.sin(omega * x), li, lf)[0] / l
+        B = quad(lambda x: f(x) * np.sin(omega * x), li, lf, **kwargs)[0] / l
 
         # Append the coefficients as a numpy array to the list of coefficients
         coefs.append(np.array([A, B]))
@@ -303,7 +303,7 @@ def get_min_dist(S1, S2):
     # return np.linalg.norm(S1.P[...,None,None,:]-S2.P[None,None,...], axis=-1).min()
 
 
-def fit_to_surface(fitted_surface, surface, distance: float = 0.0):
+def fit_to_surface(fitted_surface, surface, distance: float = 0.25, tol: float = 1e-2):
     """
     Tries to find approximately the smallest `fitted_surface` enclosing `surface`
     assuming `surface` has get_major_radius and get_minor_radius methods
@@ -311,7 +311,7 @@ def fit_to_surface(fitted_surface, surface, distance: float = 0.0):
     Args:
         fitted_surface: The surface to fit.
         surface: The surface to be fitted to.
-        distance: The distance between the two surfaces.
+        distance: The initial distance between the two surfaces factor.
 
     Returns:
         The fitted surface.
@@ -323,7 +323,7 @@ def fit_to_surface(fitted_surface, surface, distance: float = 0.0):
 
     # Create a copy of the fitted surface
     new_surf = fitted_surface.model_copy()
-    radius = minor_radius + distance
+    radius = minor_radius*(1+distance)
 
     # Update the parameters of the fitted surface
     # The radius is set to twice the minor radius
@@ -336,7 +336,7 @@ def fit_to_surface(fitted_surface, surface, distance: float = 0.0):
     # Find the minimum distance between the fitted surface and the surface
     min_dist = new_surf().get_min_distance(surface.xyz)
 
-    while min_dist < minor_radius/10:
+    while min_dist > tol:
         # Update the radius of the fitted surface
         radius += min_dist
         new_surf.surface_factories[0].update_params(

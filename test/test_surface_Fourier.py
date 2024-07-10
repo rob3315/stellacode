@@ -13,7 +13,7 @@ def test_normal_derivative():
     S = FourierSurfaceFactory.from_file(
         "data/li383/cws.txt",
         integration_par=IntegrationParams(num_points_u=lu, num_points_v=lv),
-        n_fp=3,
+        nfp=3,
     )
 
     import matplotlib.pyplot as plt

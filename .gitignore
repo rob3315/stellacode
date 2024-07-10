@@ -24,7 +24,7 @@ stellopt.egg-info/
 
 .flake8
 .gitlab-ci.yml
-
+.coverage
 
 *.egg
 *.egg-info

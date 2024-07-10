@@ -36,8 +36,9 @@ def test_compare_axisymmetric_vs_cylindrical():
     n_tor_coil = 32
     total_num_rot = nfp * rotate_diff_current
     surface = CylindricalSurface(
-        integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil // rotate_diff_current),
-        nfp=total_num_rot,
+        integration_par=IntegrationParams(
+            num_points_u=n_pol_coil, num_points_v=n_tor_coil // rotate_diff_current),
+        ncp=total_num_rot,
         make_joints=False,
         distance=major_radius,
         radius=minor_radius,
@@ -70,7 +71,8 @@ def test_compare_axisymmetric_vs_cylindrical():
                 nfp=nfp,
                 major_radius=major_radius,
                 minor_radius=minor_radius,
-                integration_par=IntegrationParams(num_points_u=n_pol_coil, num_points_v=n_tor_coil),
+                integration_par=IntegrationParams(
+                    num_points_u=n_pol_coil, num_points_v=n_tor_coil),
             ),
             rotate_coil(
                 current=current,
@@ -90,4 +92,5 @@ def test_compare_axisymmetric_vs_cylindrical():
     # print(np.abs(surf_pwc.normal_unit - surf_axi.normal_unit).max() / np.abs(surf_axi.normal_unit).mean())
     # print(np.abs(surf_pwc.npts - surf_axi.npts))
 
-    np.testing.assert_allclose(em_cost.cost(surf_pwc)[1]["cost_B"], em_cost.cost(surf_axi)[1]["cost_B"])
+    np.testing.assert_allclose(em_cost.cost(
+        surf_pwc)[1]["cost_B"], em_cost.cost(surf_axi)[1]["cost_B"])

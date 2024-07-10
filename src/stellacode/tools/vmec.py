@@ -613,7 +613,7 @@ class VMECIO:
 
         # Retrieve the bvco variable from the VMECIO object.
         # Transpose the array to have shape (n toroidal, n poloidal)
-        bvco = self.get_var("bvco", float).T
+        bvco = self.get_var("bvco", float)
 
         # Calculate the net poloidal current by extrapolating the covariant
         # components of B to the last full mesh point.
@@ -644,7 +644,7 @@ class VMECIO:
 
         # Calculate the covariant components of B at the last full mesh point.
         # Transpose the array to have shape (n theta, n zeta)
-        bvco = self.b_cartesian[-1].T
+        bvco = self.b_cartesian[-1]
 
         # Calculate the gradient of theta and zeta.
         # The shape of the array is (n theta, n zeta, 2)
@@ -652,12 +652,12 @@ class VMECIO:
 
         # Multiply the covariant components of B with the gradient of theta.
         # The shape of the array is (n theta, n zeta)
-        b_theta = np.sum((bvco * xyz_dv)[:, :, 0], axis=-1)
+        b_theta = np.sum((bvco * xyz_dv)[:, 0], axis=-1)
 
         # Calculate the net poloidal current by integrating the magnetic field
         # along the toroidal surface.
         # The shape of the array is (n poloidal)
-        net_current = np.mean(np.sum(b_theta, axis=0), axis=0)
+        net_current = np.mean(b_theta, axis=0)
 
         # Undo the scaling applied by BNORM
         return net_current / mu_0

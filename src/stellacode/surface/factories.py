@@ -46,9 +46,13 @@ class AbstractToroidalCoils(AbstractBaseFactory):
 class WrappedCoil(AbstractToroidalCoils):
     """
     A coil factory with a number of coil periods
+
+    Args:
+        * coil_factory: Sequential coil factory
+        * ncp: number of coil periods
     """
     coil_factory: AbstractBaseFactory
-    ncp : int
+    ncp: int
 
     @classmethod
     def from_plasma(
@@ -67,44 +71,69 @@ class WrappedCoil(AbstractToroidalCoils):
         convex: bool = True,
         match_surface: bool = False,
         build_coils: bool = False,
-    ):
-        if surf_type == "cylindrical":
-            return cls(
-                coil_factory=get_pwc_surface(
-                    surf_plasma=surf_plasma,
-                    n_harmonics=n_harmonics,
-                    factor=factor,
-                    rotate_diff_current=rotate_diff_current,
-                    make_joints=make_joints,
-                    common_current_on_each_rot=common_current_on_each_rot,
-                    axis_angle=axis_angle,
-                    distance=distance,
-                    sin_basis=sin_basis,
-                    cos_basis=cos_basis,
-                    convex=convex,
-                    match_surface=match_surface,
-                    build_coils=build_coils,
-                ),
-                ncp = surf_plasma.nfp*rotate_diff_current
-            )
-        elif surf_type == "toroidal":
-            return cls(
-                coil_factory=get_toroidal_surface(
-                    surf_plasma=surf_plasma,
-                    n_harmonics=n_harmonics,
-                    factor=factor,
-                    match_surface=match_surface,
-                    convex=convex,
-                    distance=distance,
-                    sin_basis=sin_basis,
-                    cos_basis=cos_basis,
-                    build_coils=build_coils,
-                ),
-                ncp = 1
-            )
+    ) -> "WrappedCoil":
+        """
+        Create a WrappedCoil object from a plasma surface.
 
+        Args:
+            surf_plasma: FourierSurfaceFactory object representing plasma surface.
+            surf_type: Type of surface to create. Must be "cylindrical" or "toroidal".
+            n_harmonics: Number of Fourier harmonics to use.
+            factor: Factor to upscale the number of points in the Fourier harmonics.
+            rotate_diff_current: Number of cylinders per field period.
+            make_joints: Whether to create joints between surfaces.
+            common_current_on_each_rot: Whether to have a common current on each cylinder.
+            axis_angle: Angle of rotation around the axis.
+            distance: Distance from the origin to the cylinders axis.
+            sin_basis: Whether to use sine basis.
+            cos_basis: Whether to use cosine basis.
+            convex: Whether to use convex surface.
+            match_surface: Whether to match the surface of the plasma.
+            build_coils: Whether to build coils.
+
+        Returns:
+            WrappedCoil object representing the coil factory.
+        """
+        # Create the coil factory based on the surface type
+        if surf_type == "cylindrical":
+            coil_factory = get_pwc_surface(
+                surf_plasma=surf_plasma,
+                n_harmonics=n_harmonics,
+                factor=factor,
+                rotate_diff_current=rotate_diff_current,
+                make_joints=make_joints,
+                common_current_on_each_rot=common_current_on_each_rot,
+                axis_angle=axis_angle,
+                distance=distance,
+                sin_basis=sin_basis,
+                cos_basis=cos_basis,
+                convex=convex,
+                match_surface=match_surface,
+                build_coils=build_coils,
+            )
+            ncp = surf_plasma.nfp * rotate_diff_current
+        elif surf_type == "toroidal":
+            coil_factory = get_toroidal_surface(
+                surf_plasma=surf_plasma,
+                n_harmonics=n_harmonics,
+                factor=factor,
+                match_surface=match_surface,
+                convex=convex,
+                distance=distance,
+                sin_basis=sin_basis,
+                cos_basis=cos_basis,
+                build_coils=build_coils,
+            )
+            ncp = 1
         else:
-            raise NotImplementedError
+            raise NotImplementedError(
+                "surf_type must be 'cylindrical' or 'toroidal'")
+
+        # Create and return the WrappedCoil object
+        return cls(
+            coil_factory=coil_factory,
+            ncp=ncp,
+        )
 
     def __call__(self, **kwargs):
         return self.coil_factory(**kwargs)
@@ -169,8 +198,28 @@ def get_toroidal_surface(
     sin_basis: bool = True,
     cos_basis: bool = True,
     build_coils: bool = False,
-):
+) -> Sequential:
+    """
+    Generate a toroidal surface factory.
+
+    Args:
+        surf_plasma: FourierSurfaceFactory object representing plasma surface.
+        n_harmonics: Number of Fourier harmonics to use.
+        factor: Factor to upscale the number of points in the Fourier harmonics.
+        match_surface: Whether to match the surface of the plasma.
+        convex: Whether to use convex surface.
+        distance: Minimal distance between the plasma surface and the toroidal surface.
+        sin_basis: Whether to use sine basis.
+        cos_basis: Whether to use cosine basis.
+        build_coils: Whether to build coils.
+
+    Returns:
+        Sequential object representing the toroidal surface factory.
+    """
+    # Get net currents
     net_currents = get_net_current(surf_plasma.file_path)
+
+    # Define current
     current = Current(
         num_pol=n_harmonics,
         num_tor=n_harmonics,
@@ -178,11 +227,14 @@ def get_toroidal_surface(
         cos_basis=cos_basis,
         net_currents=net_currents,
     )
+
     if match_surface:
+        # Match surface of plasma
         tor_surf = surf_plasma.get_surface_envelope(
             num_coeff=10, convex=convex)
         tor_surf.update_params(minor_radius=tor_surf.minor_radius + distance)
     else:
+        # Create toroidal surface
         minor_radius = surf_plasma.get_minor_radius(vmec=False)
         major_radius = surf_plasma.get_major_radius()
         tor_surf = ToroidalSurface(
@@ -192,16 +244,20 @@ def get_toroidal_surface(
             integration_par=current.get_integration_params(factor=factor),
         )
 
+    # Create rotated coil
+    coil_factory = rotate_coil(
+        current=current,
+        nfp=surf_plasma.nfp,
+        num_surf_per_period=1,
+        continuous_current_in_period=False,
+        build_coils=build_coils,
+    )
+
+    # Create sequential surface factory
     return Sequential(
         surface_factories=[
             tor_surf,
-            rotate_coil(
-                current=current,
-                nfp=surf_plasma.nfp,
-                num_surf_per_period=1,
-                continuous_current_in_period=False,
-                build_coils=build_coils,
-            ),
+            coil_factory,
         ]
     )
 
@@ -220,8 +276,33 @@ def get_pwc_surface(
     convex: bool = True,
     match_surface: bool = False,
     build_coils: bool = False,
-):
+) -> Sequential:
+    """
+    Generate a PWC coil surface factory.
+
+    Args:
+        surf_plasma: FourierSurfaceFactory object representing plasma surface.
+        n_harmonics: Number of Fourier harmonics to use.
+        factor: Factor to upscale the number of points in the Fourier harmonics.
+        rotate_diff_current: Number of cylinders per field period.
+        make_joints: Whether to create joints between surfaces.
+        common_current_on_each_rot: Whether to have a common current on each cylinder.
+        axis_angle: Angle of rotation around the axis.
+        distance: Minimal distance between the plasma surface and the cylinder surface.
+        sin_basis: Whether to use sine basis.
+        cos_basis: Whether to use cosine basis.
+        convex: Whether to use convex surface.
+        match_surface: Whether to match the surface of the plasma.
+        build_coils: Whether to build coils.
+
+    Returns:
+        Sequential object representing the PWC coil surface factory.
+    """
+
+    # Get net currents
     net_currents = get_net_current(surf_plasma.file_path)
+
+    # Define current
     if common_current_on_each_rot:
         current: AbstractCurrent = Current(
             num_pol=n_harmonics,
@@ -240,43 +321,56 @@ def get_pwc_surface(
             net_currents=net_currents / rotate_diff_current,
         )
         center_vgrid = True
+
+    # Define integration parameters
     integration_par = IntegrationParams(
         num_points_u=n_harmonics * factor,
         num_points_v=n_harmonics * factor // rotate_diff_current,
         center_vgrid=center_vgrid,
     )
+
+    # Define surface coil
     if match_surface:
-        surf_coil = surf_plasma.get_surface_envelope(
+        cyl_surf = surf_plasma.get_surface_envelope(
             num_cyl=rotate_diff_current, num_coeff=10, convex=convex)
-        surf_coil.update_params(
-            radius=surf_coil.radius + distance,
+        cyl_surf.update_params(
+            radius=cyl_surf.radius + distance,
             integration_par=integration_par,
             make_joints=make_joints,
         )
     else:
-        surf_coil = CylindricalSurface(
+        minor_radius = surf_plasma.get_minor_radius(vmec=False)
+        major_radius = surf_plasma.get_major_radius()
+        cyl_surf = CylindricalSurface(
             integration_par=integration_par,
             make_joints=make_joints,
             axis_angle=axis_angle,
-            nfp=surf_plasma.nfp * rotate_diff_current,
+            ncp=surf_plasma.nfp * rotate_diff_current,
+            radius=minor_radius + distance,
+            distance=major_radius,
         )
 
-    surf_coil = Sequential(
+    coil_factory = rotate_coil(
+        current=current,
+        nfp=surf_plasma.nfp,
+        num_surf_per_period=rotate_diff_current,
+        continuous_current_in_period=common_current_on_each_rot,
+        build_coils=build_coils,
+    )
+
+    # Define coil sequence
+    pwc_surf = Sequential(
         surface_factories=[
-            surf_coil,
-            rotate_coil(
-                current=current,
-                nfp=surf_plasma.nfp,
-                num_surf_per_period=rotate_diff_current,
-                continuous_current_in_period=common_current_on_each_rot,
-                build_coils=build_coils,
-            ),
+            cyl_surf,
+            coil_factory,
         ]
     )
-    if not match_surface:
-        surf_coil = fit_to_surface(surf_coil, surf_plasma, distance=distance)
 
-    return surf_coil
+    # # Fit coil to surface if not matching surface
+    # if not match_surface:
+    #     pwc_surf = fit_to_surface(pwc_surf, surf_plasma, distance=distance)
+
+    return pwc_surf
 
 
 def get_original_cws(path_cws: str, path_plasma: str, n_harmonics: int = 16, factor: int = 6):
@@ -287,7 +381,7 @@ def get_original_cws(path_cws: str, path_plasma: str, n_harmonics: int = 16, fac
             num_points_u=n_harmonics * factor,
             num_points_v=n_harmonics * factor,
         ),
-        n_fp=nfp,
+        nfp=nfp,
     )
 
     cws = Sequential(
@@ -338,7 +432,7 @@ class FreeCylinders(AbstractToroidalCoils):
                 integration_par=IntegrationParams(
                     num_points_u=n_harmonics_u * factor, num_points_v=n_harmonics_v * factor, center_vgrid=True
                 ),
-                nfp=num_sym_by_cyl,
+                ncp=num_sym_by_cyl,
                 radius=minor_radius + distance,
                 distance=major_radius,
                 axis_angle=angle * n,

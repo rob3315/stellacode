@@ -6,7 +6,7 @@ from stellacode.surface import CylindricalSurface, IntegrationParams
 def test_CylindricalSurface():
     cyl = CylindricalSurface(
         integration_par=IntegrationParams(num_points_u=8, num_points_v=8),
-        nfp=3,
+        ncp=3,
         axis_angle=0.3,
         make_joints=False,
     )

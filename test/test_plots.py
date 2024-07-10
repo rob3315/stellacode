@@ -1,10 +1,4 @@
-import jax
-
-jax.config.update("jax_enable_x64", True)
-import numpy as onp
-import pytest
-
-from stellacode.definitions import ncsx_plasma, w7x_plasma
+from stellacode.surface.imports import get_cws_from_plasma_config
 from stellacode.surface import (
     Current,
     CurrentZeroTorBC,
@@ -13,7 +7,12 @@ from stellacode.surface import (
     IntegrationParams,
     ToroidalSurface,
 )
-from stellacode.surface.imports import get_cws_from_plasma_config
+from stellacode.definitions import ncsx_plasma, w7x_plasma
+import pytest
+import numpy as onp
+import jax
+
+jax.config.update("jax_enable_x64", True)
 
 
 @pytest.mark.skip("plot")
@@ -31,7 +30,7 @@ def test_plot_b_field():
     surf = FourierSurfaceFactory.from_file(
         ncsx_plasma.path_plasma,
         integration_par=IntegrationParams(num_points_u=32, num_points_v=31),
-        n_fp=3,
+        nfp=3,
     )
 
     b_field = surf.get_gt_b_field()

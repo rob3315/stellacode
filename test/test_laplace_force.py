@@ -1,35 +1,46 @@
-import jax
-
-jax.config.update("jax_enable_x64", True)
-import pytest
-
-from stellacode import np
-from stellacode.costs.em_cost import EMCost
-from stellacode.definitions import ncsx_plasma, w7x_plasma
+from stellacode.tools.laplace_force import laplace_force
+from stellacode.surface.factory_tools import Sequential
+from stellacode.surface.factories import WrappedCoil
 from stellacode.surface import (
     Current,
     FourierSurfaceFactory,
     IntegrationParams,
     rotate_coil,
 )
-from stellacode.surface.factories import WrappedCoil
-from stellacode.surface.factory_tools import Sequential
-from stellacode.tools.laplace_force import laplace_force
+from stellacode.definitions import ncsx_plasma, w7x_plasma
+from stellacode.costs.em_cost import EMCost
+from stellacode import np
+import pytest
+import jax
+
+jax.config.update("jax_enable_x64", True)
 
 
 @pytest.mark.parametrize("surf_type", ["cylindrical", "toroidal"])
 def test_laplace_force_naive(surf_type):
-    # TODO: make it work for surf_type='cylindrical'
+    """
+    Test the naive Laplace force implementation against the rigorous one.
+
+    Parameters
+    ----------
+    surf_type : str
+        The surface type to test. Can be 'cylindrical' or 'toroidal'.
+
+    """
     n_harmonics = 2
     factor = 16
     num_pt = n_harmonics * factor
     rotate_diff_current = 3
 
+    # Create the EMCost object
     em_cost = EMCost.from_plasma_config(
         plasma_config=w7x_plasma,
-        integration_par=IntegrationParams(num_points_u=num_pt, num_points_v=num_pt),
+        integration_par=IntegrationParams(
+            num_points_u=num_pt, num_points_v=num_pt),
         lamb=1e-16,
     )
+
+    # Create the WrappedCoil object
     factory = WrappedCoil.from_plasma(
         em_cost.Sp,
         n_harmonics=n_harmonics,
@@ -37,31 +48,40 @@ def test_laplace_force_naive(surf_type):
         surf_type=surf_type,
         common_current_on_each_rot=True,
         rotate_diff_current=rotate_diff_current,
-        distance=0.2,
+        distance=0,
     )
 
+    # Compute the cost, metrics, results and S
     cost, metrics, results, S = em_cost.cost(factory())
+
+    # Set the phi_mn
     factory.set_phi_mn(results.phi_mn_wnet_cur[2:])
 
+    # Get the coil surface
     coil_surf = factory().get_coil(results.phi_mn_wnet_cur)
+
+    # Compute the naive Laplace force
     force = coil_surf.naive_laplace_force(epsilon=1)
+
+    # Compute the rigorous Laplace force
     cut_coils = None
     if surf_type == "toroidal":
-        cut_coils = None
-        lim = 0.06
+        # tolerance on relative error
+        tol = 0.04
     else:
-        lim = 0.14
-        npt = coil_surf.xyz.shape[1] // (em_cost.Sp.nfp * rotate_diff_current)
-        cut_coils = None  # np.arange(npt, coil_surf.xyz.shape[1], npt).tolist()
+        # tolerance on relative error
+        tol = 0.11
+    cut_coils = None
     force2 = coil_surf.laplace_force(num_tor_pts=num_pt, cut_coils=cut_coils)
-    # coil_surf.plot(cut_tor=npt)
 
-    # Approximate and rigorous Laplace forces are close:
-    assert np.mean(np.linalg.norm(force[:, :num_pt] - force2, axis=-1)) / np.mean(np.linalg.norm(force2, axis=-1)) < lim
-    # import matplotlib.pyplot as plt; import seaborn as sns; sns.heatmap(np.linalg.norm(force[:, :num_pt] - force2, axis=-1)/ np.mean(np.linalg.norm(force2, axis=-1)), cmap='seismic', center=0.3);plt.show()
+    # Check if the approximate and rigorous Laplace forces are close
+    rel_err = np.mean(np.linalg.norm(
+        force[:, :num_pt] - force2, axis=-1) / np.linalg.norm(force2, axis=-1))
+    assert rel_err < tol
 
-    # The Laplace Force is pointing outside of the surface
-    assert np.einsum("ija,ija->ij", force2, coil_surf.normal_unit[:, :num_pt]).mean() < -1e3
+    # Check if the rigorous Laplace force is pointing outside of the surface
+    assert np.einsum("ija,ija->ij", force2,
+                     coil_surf.normal_unit[:, :num_pt]).mean() < -1e3
 
 
 def test_laplace_force_vs_old_implementation():
@@ -75,7 +95,7 @@ def test_laplace_force_vs_old_implementation():
     fourier_factory = FourierSurfaceFactory.from_file(
         ncsx_plasma.path_cws,
         integration_par=IntegrationParams(num_points_u=lu, num_points_v=lv),
-        n_fp=5,
+        nfp=ncsx_plasma.nfp,
     )
     I, G = 1e6, 2e5
     import numpy as onp
@@ -85,7 +105,8 @@ def test_laplace_force_vs_old_implementation():
         surface_factories=[
             fourier_factory,
             rotate_coil(
-                current=Current(num_pol=2, num_tor=2, cos_basis=True, net_currents=np.array([I, G])),
+                current=Current(num_pol=2, num_tor=2,
+                                cos_basis=True, net_currents=np.array([I, G])),
                 nfp=fourier_factory.nfp,
                 build_coils=True,
             ),
@@ -94,7 +115,8 @@ def test_laplace_force_vs_old_implementation():
 
     m, n = 2, 2
     l = 2 * (m * (2 * n + 1) + n)
-    lst_coeff = 1e3 * (2 * onp.random.random(l) - 1) / (onp.arange(1, l + 1) ** 2)
+    lst_coeff = 1e3 * (2 * onp.random.random(l) - 1) / \
+        (onp.arange(1, l + 1) ** 2)
 
     factory.surface_factories[1].surface_factories[0].current.phi_mn = (
         lst_coeff / 1e8
@@ -125,13 +147,16 @@ def test_laplace_force_vs_old_implementation():
     force3 = f_laplace(coil_surf, 5, 10, Np=1, lu=12, lv=14)
     assert np.allclose(force2[5, 10], force3)
 
-    force2 = coil_surf.laplace_force(num_tor_pts=coil_surf.xyz.shape[1] // fourier_factory.nfp)
+    force2 = coil_surf.laplace_force(
+        num_tor_pts=coil_surf.xyz.shape[1] // fourier_factory.nfp)
 
     # Approximate and rigorous Laplace forces are close:
-    assert np.mean(np.linalg.norm(force[:, :14] - force2, axis=-1)) / np.mean(np.linalg.norm(force2, axis=-1)) < 0.3
+    assert np.mean(np.linalg.norm(
+        force[:, :14] - force2, axis=-1)) / np.mean(np.linalg.norm(force2, axis=-1)) < 0.3
 
     # The Laplace Force is pointing outside of the surface
-    assert np.einsum("ija,ija->ij", force2, coil_surf.normal_unit[:, :14]).max() < -1e4
+    assert np.einsum("ija,ija->ij", force2,
+                     coil_surf.normal_unit[:, :14]).max() < -1e4
 
 
 def div(f, ds):
@@ -226,7 +251,8 @@ def f_laplace(surf, i, j, Np, lu, lv):
         if l == 0:
             iymx[i, j] = 0  # by convention
         pi_xjy = pi_x(j1ya, norm=norm)  # lu x lv x 3
-        pi_xjy_uv = vector_field_pull_back(pi_xjy, jac_xyz=jac_xyz)  # lu x lv x 2
+        pi_xjy_uv = vector_field_pull_back(
+            pi_xjy, jac_xyz=jac_xyz)  # lu x lv x 2
         # -1/(y-x) *(div pi_x j_1(y))*j_2(x)
 
         # j1ya -
@@ -241,9 +267,10 @@ def f_laplace(surf, i, j, Np, lu, lv):
         P1 = -1 * (iymx * div(pi_xjy_uv, ds=ds))[:, :, np.newaxis] * j2
         # print("P1")
         # -1/(y-x) *(pi_x j_1(y) \dot \nabla) j_2(x)
-        #### Not good keep get_gradj
+        # Not good keep get_gradj
         # dj2=surf.get_gradj(coeff2)
-        dj2 = np.transpose(np.stack(np.gradient(j2, du, dv, axis=(0, 1)), axis=-2), (2, 0, 1, 3))
+        dj2 = np.transpose(np.stack(np.gradient(
+            j2, du, dv, axis=(0, 1)), axis=-2), (2, 0, 1, 3))
 
         dj2x, dj2y, dj2z = dj2[:, :, :, 0], dj2[:, :, :, 1], dj2[:, :, :, 2]
         P2 = np.zeros((lu, lv, 3))
@@ -269,7 +296,8 @@ def f_laplace(surf, i, j, Np, lu, lv):
         P3 = np.zeros((lu, lv, 3))
         for k in range(3):
             P3[:, :, k] += iymx * (
-                gradf[0, :, :] * jac_xyz[:, :, k, 0] + gradf[1, :, :] * jac_xyz[:, :, k, 1]
+                gradf[0, :, :] * jac_xyz[:, :, k, 0] +
+                gradf[1, :, :] * jac_xyz[:, :, k, 1]
             )  # lu x lv x 3
             # P3[:,:,k]+=iymx*(gradf[0,:,:]*surf.surf.dpsidu[k]+gradf[1,:,:]*surf.surf.dpsidv[k])# lu x lv x 3
         # 1/(y-x) <j1(y) j2(x) > div \pi_x
@@ -280,11 +308,14 @@ def f_laplace(surf, i, j, Np, lu, lv):
         e2 = np.tile(np.array([0, 1, 0]), (lu, lv, 1))
         e3 = np.tile(np.array([0, 0, 1]), (lu, lv, 1))
         pi_xe1 = pi_x(e1, norm=norm)  # lu x lv x 3
-        pi_xe1_uv = vector_field_pull_back(pi_xe1, jac_xyz=jac_xyz)  # lu x lv x 2
+        pi_xe1_uv = vector_field_pull_back(
+            pi_xe1, jac_xyz=jac_xyz)  # lu x lv x 2
         pi_xe2 = pi_x(e2, norm=norm)  # lu x lv x 3
-        pi_xe2_uv = vector_field_pull_back(pi_xe2, jac_xyz=jac_xyz)  # lu x lv x 2
+        pi_xe2_uv = vector_field_pull_back(
+            pi_xe2, jac_xyz=jac_xyz)  # lu x lv x 2
         pi_xe3 = pi_x(e3, norm=norm)  # lu x lv x 3
-        pi_xe3_uv = vector_field_pull_back(pi_xe3, jac_xyz=jac_xyz)  # lu x lv x 2
+        pi_xe3_uv = vector_field_pull_back(
+            pi_xe3, jac_xyz=jac_xyz)  # lu x lv x 2
         P6 = np.zeros((lu, lv, 3))
         P6[:, :, 0] = iymx * f * div(pi_xe1_uv, ds=ds)
         P6[:, :, 1] = iymx * f * div(pi_xe2_uv, ds=ds)
@@ -293,7 +324,8 @@ def f_laplace(surf, i, j, Np, lu, lv):
         # <j1(y) n(x) > <y-x,n(x)> /|y-x|^3 j2(x)
         ymx = np.zeros((3, lu, lv))
         ymx = np.array([newY[0] - X_, newY[1] - Y_, newY[2] - Z_])  # y-x
-        K = iymx**3 * np.sum(ymx * np.transpose(norm, (2, 0, 1)), axis=0)  # K=<y-x,n(x)> /|y-x|^3
+        # K=<y-x,n(x)> /|y-x|^3
+        K = iymx**3 * np.sum(ymx * np.transpose(norm, (2, 0, 1)), axis=0)
         c = K * np.sum(j1ya * norm, axis=2)
         P4 = np.einsum("...,...k->...k", c, j2)
         # print("P4")
@@ -309,12 +341,18 @@ def f_laplace(surf, i, j, Np, lu, lv):
         S5 = ds[:-1, :-1, np.newaxis] * P5[:-1, :-1, :]
         S6 = ds[:-1, :-1, np.newaxis] * P6[:-1, :-1, :]
 
-        res1 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S1, axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
-        res2 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S2, axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
-        res3 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S3, axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
-        res4 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S4, axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
-        res5 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S5, axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
-        res6 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S6, axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
+        res1 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S1,
+                          axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
+        res2 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S2,
+                          axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
+        res3 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S3,
+                          axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
+        res4 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S4,
+                          axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
+        res5 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S5,
+                          axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
+        res6 += np.matmul(lst_rot[Np - l], 1e-7 * np.sum(S6,
+                          axis=(0, 1)) / ((lu - 1) * (lv - 1)))  # mu0/4pi
 
     res = res1 + res2 + res3 + res4 + res5 + res6
 

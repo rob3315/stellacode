@@ -21,7 +21,9 @@ class IntegrationParams(BaseModel):
     Args:
         * num_points_u: number of points in the poloidal, u direction
         * num_points_v: number of points in the toroidal, v direction
+        * max_val_u: maximum value in the poloidal, u direction
         * max_val_v: maximum value in the toroidal, v direction
+        * center_vgrid: if True, center the v grid
     """
 
     num_points_u: int
@@ -32,17 +34,43 @@ class IntegrationParams(BaseModel):
 
     @classmethod
     def from_current_potential(cls, current_pot):
+        """
+        Create `IntegrationParams` from `Current` object.
+
+        Multiply the number of poloidal and toroidal modes by 4.
+
+        Args:
+            current_pot: Current object with the number of poloidal and toroidal modes.
+
+        Returns:
+            IntegrationParams object with the number of poloidal and toroidal integration points.
+        """
+        # Multiply the number of poloidal and toroidal modes by 4
         return cls(current_pot.num_pol * 4, current_pot.num_tor * 4)
 
     @classmethod
     def sum_toroidally(cls, int_pars: list):
+        """
+        Sum the toroidal dimensions of multiple `IntegrationParams` objects.
+
+        Args:
+            int_pars: A list of `IntegrationParams` objects.
+
+        Returns:
+            A new `IntegrationParams` object with the sum of the toroidal dimensions.
+        """
+        # All `num_points_u` should be the same
         nptu = {par.num_points_u for par in int_pars}
         assert len(nptu) == 1
+        # All `max_val_u` should be the same
         maxu = {par.max_val_u for par in int_pars}
         assert len(maxu) == 1
+        # Sum the `num_points_v`
         nptv = sum([par.num_points_v for par in int_pars])
+        # All `max_val_v` should be the same
         maxv = {par.max_val_v for par in int_pars}
         assert len(maxv) == 1
+        # Create a new `IntegrationParams` object with the sum of the toroidal dimensions
         return cls(
             num_points_u=int_pars[0].num_points_u,
             num_points_v=nptv,
@@ -51,11 +79,25 @@ class IntegrationParams(BaseModel):
         )
 
     def get_uvgrid(self):
+        """
+        Create a grid of u and v values.
+
+        Returns:
+            tuple: A tuple of 2 numpy arrays, ugrid and vgrid.
+        """
+        # Create a linspace of u values from 0 to max_val_u with num_points_u elements, excluding the endpoint
         u = np.linspace(0, self.max_val_u, self.num_points_u, endpoint=False)
+        # Create a linspace of v values from 0 to max_val_v with num_points_v elements, excluding the endpoint
         v = np.linspace(0, self.max_val_v, self.num_points_v, endpoint=False)
+
+        # If `center_vgrid` is True, add the half of `du` to v values
         if self.center_vgrid:
-            v += self.du / 2
+            v += self.dv / 2
+
+        # Create a meshgrid of u and v values, indexing on the last two dimensions
         ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
+
+        # Return the ugrid and vgrid as a tuple
         return ugrid, vgrid
 
     @property
