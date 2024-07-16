@@ -612,9 +612,13 @@ class EMCost(AbstractCost):
         metrics["max_deltaB_normal"] = np.max(b_err)
 
         if isinstance(S, CoilOperator):
-            metrics["deltaB_B_L2"] = get_b_field_err(self, S, err="L2")
-            metrics["deltaB_B_max"] = get_b_field_err(
-                self, S, err="max")
+            coil_surface = S.get_coil()
+        else:
+            coil_surface = S
+
+        metrics["deltaB_B_L2"] = get_b_field_err(self, coil_surface, err="L2")
+        metrics["deltaB_B_max"] = get_b_field_err(
+            self, coil_surface, err="max")
 
         if self.fit_b_3d:
             b_err = np.sum(b_err, axis=-1)
@@ -749,10 +753,11 @@ def get_b_field_err(em_cost, coil_surface, err: str = "L2"):
     Returns:
         float: The L2 norm of the difference or maximum relative error between the computed and ground truth magnetic field.
     """
-    # Compute the computed magnetic field on the coil surface
-    b_field = em_cost.get_b_field(coil_surface)
+    # Compute the computed magnetic field on the LCFS
+    b_field = coil_surface.get_b_field(
+        xyz_plasma=em_cost.Sp.xyz, use_mu_0_factor=True)
 
-    # Compute the ground truth magnetic field on the coil surface
+    # Compute the ground truth magnetic field on the LCFS
     b_field_gt = em_cost.Sp.get_gt_b_field(
         surface_labels=-1)
 
@@ -760,12 +765,12 @@ def get_b_field_err(em_cost, coil_surface, err: str = "L2"):
     delta_b_module = np.linalg.norm(b_field - b_field_gt, axis=-1)
 
     # Compute the module of the ground truth magnetic field
-    b_field_module = np.linalg.norm(b_field_gt, axis=-1)
+    b_gt_module = np.linalg.norm(b_field_gt, axis=-1)
 
     # Compute the L2 norm of the difference or maximum relative error
     if err == "L2":
         # Compute the L2 norm of the difference between the computed and ground truth magnetic field
-        return np.sqrt(em_cost.Sp.integrate(delta_b_module ** 2/b_field_module ** 2))
+        return np.sqrt(em_cost.Sp.integrate(delta_b_module ** 2/b_gt_module ** 2))
     elif err == "max":
         # Compute the maximum relative error between the computed and ground truth magnetic field
-        return np.max(delta_b_module / b_field_module)
+        return np.max(delta_b_module / b_gt_module)
