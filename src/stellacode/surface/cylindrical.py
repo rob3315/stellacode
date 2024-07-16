@@ -42,14 +42,34 @@ class CylindricalSurface(AbstractSurfaceFactory):
     ]
 
     def get_xyz(self, uv):
+        """
+        Calculate the cartesian coordinates (x, y, z) of a point on the surface given its cylindrical coordinates (u, v).
+
+        Parameters
+        ----------
+        uv : ndarray
+            Array of shape (N, 2) containing the cylindrical coordinates (u, v) of the points.
+
+        Returns
+        -------
+        ndarray
+            Array of shape (N, 3) containing the corresponding cartesian coordinates (x, y, z).
+        """
+        # Get the polar and length variables
         u_ = 2 * np.pi * uv[0]  # poloidal variable
         v_ = uv[1] - 0.5 + 0.5 / \
             self.integration_par.num_points_v  # length variable
-        # rotate along the cylinder base
+
+        # Get the orthogonal and cylindrical axes
         axis_orth, cyl_axis = self._get_axes()
-        # axis_orth = np.array([np.sin(axis_a), -np.cos(axis_a), 0.0])
+
+        # Set the direction of the z-axis
         z_dir = np.array([0.0, 0.0, 1.0])
+
+        # Check if fourier coefficients or points are defined
         assert self.fourier_coeffs is not None or self.points is not None
+
+        # Calculate the radius at angle phi (u_)
         if self.points is not None:
             _radius = (
                 np.interp(
@@ -60,18 +80,24 @@ class CylindricalSurface(AbstractSurfaceFactory):
             )
         else:
             _radius = (fourier_transform(
-                self.fourier_coeffs, u_) + 1) * self.radius
+                self.fourier_coeffs, u_)+1) * self.radius
+
+        _radius = np.minimum(_radius, self.radius)
+
+        # Calculate the circle at angle phi (u_)
         circle = _radius * (axis_orth * np.cos(u_) + z_dir * np.sin(u_))
 
-        # elongate along the cylinder height
+        # Calculate the cylinder height
         dist_edge = self.distance - self.radius
         _length = 2 * dist_edge * np.tan(np.pi / self.ncp)
         _length *= self.scale_length
 
+        # Adjust length if make_joints is True
         if self.make_joints:
             p_dist = self.distance + np.cos(u_) * _radius
             _length = _length * p_dist / (self.distance - self.radius)
 
+        # Apply shear effect if strength is not zero
         if self.shear_strength != 0.0:
             axis_a = self._get_axis_angle()
             shear = (
@@ -82,7 +108,7 @@ class CylindricalSurface(AbstractSurfaceFactory):
         else:
             shear = 0.0
 
-        # shift along the cylinder
+        # Shift along the cylinder and return the cartesian coordinates
         return cyl_axis * v_ * _length + circle + self.distance * axis_orth + shear
 
     def get_uv_unwrapped(self, uv):
@@ -142,25 +168,100 @@ class CylindricalSurface(AbstractSurfaceFactory):
         return np.pi / 2 + np.pi / self.ncp + self.axis_angle
 
     def _get_axes(self):
+        """
+        Compute the cylindrical and orthogonal axes of the cylindrical coordinate system.
+
+        Returns
+        -------
+        tuple
+            The cylindrical and orthogonal axes of the cylindrical coordinate system.
+            The cylindrical axis is represented by cyl_axis.
+            The orthogonal axis is represented by axis_orth.
+
+        Notes
+        -----
+        This function computes the cylindrical and orthogonal axes of the cylindrical coordinate system.
+        It first computes the cylindrical axis using the _get_axis_angle method.
+        Then it computes the orthogonal axis using the cylindrical axis and the computed axis angle.
+        The resulting axes are returned as a tuple.
+        """
         axis_a = self._get_axis_angle()
         axis_orth = np.array([np.sin(axis_a), -np.cos(axis_a), 0.0])
         cyl_axis = np.array([np.cos(axis_a), np.sin(axis_a), 0.0])
         return axis_orth, cyl_axis
 
     def _to_cyl_frame_mat(self):
+        """
+        Compute the matrix of the cylindrical coordinate system.
+
+        Returns
+        -------
+        ndarray
+            The matrix of the cylindrical coordinate system.
+            Each row represents a basis vector.
+            The first column is the cross product of the cylindrical axis and the orthogonal axis.
+            The second column is the orthogonal axis.
+            The third column is the cylindrical axis.
+
+        Notes
+        -----
+        This function computes the matrix of the cylindrical coordinate system.
+        It first computes the cylindrical and orthogonal axes using the _get_axes method.
+        Then it computes the cross product of the cylindrical axis and the orthogonal axis.
+        The resulting matrix is a 3D matrix, where each row represents a basis vector.
+        The first column is the cross product of the cylindrical axis and the orthogonal axis.
+        The second column is the orthogonal axis.
+        The third column is the cylindrical axis.
+        """
+        # Compute the cylindrical and orthogonal axes
         axis_orth, cyl_axis = self._get_axes()
-        return np.stack((np.cross(cyl_axis, axis_orth), axis_orth, cyl_axis), axis=1)
+
+        # Compute the cross product of the cylindrical axis and the orthogonal axis
+        cross_product = np.cross(cyl_axis, axis_orth)
+
+        # Stack the basis vectors to form the matrix of the cylindrical coordinate system
+        return np.stack((cross_product, axis_orth, cyl_axis), axis=1)
 
     def cartesian_to_toroidal(self):
         return cartesian_to_toroidal(xyz=self.xyz, tore_radius=self.distance, height=0.0)
 
     def to_cylindrical(self, xyz):
+        """
+        Transform 3D Cartesian coordinates to cylindrical coordinates.
+
+        Parameters
+        ----------
+        xyz : ndarray
+            The 3D Cartesian coordinates.
+
+        Returns
+        -------
+        ndarray
+            The cylindrical coordinates.
+        """
+        # Rotate the coordinates to the cylindrical frame
+        # by subtracting the distance along the cylindrical axis times the second
+        # column of the rotation matrix
         rot_mat = self._to_cyl_frame_mat()
         xyz_in_frame = np.einsum(
             "ab, ija->ijb", rot_mat, xyz - self.distance * rot_mat[:, 1])
+
+        # Convert the coordinates to cylindrical using the
+        # cartesian_to_cylindrical function
         return cartesian_to_cylindrical(xyz_in_frame)
 
-    def plot_cross_section(self, ax=None, **kwargs):
+    def plot_cross_section(self, ax=None, num: int = 1, **kwargs):
+        """
+        Plot cross sections of the cylindrical surface.
+
+        Args:
+            ax (Axes, optional): Matplotlib axes object to plot on.
+            num (int, optional): Number of cross-sections to plot.
+            **kwargs: Additional arguments to pass to the Matplotlib plot function.
+
+        Returns:
+            Axes: Matplotlib axes object.
+        """
         if ax is None:
             fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
         u_ = 2 * np.pi * np.linspace(0, 1, 100, endpoint=True)
@@ -168,6 +269,52 @@ class CylindricalSurface(AbstractSurfaceFactory):
                    * self.radius for u_val in u_]
         ax.plot(u_, _radius, **kwargs)
         return ax
+
+    def plot_cross_sections(
+        self,
+        num_cyl: tp.Optional[int] = None,
+        num: int = 5,
+        convex_envelope: bool = False,
+        concave_envelope: bool = False,
+        scale_envelope: float = 1.0,
+        ax=None,
+    ):
+        """
+        Plot cross sections of the cylindrical surface.
+
+        Args:
+            ax (Axes, optional): Matplotlib axes object to plot on.
+            num (int, optional): Number of cross-sections to plot.
+            **kwargs: Additional arguments to pass to the Matplotlib plot function.
+
+        Returns:
+            Axes: Matplotlib axes object.
+        """
+        if ax is None:
+            fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+
+        # Define u and v coordinates
+        u = np.linspace(0, 1, 100, endpoint=True)
+        v = np.linspace(0, 1, num, endpoint=True)
+        ugrid, vgrid = np.meshgrid(u, v, indexing="ij")
+
+        # Create surface instance and calculate xyz coordinates
+        surf = self()
+        xyz = self.get_xyz_on_grid(np.stack((ugrid, vgrid)))
+
+        # Calculate radial and theta coordinates
+        rtheta = surf._get_rtheta(xyz=xyz, num_cyl=num_cyl)
+
+        # Plot cross-sections
+        for i in range(num):
+            rphi = np.concatenate((rtheta[:, i, :], rtheta[:, i, :]), axis=0)
+            ax.plot(
+                rphi[:, 1],
+                rphi[:, 0],
+                c=[0, 0] + [float((i + 1) / (num + 1))],
+            )
+
+        return ax.get_figure(), ax
 
 
 class VerticalCylinder(AbstractSurfaceFactory):
