@@ -43,7 +43,7 @@ class Constraint(BaseModel):
         """
         ctr = self.constraint(val)
         if self.method == "quadratic":
-            # delta under/over the limit divided by the distance 
+            # delta under/over the limit divided by the distance
             return (np.maximum(-ctr, 0) / self.distance) ** 2
 
         clipped_dist = np.maximum(self.distance - ctr, 0)
@@ -83,7 +83,26 @@ def quadratic_barrier(val, min_val, weight=1.0):
 
 
 def merge_dataclasses(dc1, dc2):
+    """
+    Merge the attributes of two dataclass instances.
+    Keep the keys from the first dataclass instance, use the values of the second
+    dataclass instance if applicable.
+
+    Args:
+        dc1 (dataclass): The first dataclass instance.
+        dc2 (dataclass): The second dataclass instance.
+
+    Returns:
+        dataclass: The merged dataclass instance.
+    """
+    # Check if both dataclass instances are of the same type
     assert type(dc1) == type(dc2)
+
+    # Iterate over the attributes of the first dataclass instance
     for field_name in type(dc1).model_fields:
+        # Set the attribute value of the first dataclass instance to the value
+        # of the corresponding attribute from the second dataclass instance
         setattr(dc1, field_name, getattr(dc2, field_name))
+
+    # Return the merged dataclass instance
     return dc1
