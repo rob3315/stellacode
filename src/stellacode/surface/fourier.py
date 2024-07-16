@@ -309,44 +309,66 @@ class FourierSurface(Surface):
             tore_radius=self.Raxis.mean()
         )
 
-    def cartesian_to_shifted_cylindrical(self, xyz=None, num_cyl: int = 1, angle: float = 0.0):
+    def cartesian_to_shifted_cylindrical(
+        self, xyz=None, num_cyl: int = 1, angle: float = 0.0
+    ) -> ArrayLike:
+        """
+        Convert Cartesian coordinates to shifted cylindrical coordinates.
+
+        Parameters
+        ----------
+        xyz : ArrayLike, optional
+            The Cartesian coordinates. Defaults to self.xyz.
+        num_cyl : int, optional
+            The number of cylindrical segments. Defaults to 1.
+        angle : float, optional
+            The rotation angle in radians. Defaults to 0.0.
+
+        Returns
+        -------
+        ArrayLike
+            The shifted cylindrical coordinates.
+        """
         if xyz is None:
             xyz = self.xyz
-        num_tor = xyz.shape[1]
-        num_pol = xyz.shape[0]
-        points = np.linspace(0, num_tor, num_cyl + 1, dtype=int)
-        rphiz_l = []
+        num_u = xyz.shape[0]  # Number of poloidal points
+        num_v = xyz.shape[1]  # Number of toroidal points per field period
+        points = np.linspace(0, num_v, num_cyl + 1, dtype=int)
+        rphiz_list = []
+
+        # Iterate over each cylindrical segment
         for ind, first, last in zip(range(num_cyl), points[:-1], points[1:]):
+            # Extract the coordinates for the segment
             xyz_ = xyz[:, first:last]
+
+            # Calculate the angle of the cylindrical segment
             cyl_angle = (
-                np.pi / 2 - (np.pi / 2 + np.pi * (-2 * ind + 1) /
-                             (self.nfp * num_cyl)) + np.pi / (self.nfp * num_cyl)
+                np.pi / 2
+                - (np.pi / 2 + np.pi * (-2 * ind + 1) / (self.nfp * num_cyl))
+                + np.pi / (self.nfp * num_cyl)
             )
+
+            # Create a CylindricalSurface object for the segment
             surf = CylindricalSurface(
                 integration_par=IntegrationParams(
-                    num_points_u=num_pol, num_points_v=last - first),
+                    num_points_u=num_u,
+                    num_points_v=last - first
+                ),
                 make_joints=False,
                 axis_angle=cyl_angle,
                 ncp=num_cyl * self.nfp,
                 distance=self.get_major_radius(),
             )
+
+            # Convert the coordinates to cylindrical
             rphiz2 = surf.to_cylindrical(xyz_)
             rphiz = rphiz2.at[..., 1].set(rphiz2[..., 1] - np.pi / 2)
-            # fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
-            # ax.plot(rphiz[:,0, 1], rphiz[:,0, 0])
-            # plt.show()
-            # surf().plot()
-            rphiz_l.append(rphiz)
 
-        rphiz_l = onp.concatenate(rphiz_l, axis=1)
-        # self.plot()
-        # import pdb;pdb.set_trace()
-        # rphiz_l = np.reshape(rphiz_l, (-1, 3))
-        # fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
-        # ax.scatter(rphiz_l[:, 1], rphiz_l[:, 0])
-        # plt.show()
+            # Append the cylindrical coordinates to the list
+            rphiz_list.append(rphiz)
 
-        return rphiz_l
+        # Concatenate the cylindrical coordinates from all segments
+        return onp.concatenate(rphiz_list, axis=1)
 
     def _get_rtheta(self, xyz=None, num_cyl: tp.Optional[int] = None, angle: float = 0.0):
         """
@@ -357,7 +379,7 @@ class FourierSurface(Surface):
         xyz : ArrayLike, optional
             Coordinates in cartesian coordinates. Defaults to self.xyz.
         num_cyl : int, optional
-            Number of cylindrical coordinates. Defaults to None.
+            Number of cylinders if pwc. Defaults to None.
         angle : float, optional
             Angle of rotation of the cylindrical coordinates. Defaults to 0.0.
 
@@ -504,8 +526,10 @@ class FourierSurface(Surface):
                 fourier_coeffs=coefs / a0_2,
             )
         else:
+            integration_par = self.integration_par
+            integration_par.center_vgrid = True
             return CylindricalSurface(
-                integration_par=self.integration_par,
+                integration_par=integration_par,
                 ncp=self.nfp * num_cyl,
                 distance=self.get_major_radius(),
                 radius=minor_radius,
