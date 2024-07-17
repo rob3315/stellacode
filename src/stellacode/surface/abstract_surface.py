@@ -159,6 +159,7 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
     """
 
     integration_par: IntegrationParams
+    deg: int = 2
 
     def get_xyz(self, uv):
         """return the surface point parametrized by uv in cartesian coordinate"""
@@ -234,11 +235,9 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
 
         return np.reshape(hess_surf_res, (lu, lv, 3, 2, 2))
 
-    def __call__(self, deg: int = 2):
-        """Compute a surface
-
-        Args:
-            * deg: degree of elements computed
+    def __call__(self):
+        """
+        Compute a surface
         """
         grids = self.integration_par.get_uvgrid()
         uv_grid = np.stack(grids, axis=0)
@@ -252,7 +251,7 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
         surface.grids = grids
 
         # We also compute surface element dS and derivatives dS_u and dS_v:
-        if deg >= 1:
+        if self.deg >= 1:
             surface.jac_xyz = self.get_jac_xyz_on_grid(uv_grid)
             surface.normal = np.cross(
                 surface.jac_xyz[..., 0], surface.jac_xyz[..., 1], -1, -1, -1)
@@ -260,7 +259,7 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
             surface.normal_unit = surface.normal / \
                 surface.ds[:, :, None]  # normal inward unit vector
 
-        if deg >= 2:
+        if self.deg >= 2:
             surface.hess_xyz = self.get_hess_xyz_on_grid(uv_grid)
 
             surface.principle_max, surface.principle_min = get_principles(
@@ -268,7 +267,7 @@ class AbstractSurfaceFactory(AbstractBaseFactory):
                 jac_xyz=surface.jac_xyz,
                 normal_unit=surface.normal_unit,
             )
-            # surface.grad_ds = get_ds_grad(surface.jac_xyz, surface.hess_xyz)
+
         return surface
 
 
