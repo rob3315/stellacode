@@ -84,7 +84,7 @@ class WrappedCoil(AbstractToroidalCoils):
             make_joints: Whether to create joints between surfaces.
             common_current_on_each_rot: Whether to have a common current on each cylinder.
             axis_angle: Angle of rotation around the axis.
-            distance: Distance between the plasma surface and the cylinder surface.
+            distance: Minimal distance between the plasma surface and the cylinder surface.
             sin_basis: Whether to use sine basis.
             cos_basis: Whether to use cosine basis.
             convex: Whether to use convex surface.
@@ -382,14 +382,17 @@ def get_pwc_surface(
             limit=1000,
         )
     else:
-        minor_radius = surf_plasma.get_minor_radius(vmec=False)
         major_radius = surf_plasma.get_major_radius()
+        minor_radius = surf_plasma.get_max_radius(
+            num_cyl=rotate_diff_current,
+            num_coeff=10,
+        )
         cyl_surf = CylindricalSurface(
             integration_par=integration_par,
             make_joints=make_joints,
             axis_angle=axis_angle,
             ncp=surf_plasma.nfp * rotate_diff_current,
-            radius=minor_radius + distance,
+            radius=minor_radius+distance,
             distance=major_radius,
         )
 

@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 
 from stellacode import np
 from stellacode.tools.rotate_n_times import RotateNTimes
-from stellacode.surface.utils import get_principles, get_min_dist
+from stellacode.surface.utils import get_principles, get_min_dist, get_max_dist
 
 
 class IntegrationParams(BaseModel):
@@ -353,6 +353,9 @@ class Surface(BaseModel):
 
     def get_distance(self, xyz):
         return np.linalg.norm(self.xyz[..., None, None, :] - xyz[None, None, ...], axis=-1)
+
+    def get_max_distance(self, xyz):
+        return get_max_dist(self.xyz, xyz)
 
     def get_min_distance(self, xyz):
         return get_min_dist(self.xyz, xyz)

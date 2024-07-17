@@ -1,7 +1,9 @@
+import jax
 import jax.numpy as np
 from scipy.constants import mu_0
 from os.path import dirname, join, realpath
 
+jax.config.update("jax_enable_x64", True)
 mu_0_fac = mu_0 / (4 * np.pi)
 
 

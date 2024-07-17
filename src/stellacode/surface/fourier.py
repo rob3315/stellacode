@@ -3,14 +3,18 @@ from os import sep
 
 import matplotlib.pyplot as plt
 import numpy as onp
+import pandas as pd
+
 from concave_hull import concave_hull
 from jax.typing import ArrayLike
-from scipy.interpolate import CubicSpline, interp1d
-from scipy.io import netcdf_file
+from scipy.interpolate import CubicSpline
 from scipy.spatial import ConvexHull
 
+import plotly.graph_objects as go
+import plotly.express as px
+
 from stellacode import np
-from stellacode.surface.utils import fourier_coefficients
+from stellacode.surface.utils import fourier_coefficients, fourier_transform
 from stellacode.tools.bnorm import get_bnorm
 from stellacode.tools.vmec import VMECIO
 
@@ -19,7 +23,6 @@ from .cylindrical import CylindricalSurface
 from .tore import ToroidalSurface
 from .utils import (
     cartesian_to_cylindrical,
-    cartesian_to_shifted_cylindrical,
     cartesian_to_toroidal,
     from_polar,
     to_polar,
@@ -501,6 +504,7 @@ class FourierSurface(Surface):
     ) -> tp.Union[ToroidalSurface, CylindricalSurface]:
         """
         Return a surface with Fourier coefficients that match the envelope.
+        Mean radius is taken to be the max minor radius and not the mean to have a small margin.
 
         Args:
             num_cyl: the number of cylinders if the surface is piecewise cylindrical
@@ -517,11 +521,12 @@ class FourierSurface(Surface):
             num_cyl=num_cyl, num_coeff=num_coeff, convex=convex, angle=angle, **kwargs
         )
         minor_radius = self.get_minor_radius(vmec=False)
+        major_radius = self.get_major_radius()
         if num_cyl is None:
             return ToroidalSurface(
                 integration_par=self.integration_par,
                 nfp=self.nfp,
-                major_radius=self.get_major_radius(),
+                major_radius=major_radius,
                 minor_radius=minor_radius,
                 fourier_coeffs=coefs / a0_2,
             )
@@ -531,10 +536,28 @@ class FourierSurface(Surface):
             return CylindricalSurface(
                 integration_par=integration_par,
                 ncp=self.nfp * num_cyl,
-                distance=self.get_major_radius(),
+                distance=major_radius,
                 radius=minor_radius,
                 fourier_coeffs=coefs / a0_2,
             )
+
+    def get_max_radius(
+        self,
+        num_cyl: tp.Optional[int] = None,
+        num_coeff: int = 5,
+        angle: float = 0.0,
+        **kwargs,
+    ) -> float:
+        _, coefs = self.get_envelope_fourier_coeff(
+            num_cyl=num_cyl, num_coeff=num_coeff, convex=True, angle=angle, limit=10000, **kwargs
+        )
+        minor_radius = self.get_minor_radius(vmec=False)
+        radius_max = 0
+        for u in 2*np.pi*np.linspace(0, 1, 100):
+            radius = (fourier_transform(
+                coefs, u)+1) * minor_radius
+            radius_max = max(radius, radius_max)
+        return radius_max
 
     def get_gt_b_field(self, surface_labels: int = -1, b_norm_file: tp.Optional[str] = None):
         """
