@@ -128,8 +128,8 @@ class RegCoilSolver(BaseModel):
         Source : "Optimal shape of stellarators for magnetic confinement fusion"
 
         Args:
-            S: plasma surface
-            Sp: coil surface
+            S: coil surface
+            Sp: plasma surface
             bnorm: normal magnetic field on the plasma surface
             normal_b_field: whether to project the magnetic field on the normal component
             use_mu_0_factor: whether to use the magnetic constant
@@ -561,15 +561,15 @@ class EMCost(AbstractCost):
         Compute RegCoilSolver object from plasma and coil surfaces.
 
         Args:
-            S: The plasma surface.
+            S: The coil surface.
 
         Returns:
             RegCoilSolver: The RegCoilSolver object.
         """
         # Compute the RegCoilSolver object from the plasma and coil surfaces using the specified parameters.
         return RegCoilSolver.from_surfaces(
-            S=S,  # The plasma surface.
-            Sp=self.Sp,  # The coil surface.
+            S=S,  # The coil surface.
+            Sp=self.Sp,  # The plasma surface.
             # The normal magnetic field on the plasma surface.
             bnorm=self.bnorm,
             fit_b_3d=self.fit_b_3d,  # Whether to fit the magnetic field in 3D.
@@ -612,13 +612,12 @@ class EMCost(AbstractCost):
         metrics["max_deltaB_normal"] = np.max(b_err)
 
         if isinstance(S, CoilOperator):
-            coil_surface = S.get_coil()
+            coil_surf = S.get_coil()
         else:
-            coil_surface = S
-
-        metrics["deltaB_B_L2"] = get_b_field_err(self, coil_surface, err="L2")
+            coil_surf = S
+        metrics["deltaB_B_L2"] = get_b_field_err(self, coil_surf, err="L2")
         metrics["deltaB_B_max"] = get_b_field_err(
-            self, coil_surface, err="max")
+            self, coil_surf, err="max")
 
         if self.fit_b_3d:
             b_err = np.sum(b_err, axis=-1)

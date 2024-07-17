@@ -299,8 +299,30 @@ def get_min_dist(S1, S2):
     # Return the minimum distance
     return dists.min()
 
-    # Alternative implementation using jax.numpy for differentiability
-    # return np.linalg.norm(S1.P[...,None,None,:]-S2.P[None,None,...], axis=-1).min()
+
+def get_max_dist(S1, S2):
+    """
+    Compute the maximal distance between two sets of points.
+
+    Parameters
+    ----------
+    S1, S2 : numpy.ndarray
+        Arrays of shape (N, 3) representing the points.
+
+    Returns
+    -------
+    float
+        The maximal distance between the points.
+    """
+    # Reshape the arrays to have shape (N, 3)
+    S1 = np.reshape(S1, (-1, 3))
+    S2 = np.reshape(S2, (-1, 3))
+
+    # Compute the pairwise distances between points in S1 and S2
+    dists = cdist(S1, S2)
+
+    # Return the minimum distance
+    return dists.max()
 
 
 def fit_to_surface(fitted_surface, surface, distance: float = 0.25, tol: float = 1e-2):
