@@ -16,9 +16,11 @@ class CylindricalSurface(AbstractSurfaceFactory):
 
     Args:
         * ncp: number of periods
+        * delta_angle: minimum angle between two cylinders
         * fourier_coeffs: fourier coefficents of the cross section
+        * points: points defining the cross section
         * axis_angle: rotates the surface by the given angle along the toroidal axis
-        * radius: radius of the cylinders
+        * radius: mean radius of the cylinders
         * scale_length: The cylinder is scaled by the scale_length factor along the cylinder height
         * distance: distance between the center of the cylinder and the coordinate center
         * make_joints: The cylinder is cut at an angle such that all rotated cylinders are joined
@@ -26,6 +28,7 @@ class CylindricalSurface(AbstractSurfaceFactory):
     """
 
     ncp: int
+    delta_angle: float = 0.0
     fourier_coeffs: tp.Optional[ArrayLike] = np.zeros((1, 2))
     points: tp.Optional[ArrayLike] = None  # np.ones(10)
     axis_angle: float = 0.0  # rotates the surface by the given angle
@@ -69,7 +72,7 @@ class CylindricalSurface(AbstractSurfaceFactory):
         # Check if fourier coefficients or points are defined
         assert self.fourier_coeffs is not None or self.points is not None
 
-        # Calculate the radius at angle phi (u_)
+        # Calculate the radius at each angle phi (u_)
         if self.points is not None:
             _radius = (
                 np.interp(
@@ -78,24 +81,30 @@ class CylindricalSurface(AbstractSurfaceFactory):
                 )
                 * self.radius
             )
+            _inner_radius = (
+                np.interp(
+                    np.pi, np.linspace(0, 1, len(self.points), endpoint=False), nn.softmax(
+                        self.points) * len(self.points)
+                )
+                * self.radius
+            )
         else:
             _radius = (fourier_transform(
                 self.fourier_coeffs, u_)+1) * self.radius
+            _inner_radius = (fourier_transform(
+                self.fourier_coeffs, np.pi)+1) * self.radius
 
-        _radius = np.minimum(_radius, self.radius)
-
-        # Calculate the circle at angle phi (u_)
+        # Cross section at each angle phi (u_)
         circle = _radius * (axis_orth * np.cos(u_) + z_dir * np.sin(u_))
 
         # Calculate the cylinder height
-        dist_edge = self.distance - self.radius
-        _length = 2 * dist_edge * np.tan(np.pi / self.ncp)
-        _length *= self.scale_length
-
-        # Adjust length if make_joints is True
         if self.make_joints:
-            p_dist = self.distance + np.cos(u_) * _radius
-            _length = _length * p_dist / (self.distance - self.radius)
+            dist = self.distance + np.cos(u_) * _radius
+        else:
+            dist = self.distance - _inner_radius
+
+        _length = dist * 2 * np.tan(np.pi / self.ncp)
+        _length *= self.scale_length
 
         # Apply shear effect if strength is not zero
         if self.shear_strength != 0.0:
@@ -165,6 +174,21 @@ class CylindricalSurface(AbstractSurfaceFactory):
         return np.array([unwrapped_u, v_ * length]) + np.array([shear_x, shear_y])
 
     def _get_axis_angle(self):
+        """
+        Compute the angle of the cylindrical axis.
+
+        Returns
+        -------
+        float
+            The angle of the cylindrical axis in radians.
+
+        Notes
+        -----
+        This function computes the angle of the cylindrical axis by combining the
+        initial angle of the axis, the angle per cylinder, and the specific angle.
+        The angle of the axis is defined as the angle between the cylindrical axis and
+        the x-axis in the cartesian coordinate system.
+        """
         return np.pi / 2 + np.pi / self.ncp + self.axis_angle
 
     def _get_axes(self):
@@ -177,13 +201,6 @@ class CylindricalSurface(AbstractSurfaceFactory):
             The cylindrical and orthogonal axes of the cylindrical coordinate system.
             The cylindrical axis is represented by cyl_axis.
             The orthogonal axis is represented by axis_orth.
-
-        Notes
-        -----
-        This function computes the cylindrical and orthogonal axes of the cylindrical coordinate system.
-        It first computes the cylindrical axis using the _get_axis_angle method.
-        Then it computes the orthogonal axis using the cylindrical axis and the computed axis angle.
-        The resulting axes are returned as a tuple.
         """
         axis_a = self._get_axis_angle()
         axis_orth = np.array([np.sin(axis_a), -np.cos(axis_a), 0.0])
