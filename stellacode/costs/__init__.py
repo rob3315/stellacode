@@ -6,3 +6,4 @@ from .curvature import CurvatureCost, NegTorCurvatureCost
 from .distance import DistanceCost
 from .em_cost import EMCost, MSEBField
 from .laplace_force import LaplaceForceCost
+from .grooves_cost import GroovesCost
